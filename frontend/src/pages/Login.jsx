@@ -52,7 +52,7 @@ const StartView = ({ onStart }) => (
   </Button>
 );
 
-// Step 1: choose Student vs Staff (ADMIN/COORDINATOR/SUPERVISOR share same password UI, limited by role)
+// Step 1: choose Student vs Staff
 const ChoiceView = ({ onChoose, onBack }) => (
   <div className="space-y-3">
     <button
@@ -69,7 +69,6 @@ const ChoiceView = ({ onChoose, onBack }) => (
     >
       Log in with Staff Account
     </button>
-    <p className="text-[11px] text-center text-sti-gray">Staff = Admin / Coordinator / Supervisor — same UI, permissions limited by role</p>
     <button
       type="button"
       onClick={onBack}
@@ -80,7 +79,7 @@ const ChoiceView = ({ onChoose, onBack }) => (
   </div>
 );
 
-// Step 2a: student — just the SSO button(s), nothing else on screen.
+// Step 2a: student — just the SSO button(s) + Back
 const StudentView = ({ onBack }) => {
   const [ssoLoading, setSsoLoading] = useState(null); // 'microsoft' | 'google' | null
   const [error, setError] = useState('');
@@ -142,6 +141,13 @@ const StudentView = ({ onBack }) => {
           Sign in with Microsoft
         </button>
       )}
+      <button
+        type="button"
+        onClick={onBack}
+        className="w-full flex items-center justify-center gap-1.5 text-xs text-sti-gray hover:text-sti-gray-dark dark:hover:text-white pt-2"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" /> Back
+      </button>
     </div>
   );
 };

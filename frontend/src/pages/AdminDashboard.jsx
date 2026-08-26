@@ -90,26 +90,33 @@ const AdminDashboard = () => {
                 <tr className="border-t border-b border-black/5 dark:border-white/10 text-left">
                   <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Student</th>
                   <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Course</th>
-                  <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Hours</th>
+                  <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">OJT Hours</th>
                   <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Status</th>
                 </tr>
               </thead>
               <tbody>
-                {recentStudents.map((s) => (
+                {recentStudents.map((s) => {
+                  const left = Math.max(0, s.requiredHours - s.completedHours);
+                  const pct = s.requiredHours ? Math.round((s.completedHours / s.requiredHours) * 100) : 0;
+                  return (
                   <tr key={s.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
                     <td className="px-6 py-3.5">
                       <p className="font-medium text-sti-gray-dark dark:text-white">{s.firstName} {s.lastName}</p>
                       <p className="text-xs text-sti-gray">{s.studentId}</p>
                     </td>
                     <td className="px-6 py-3.5 text-sti-gray-dark dark:text-white">{s.course}</td>
-                    <td className="px-6 py-3.5 text-sti-gray-dark dark:text-white">{s.completedHours}/{s.requiredHours}h</td>
+                    <td className="px-6 py-3.5">
+                      <p className="text-sm font-medium text-sti-gray-dark dark:text-white">{s.completedHours}/{s.requiredHours}h</p>
+                      <p className="text-xs text-sti-gray">{left}h left • {pct}%</p>
+                    </td>
                     <td className="px-6 py-3.5">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[s.ojt_status]}`}>
                         {s.ojt_status.replace('_', ' ')}
                       </span>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

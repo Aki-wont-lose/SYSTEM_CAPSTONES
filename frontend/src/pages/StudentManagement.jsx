@@ -101,7 +101,7 @@ const StudentManagement = () => {
         const { companyId, ...rest } = form;
         await createStudent({ ...rest, companyId: companyId || undefined });
       } else if (modalMode === 'edit') {
-        const { password, id, userId, studentId, user, attendance, company, createdAt, updatedAt, ...updateData } = form;
+        const { password, id, userId, user, attendance, company, createdAt, updatedAt, ...updateData } = form;
         await updateStudent(selectedStudent.id, { ...updateData, companyId: updateData.companyId || null });
       }
       closeModal();
@@ -189,7 +189,10 @@ const StudentManagement = () => {
                     </td>
                     <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{s.course}<br /><span className="text-xs text-sti-gray">{s.section}</span></td>
                     <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{s.company?.name || '—'}</td>
-                    <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{s.completedHours}/{s.requiredHours}h</td>
+                    <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
+                      <span className="font-medium">{s.completedHours}/{s.requiredHours}h</span>
+                      <span className="text-xs text-sti-gray ml-1.5">{Math.max(0, s.requiredHours - s.completedHours)}h left</span>
+                    </td>
                     <td className="px-6 py-3.5">
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusStyles[s.ojt_status]}`}>
                         {s.ojt_status.replace('_', ' ')}
@@ -232,7 +235,7 @@ const StudentManagement = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID</label>
-              <input required disabled={modalMode === 'edit'} value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field disabled:bg-sti-gray-light" placeholder="352467" />
+              <input required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field" placeholder="352467" />
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">OJT Status</label>

@@ -338,7 +338,6 @@ const AdminRequirements = () => {
                     <button type="button" onClick={() => setForm({ ...form, templateFile: null, templateFileName: null })} className="text-red-600 hover:underline">Remove</button>
                   </div>
                 )}
-                <p className="text-[11px] text-sti-gray mt-1">Upload a fillable PDF/Docx template. Students will download it, edit their name, then re-upload as submission.</p>
               </div>
               <Button type="submit" variant="primary" className="w-full" loading={saving}>
                 {editing ? 'Save Changes' : 'Add Requirement'}

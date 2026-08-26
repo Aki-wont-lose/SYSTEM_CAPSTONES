@@ -10,14 +10,7 @@ import {
   deleteAnnouncement
 } from '../services/announcementService';
 
-const priorityStyles = {
-  URGENT: 'bg-red-50 text-red-600 border-red-100',
-  HIGH: 'bg-yellow-50 text-sti-yellow-dark border-yellow-100',
-  NORMAL: 'bg-sti-blue-50 text-sti-blue border-sti-blue-100',
-  LOW: 'bg-gray-50 text-sti-gray border-gray-100',
-};
-
-const emptyForm = { title: '', content: '', category: 'General', priority: 'NORMAL', isActive: true };
+const emptyForm = { title: '', content: '', isActive: true };
 
 const AnnouncementManagement = () => {
   const [announcements, setAnnouncements] = useState([]);
@@ -57,8 +50,6 @@ const AnnouncementManagement = () => {
     setForm({
       title: announcement.title,
       content: announcement.content,
-      category: announcement.category,
-      priority: announcement.priority,
       isActive: announcement.isActive
     });
     setEditTarget(announcement);
@@ -127,21 +118,12 @@ const AnnouncementManagement = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {announcements.map((a) => (
             <Card key={a.id} hover className="flex flex-col">
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <h4 className="font-bold text-sti-gray-dark dark:text-white">{a.title}</h4>
-                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full border shrink-0 ${priorityStyles[a.priority]}`}>
-                  {a.priority}
-                </span>
-              </div>
+              <h4 className="font-bold text-sti-gray-dark dark:text-white mb-2">{a.title}</h4>
               <p className="text-sm text-sti-gray flex-1 line-clamp-3">{a.content}</p>
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-black/5 dark:border-white/10">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-sti-gray">{a.category}</span>
-                  <span className="text-sti-gray">•</span>
-                  <span className={`text-xs font-medium ${a.isActive ? 'text-sti-blue' : 'text-sti-gray'}`}>
-                    {a.isActive ? 'Published' : 'Draft'}
-                  </span>
-                </div>
+                <span className={`text-xs font-medium ${a.isActive ? 'text-sti-blue' : 'text-sti-gray'}`}>
+                  {a.isActive ? 'Published' : 'Draft'}
+                </span>
                 <div className="flex items-center gap-1">
                   <button onClick={() => openEditModal(a)} className="p-2 rounded-lg hover:bg-sti-gray-light text-sti-gray hover:text-sti-blue transition-colors">
                     <Pencil className="w-4 h-4" />
@@ -169,21 +151,6 @@ const AnnouncementManagement = () => {
           <div>
             <label className="block text-sm font-medium text-sti-gray-dark dark:text-white mb-1.5">Content</label>
             <textarea required rows={5} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="input-field resize-none" placeholder="Write the announcement details..." />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-white mb-1.5">Category</label>
-              <input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-white mb-1.5">Priority</label>
-              <select value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} className="input-field">
-                <option value="LOW">Low</option>
-                <option value="NORMAL">Normal</option>
-                <option value="HIGH">High</option>
-                <option value="URGENT">Urgent</option>
-              </select>
-            </div>
           </div>
           <label className="flex items-center gap-2 text-sm text-sti-gray-dark dark:text-white">
             <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded accent-sti-blue" />

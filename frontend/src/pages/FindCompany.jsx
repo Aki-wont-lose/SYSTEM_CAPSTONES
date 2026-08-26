@@ -102,6 +102,7 @@ const FindCompany = () => {
                 latitude={selected?.latitude}
                 longitude={selected?.longitude}
                 address={selected?.address || selected?.name}
+                allMarkers={companies}
                 className="w-full h-64 sm:h-72"
               />
               {selected && (
