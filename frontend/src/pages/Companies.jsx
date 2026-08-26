@@ -139,39 +139,39 @@ const Companies = () => {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-md p-6 relative my-8">
-            <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-sti-gray hover:text-sti-gray-dark dark:hover:text-white">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-md p-4 sm:p-6 relative my-4 sm:my-8 max-h-[92vh] overflow-y-auto">
+            <button onClick={() => setShowModal(false)} className="absolute top-3 sm:top-4 right-3 sm:right-4 p-1 text-sti-gray hover:text-sti-gray-dark dark:hover:text-white">
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-lg font-bold text-sti-gray-dark dark:text-white mb-5">
+            <h2 className="text-base sm:text-lg font-bold text-sti-gray-dark dark:text-white mb-4 sm:mb-5 pr-8">
               {editing ? 'Edit Company' : 'Add Company'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-3">
-              <input required placeholder="Company name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field" />
-              <input placeholder="Industry type" value={form.industryType} onChange={(e) => setForm({ ...form, industryType: e.target.value })} className="input-field" />
-              <input placeholder="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input-field" />
+              <input required placeholder="Company name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field text-sm py-3" />
+              <input placeholder="Industry type" value={form.industryType} onChange={(e) => setForm({ ...form, industryType: e.target.value })} className="input-field text-sm py-3" />
+              <input placeholder="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input-field text-sm py-3" />
 
               <LocationPicker
                 latitude={form.latitude === '' ? null : parseFloat(form.latitude)}
                 longitude={form.longitude === '' ? null : parseFloat(form.longitude)}
                 onChange={(lat, lng) => setForm({ ...form, latitude: lat, longitude: lng })}
-                className="w-full h-52"
+                className="w-full h-48 sm:h-52"
               />
 
-              <input placeholder="Contact person" value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} className="input-field" />
-              <div className="grid grid-cols-2 gap-3">
-                <input placeholder="Contact number" value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
-                <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" />
+              <input placeholder="Contact person" value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} className="input-field text-sm py-3" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input placeholder="Contact number" value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field text-sm py-3" />
+                <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field text-sm py-3" />
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <input type="number" min="0" placeholder="Available slots" value={form.availableSlots} onChange={(e) => setForm({ ...form, availableSlots: e.target.value })} className="input-field" />
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="input-field">
+                <input type="number" min="0" placeholder="Available slots" value={form.availableSlots} onChange={(e) => setForm({ ...form, availableSlots: e.target.value })} className="input-field text-sm py-3" />
+                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="input-field text-sm py-3">
                   <option value="ACTIVE">Active</option>
                   <option value="INACTIVE">Inactive</option>
                 </select>
               </div>
-              <Button type="submit" variant="primary" className="w-full" loading={saving}>
+              <Button type="submit" variant="primary" className="w-full py-3" loading={saving}>
                 {editing ? 'Save Changes' : 'Add Company'}
               </Button>
             </form>

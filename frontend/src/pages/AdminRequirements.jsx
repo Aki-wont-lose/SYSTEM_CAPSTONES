@@ -293,12 +293,12 @@ const AdminRequirements = () => {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-md p-6 relative">
-            <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-sti-gray hover:text-sti-gray-dark dark:hover:text-white">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-start sm:items-center justify-center p-3 sm:p-4 z-50 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-md p-4 sm:p-6 relative my-4 sm:my-8 max-h-[92vh] overflow-y-auto">
+            <button onClick={() => setShowModal(false)} className="absolute top-3 sm:top-4 right-3 sm:right-4 p-1 text-sti-gray hover:text-sti-gray-dark dark:hover:text-white">
               <X className="w-5 h-5" />
             </button>
-            <h2 className="text-lg font-bold text-sti-gray-dark dark:text-white mb-5">
+            <h2 className="text-base sm:text-lg font-bold text-sti-gray-dark dark:text-white mb-4 sm:mb-5 pr-8">
               {editing ? 'Edit Requirement' : 'Add Requirement'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">

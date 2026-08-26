@@ -34,6 +34,10 @@ const LocationPicker = ({ latitude, longitude, onChange, className = '' }) => {
     const map = L.map(mapRef.current, {
       center: startCenter,
       zoom: latitude && longitude ? 15 : 12,
+      zoomControl: true,
+      scrollWheelZoom: true,
+      touchZoom: true,
+      doubleClickZoom: true,
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

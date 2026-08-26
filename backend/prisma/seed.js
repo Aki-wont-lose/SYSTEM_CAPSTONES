@@ -105,72 +105,13 @@ async function main() {
   // No attendance history seeded — neither student has started OJT yet.
   // Attendance records will be created naturally once they use Time In / Time Out.
 
-  // Requirements (empty submissions, just the requirement definitions)
-  await prisma.requirement.createMany({
-    data: [
-      { title: 'Endorsement Letter', description: 'Signed endorsement letter from the school.', isRequired: true },
-      { title: 'Parent Consent Form', description: 'Signed by parent/guardian.', isRequired: true },
-      { title: 'Medical Certificate', description: 'Fit-to-work medical certificate.', isRequired: true },
-      { title: 'Resume', description: 'Updated resume/CV.', isRequired: false }
-    ]
-  });
-  console.log('✓ Requirements created');
+  // Requirements - start empty now that PDF upload works (Coordinator/Admin adds templates via UI)
+  // No seeded requirements; they are created via AdminRequirements > Add Requirement
+  console.log('✓ Requirements skipped (start empty - add via UI)');
 
-  // Partner Companies — sample OJT host companies near STI Sta. Maria, Bulacan,
-  // with real coordinates so the Find Company map has something to pinpoint.
-  await prisma.company.createMany({
-    data: [
-      {
-        name: 'Sta. Maria Municipal Hall - IT Office',
-        address: 'Poblacion, Sta. Maria, Bulacan',
-        latitude: 14.8137,
-        longitude: 120.9550,
-        contactPerson: 'Engr. Ramon Dela Cruz',
-        contactNumber: '09171234501',
-        email: 'itoffice@stamaria.gov.ph',
-        industryType: 'Local Government / IT Support',
-        availableSlots: 3,
-        status: 'ACTIVE'
-      },
-      {
-        name: 'NORVERGENCE Data Solutions',
-        address: 'McArthur Highway, Guyong, Sta. Maria, Bulacan',
-        latitude: 14.8267,
-        longitude: 120.9581,
-        contactPerson: 'Ms. Ana Reyes',
-        contactNumber: '09182345612',
-        email: 'hr@norvergence.ph',
-        industryType: 'Software Development',
-        availableSlots: 2,
-        status: 'ACTIVE'
-      },
-      {
-        name: 'Bulacan Networks & Systems Inc.',
-        address: 'Pulong Buhangin, Sta. Maria, Bulacan',
-        latitude: 14.8355,
-        longitude: 120.9660,
-        contactPerson: 'Mr. Jerome Santos',
-        contactNumber: '09193456723',
-        email: 'careers@bulacannetworks.ph',
-        industryType: 'IT Infrastructure & Networking',
-        availableSlots: 0,
-        status: 'ACTIVE'
-      },
-      {
-        name: 'GreenLeaf BPO Services',
-        address: 'San Jose Del Monte City, Bulacan',
-        latitude: 14.8139,
-        longitude: 121.0453,
-        contactPerson: 'Ms. Carla Villanueva',
-        contactNumber: '09204567834',
-        email: 'internships@greenleafbpo.ph',
-        industryType: 'Business Process Outsourcing',
-        availableSlots: 5,
-        status: 'ACTIVE'
-      }
-    ]
-  });
-  console.log('✓ Sample partner companies created (with map coordinates)');
+  // Partner Companies - start empty now that Add Company works (Admin/Coordinator adds via UI)
+  // No sample companies seeded; they are added via Partner Companies > Add Company
+  console.log('✓ Companies skipped (start empty - add via UI)');
 
   // Announcements
   const now = new Date();

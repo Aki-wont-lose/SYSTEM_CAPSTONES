@@ -63,4 +63,29 @@
     @apply bg-white rounded-2xl shadow-card border border-black/5
       dark:bg-slate-800 dark:border-white/5;
   }
+  /* Mobile (cp) optimizations - mostly students on cellphone */
+  @media (max-width: 640px) {
+    /* Larger tap targets, prevent zoom on input focus */
+    .input-field {
+      @apply text-[16px] py-3;
+    }
+    .btn-primary, .btn-secondary, .btn-accent {
+      @apply py-3.5 text-[15px] min-h-[44px];
+    }
+    /* Prevent horizontal overflow on small screens */
+    body {
+      @apply overflow-x-hidden;
+    }
+    /* Tables scroll nicely */
+    table {
+      @apply text-xs;
+    }
+  }
+  /* Safe area for notched phones */
+  @supports (padding: max(0px)) {
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+  }
 }
