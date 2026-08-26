@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  body {
+    @apply bg-sti-gray-light text-sti-gray-dark antialiased transition-colors duration-200;
+  }
+  html.dark body {
+    @apply bg-slate-900 text-slate-100;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-sti-blue/20 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-sti-blue/40;
+  }
+  *:focus-visible {
+    @apply outline-none ring-2 ring-sti-blue/50 ring-offset-2;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-sti-blue text-white px-5 py-2.5 rounded-xl font-semibold text-sm
+      hover:bg-sti-blue-dark transition-colors duration-200
+      focus-visible:ring-2 focus-visible:ring-sti-blue/50 focus-visible:ring-offset-2
+      disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-white text-sti-blue border border-sti-blue/30 px-5 py-2.5 rounded-xl font-semibold text-sm
+      hover:bg-sti-blue-50 transition-colors duration-200
+      disabled:opacity-50 disabled:cursor-not-allowed
+      dark:bg-slate-800 dark:text-sti-blue-light dark:border-sti-blue-light/30 dark:hover:bg-slate-700;
+  }
+  .btn-accent {
+    @apply bg-sti-yellow text-sti-blue-dark px-5 py-2.5 rounded-xl font-bold text-sm
+      hover:bg-sti-yellow-dark transition-colors duration-200
+      disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-danger {
+    @apply bg-red-50 text-red-600 border border-red-200 px-5 py-2.5 rounded-xl font-semibold text-sm
+      hover:bg-red-100 transition-colors duration-200
+      dark:bg-red-950 dark:text-red-400 dark:border-red-900;
+  }
+  .input-field {
+    @apply w-full px-4 py-2.5 rounded-xl border border-sti-gray/20 bg-white text-sm
+      focus:outline-none focus:ring-2 focus:ring-sti-blue/40 focus:border-sti-blue
+      transition-all duration-150 placeholder:text-sti-gray
+      dark:bg-slate-800 dark:border-white/10 dark:text-white;
+  }
+  .card {
+    @apply bg-white rounded-2xl shadow-card border border-black/5
+      dark:bg-slate-800 dark:border-white/5;
+  }
+}

@@ -1,0 +1,41 @@
+{
+    "name": "simes-backend",
+    "version": "1.0.0",
+    "description": "Backend for SIMES - Student Internship Monitoring and Evaluation System",
+    "main": "src/server.js",
+    "type": "module",
+    "scripts": {
+        "dev": "node --watch src/server.js",
+        "start": "node src/server.js",
+        "migrate": "prisma migrate dev",
+        "migrate:prod": "prisma migrate deploy",
+        "seed": "node prisma/seed.js",
+        "db:push": "prisma db push",
+        "studio": "prisma studio",
+        "postinstall": "prisma generate"
+    },
+    "keywords": [
+        "internship",
+        "monitoring",
+        "sti"
+    ],
+    "author": "STI College",
+    "license": "ISC",
+    "dependencies": {
+        "@prisma/client": "^5.8.0",
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "jsonwebtoken": "^9.0.2",
+        "jwks-rsa": "^3.1.0",
+        "pg": "^8.23.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.6",
+        "prisma": "^5.8.0"
+    },
+    "prisma": {
+        "seed": "node prisma/seed.js"
+    }
+}

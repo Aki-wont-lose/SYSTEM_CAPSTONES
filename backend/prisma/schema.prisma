@@ -1,0 +1,269 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// User model - Base for all 4 roles
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  password     String
+  role         Role       @default(STUDENT)
+  isActive     Boolean    @default(true)
+  theme        Theme      @default(LIGHT)
+
+  // Password reset
+  resetToken   String?
+  resetTokenExpiresAt DateTime?
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relations
+  student      Student?
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+
+  @@index([email])
+  @@index([role])
+}
+
+// Student model - Extended student information
+model Student {
+  id                 String       @id @default(cuid())
+  userId             String       @unique
+  studentId          String       @unique
+  firstName          String
+  lastName           String
+  course             String
+  section            String
+  email              String
+  contactNumber      String
+  profilePicture     String?
+  ojt_status         OJTStatus    @default(NOT_STARTED)
+  requiredHours      Int          @default(486)
+  completedHours     Int          @default(0)
+
+  // Company / supervisor assignment
+  companyId          String?
+  supervisorName     String?
+  supervisorEmail    String?
+  supervisorContact  String?
+
+  // OJT schedule
+  workingDays        String?      // e.g. "Mon-Fri"
+  workingHours       String?      // e.g. "8:00 AM - 5:00 PM"
+
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  // Relations
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company             Company?     @relation(fields: [companyId], references: [id])
+  attendance          Attendance[]
+  submissions         Submission[]
+  logEntries          LogEntry[]
+
+  @@index([studentId])
+  @@index([userId])
+  @@index([ojt_status])
+  @@index([companyId])
+}
+
+// Attendance model - Daily Time Record (DTR)
+model Attendance {
+  id              String    @id @default(cuid())
+  studentId       String
+  date            DateTime
+  timeIn          DateTime?
+  timeOut         DateTime?
+  timeInPhoto     String?   @db.Text  // base64 camera capture at time in
+  timeOutPhoto    String?   @db.Text  // base64 camera capture at time out
+  renderedHours   Float     @default(0)
+  status          AttendanceStatus @default(PRESENT)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  student         Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@index([studentId])
+  @@index([date])
+  @@index([status])
+}
+
+// Announcement model
+model Announcement {
+  id          String    @id @default(cuid())
+  title       String
+  content     String    @db.Text
+  category    String    @default("General")
+  priority    Priority  @default(NORMAL)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  @@index([isActive])
+  @@index([publishedAt])
+  @@index([priority])
+}
+
+// Partner Company model
+model Company {
+  id              String    @id @default(cuid())
+  name            String
+  address         String?
+  latitude        Float?
+  longitude       Float?
+  contactPerson   String?
+  contactNumber   String?
+  email           String?
+  industryType    String?
+  availableSlots  Int       @default(0)
+  status          CompanyStatus @default(ACTIVE)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  students        Student[]
+
+  @@index([status])
+}
+
+// Requirement model - documents students must submit
+// Coordinator/Admin uploads a PDF template (stored as base64) so students download -> edit name -> re-upload
+model Requirement {
+  id              String    @id @default(cuid())
+  title           String
+  description     String?   @db.Text
+  isRequired      Boolean   @default(true)
+  templateFile    String?   @db.Text // base64 PDF template (Coordinator/Admin) â€” student downloads
+  templateFileName String?  // original filename e.g. Endorsement_Template.pdf
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  submissions     Submission[]
+
+  @@index([isRequired])
+}
+
+// Submission model - a student's uploaded file for a Requirement
+model Submission {
+  id              String    @id @default(cuid())
+  requirementId   String
+  studentId       String
+  fileName        String
+  fileData        String    @db.Text  // base64 file content
+  status          SubmissionStatus @default(PENDING)
+  remarks         String?   @db.Text
+  submittedAt     DateTime  @default(now())
+  reviewedAt      DateTime?
+
+  // Relations
+  requirement     Requirement @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  student         Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([requirementId])
+  @@index([studentId])
+  @@index([status])
+}
+
+// LogEntry model - "My Logs" daily task journal (separate from DTR)
+model LogEntry {
+  id              String    @id @default(cuid())
+  studentId       String
+  date            DateTime
+  taskDescription String    @db.Text
+  assignedBy      String?   // admin/supervisor who assigned the task
+  status          LogStatus @default(PENDING)
+  comment         String?   @db.Text   // admin/supervisor feedback
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  student         Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([date])
+  @@index([status])
+}
+
+// 4 user levels â€” adviser required: ADMIN, COORDINATOR, SUPERVISOR, STUDENT
+enum Role {
+  ADMIN
+  COORDINATOR
+  SUPERVISOR
+  STUDENT
+}
+
+enum Theme {
+  LIGHT
+  DARK
+}
+
+enum OJTStatus {
+  NOT_STARTED
+  ONGOING
+  COMPLETED
+  ON_HOLD
+  FAILED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum CompanyStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LogStatus {
+  PENDING
+  APPROVED
+  REVISION_REQUESTED
+}
+
+// Messaging â€” Coordinator â†” Supervisor (ADMIN can also message)
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String   @db.Text
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+  @@index([isRead])
+}
+
