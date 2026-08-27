@@ -41,7 +41,8 @@ const LocationPicker = ({ latitude, longitude, onChange, className = '' }) => {
       doubleClickZoom: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // New Google Map style like student FindCompany (no API key, same as MapEmbed)
+    L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
       attribution: '',
       maxZoom: 19,
     }).addTo(map);
