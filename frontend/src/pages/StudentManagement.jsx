@@ -20,6 +20,7 @@ const statusStyles = {
 };
 
 const emptyForm = {
+  role: 'STUDENT',
   studentId: '', firstName: '', lastName: '', course: '', section: '',
   email: '', password: '', contactNumber: '', companyId: '',
   supervisorName: '', supervisorEmail: '', supervisorContact: '',
@@ -232,14 +233,24 @@ const StudentManagement = () => {
               {error}
             </div>
           )}
+          {modalMode === 'add' && (
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Account Type</label>
+              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="input-field">
+                <option value="STUDENT">Student</option>
+                <option value="COORDINATOR">Coordinator</option>
+                <option value="SUPERVISOR">Supervisor</option>
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID</label>
-              <input required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field" placeholder="352467" />
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID {form.role!=='STUDENT' && '(optional for staff)'}</label>
+              <input required={form.role==='STUDENT'} value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field" placeholder={form.role==='STUDENT' ? '352467' : '—'} />
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">OJT Status</label>
-              <select value={form.ojt_status} onChange={(e) => setForm({ ...form, ojt_status: e.target.value })} className="input-field">
+              <select value={form.ojt_status} onChange={(e) => setForm({ ...form, ojt_status: e.target.value })} className="input-field" disabled={form.role!=='STUDENT'}>
                 <option value="NOT_STARTED">Not Started</option>
                 <option value="ONGOING">Ongoing</option>
                 <option value="COMPLETED">Completed</option>
@@ -248,20 +259,20 @@ const StudentManagement = () => {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">First Name</label>
-              <input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input-field" />
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">First Name {form.role!=='STUDENT' && '(optional)'}</label>
+              <input required={form.role==='STUDENT'} value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name</label>
-              <input required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name {form.role!=='STUDENT' && '(optional)'}</label>
+              <input required={form.role==='STUDENT'} value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course</label>
-              <input required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field" />
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course {form.role!=='STUDENT' && '(optional)'}</label>
+              <input required={form.role==='STUDENT'} value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Section</label>
-              <input required value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} className="input-field" />
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Section {form.role!=='STUDENT' && '(optional)'}</label>
+              <input required={form.role==='STUDENT'} value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} className="input-field" />
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
@@ -274,12 +285,12 @@ const StudentManagement = () => {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
-              <input required value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number {form.role!=='STUDENT' && '(optional)'}</label>
+              <input required={form.role==='STUDENT'} value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Partner Company</label>
-              <select value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field">
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Partner Company {form.role!=='STUDENT' && '(staff: ignore)'}</label>
+              <select value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field" disabled={form.role!=='STUDENT'}>
                 <option value="">Not yet assigned</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -288,16 +299,18 @@ const StudentManagement = () => {
             </div>
           </div>
 
-          <div className="pt-2 border-t border-black/5 dark:border-white/10">
-            <p className="text-xs font-semibold text-sti-gray uppercase tracking-wide mb-3 mt-3">Supervisor & Schedule (optional)</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input placeholder="Supervisor name" value={form.supervisorName || ''} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} className="input-field" />
-              <input placeholder="Supervisor contact" value={form.supervisorContact || ''} onChange={(e) => setForm({ ...form, supervisorContact: e.target.value })} className="input-field" />
-              <input placeholder="Supervisor email" value={form.supervisorEmail || ''} onChange={(e) => setForm({ ...form, supervisorEmail: e.target.value })} className="input-field" />
-              <input placeholder="Working days (e.g. Mon-Fri)" value={form.workingDays || ''} onChange={(e) => setForm({ ...form, workingDays: e.target.value })} className="input-field" />
-              <input placeholder="Working hours (e.g. 8AM-5PM)" value={form.workingHours || ''} onChange={(e) => setForm({ ...form, workingHours: e.target.value })} className="input-field sm:col-span-2" />
+          {form.role === 'STUDENT' && (
+            <div className="pt-2 border-t border-black/5 dark:border-white/10">
+              <p className="text-xs font-semibold text-sti-gray uppercase tracking-wide mb-3 mt-3">Supervisor & Schedule (optional)</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input placeholder="Supervisor name" value={form.supervisorName || ''} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} className="input-field" />
+                <input placeholder="Supervisor contact" value={form.supervisorContact || ''} onChange={(e) => setForm({ ...form, supervisorContact: e.target.value })} className="input-field" />
+                <input placeholder="Supervisor email" value={form.supervisorEmail || ''} onChange={(e) => setForm({ ...form, supervisorEmail: e.target.value })} className="input-field" />
+                <input placeholder="Working days (e.g. Mon-Fri)" value={form.workingDays || ''} onChange={(e) => setForm({ ...form, workingDays: e.target.value })} className="input-field" />
+                <input placeholder="Working hours (e.g. 8AM-5PM)" value={form.workingHours || ''} onChange={(e) => setForm({ ...form, workingHours: e.target.value })} className="input-field sm:col-span-2" />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>

@@ -73,7 +73,18 @@ const CameraCapture = ({ title, onCapture, onClose }) => {
     setCaptured(dataUrl);
   };
 
-  const handleRetake = () => setCaptured(null);
+  const handleRetake = () => {
+    setCaptured(null);
+    // Re-attach stream to video after retake - fixes black screen on some devices
+    setTimeout(() => {
+      if (videoRef.current && streamRef.current) {
+        videoRef.current.srcObject = streamRef.current;
+        videoRef.current.play().catch(()=>{});
+      } else {
+        setAttempt(n => n + 1);
+      }
+    }, 50);
+  };
 
   const handleConfirm = () => {
     onCapture(captured);

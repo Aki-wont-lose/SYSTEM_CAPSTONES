@@ -1,9 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, MessageCircle, Users, Search, Trash2, Image as ImageIcon, X } from 'lucide-react';
+import { Send, MessageCircle, Users, Search, Trash2, Image as ImageIcon, X, CheckCheck } from 'lucide-react';
 import Card from '../components/Card';
 import { getContacts, getConversation, sendMessage, deleteMessage } from '../services/messageService';
+import { useAuth } from '../hooks/useAuth';
 
 const Messages = () => {
+  const { user } = useAuth();
+  const currentUserId = user?.id || user?.userId;
   const [contacts, setContacts] = useState([]);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
@@ -19,26 +22,34 @@ const Messages = () => {
     try {
       const res = await getContacts();
       setContacts(res.data);
-      if (res.data.length && !selected) setSelected(res.data[0]);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
-  const loadConversation = async () => {
-    if (!selected) return;
+  const loadConversation = async (contactId) => {
+    const id = contactId || selected?.id;
+    if (!id) return;
     try {
-      const res = await getConversation(selected.id);
+      const res = await getConversation(id);
       setMessages(res.data);
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     } catch (e) { console.error(e); }
   };
 
   useEffect(() => { loadContacts(); }, []);
-  useEffect(() => { loadConversation(); const id = setInterval(loadConversation, 5000); return () => clearInterval(id); }, [selected]);
+  useEffect(() => {
+    setMessages([]);
+    if (selected) loadConversation(selected.id);
+    const interval = setInterval(() => { if (selected) loadConversation(selected.id); }, 3000);
+    return () => clearInterval(interval);
+  }, [selected]);
 
+  const formatRole = (r) => r ? r.charAt(0) + r.slice(1).toLowerCase() : '';
   const filteredContacts = contacts.filter(c => {
     const q = search.toLowerCase();
-    return !q || c.email.toLowerCase().includes(q) || (c.displayName || '').toLowerCase().includes(q) || (c.studentId || '').toLowerCase().includes(q) || c.role.toLowerCase().includes(q);
+    if (!q) return false;
+    return c.email.toLowerCase().includes(q) || (c.displayName || '').toLowerCase().includes(q) || (c.studentId || '').toLowerCase().includes(q) || c.role.toLowerCase().includes(q);
   });
+  const displayContacts = search ? filteredContacts : [];
 
   const isImage = (content) => content && content.startsWith('data:image');
 
@@ -91,14 +102,14 @@ const Messages = () => {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {contacts.length === 0 ? (
-              <p className="text-sm text-sti-gray p-4">No contacts yet - users will appear here.</p>
-            ) : filteredContacts.length === 0 ? (
+            {!search ? (
+              <p className="text-sm text-sti-gray p-4 text-center">Search name or email to find contacts<br/><span className="text-xs">Type above, after chat it will pop up here</span></p>
+            ) : displayContacts.length === 0 ? (
               <p className="text-sm text-sti-gray p-4">No matches for "{search}"</p>
-            ) : filteredContacts.map(c => (
+            ) : displayContacts.map(c => (
               <button key={c.id} onClick={() => setSelected(c)} className={`w-full text-left px-4 py-3 border-b border-black/5 dark:border-white/10 hover:bg-sti-gray-light dark:hover:bg-white/5 ${selected?.id===c.id?'bg-sti-blue-50 dark:bg-white/10':''}`}>
                 <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{c.displayName || c.email}</p>
-                <p className="text-xs text-sti-gray truncate">{c.studentId ? `${c.studentId} • ` : ''}{c.email} • {c.role}</p>
+                <p className="text-xs text-sti-gray truncate">{c.studentId ? `${c.studentId} • ` : ''}{c.email} • {formatRole(c.role)}</p>
               </button>
             ))}
           </div>
@@ -110,19 +121,25 @@ const Messages = () => {
             <>
               <div className="px-4 py-3 border-b border-black/5 dark:border-white/10">
                 <p className="text-sm font-semibold text-sti-gray-dark dark:text-white">{selected.displayName || selected.email}</p>
-                <p className="text-xs text-sti-gray">{selected.email} • {selected.role}</p>
+                <p className="text-xs text-sti-gray">{selected.email} • {formatRole(selected.role)}</p>
               </div>
               <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-sti-gray-light/30 dark:bg-slate-900/50">
-                {messages.length === 0 ? (
-                  <p className="text-sm text-sti-gray text-center py-8">No messages yet — send a hello or a pic</p>
-                ) : messages.map(m => {
-                  const isMine = m.senderId !== selected.id;
+                {messages.map(m => {
+                  const isMine = m.senderId === currentUserId;
                   const isImg = isImage(m.content);
                   return (
                     <div key={m.id} className={`flex ${isMine?'justify-end':'justify-start'} group`}>
                       <div className={`max-w-[70%] px-3 py-2 rounded-2xl text-sm relative ${isMine?'bg-sti-blue text-white rounded-br-sm':'bg-white dark:bg-slate-800 border border-black/5 dark:border-white/10 text-sti-gray-dark dark:text-white rounded-bl-sm'}`}>
                         {isImg ? <img src={m.content} alt="pic" className="max-w-[200px] rounded-lg" /> : <p className="whitespace-pre-wrap break-words">{m.content}</p>}
-                        <p className={`text-[10px] mt-1 ${isMine?'text-white/70':'text-sti-gray'}`}>{new Date(m.createdAt).toLocaleString()}</p>
+                        <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                          <p className={`text-[10px] ${isMine?'text-white/70':'text-sti-gray'}`}>{new Date(m.createdAt).toLocaleString()}</p>
+                          {isMine && (
+                            <span className="flex items-center gap-0.5 text-[10px] text-white/70">
+                              <CheckCheck className={`w-3 h-3 ${m.isRead ? 'text-white' : 'text-white/50'}`} />
+                              {m.isRead ? 'Seen' : 'Sent'}
+                            </span>
+                          )}
+                        </div>
                         {isMine && <button onClick={()=>handleDelete(m.id)} className="absolute -top-2 -right-2 hidden group-hover:flex bg-white dark:bg-slate-700 border border-black/10 rounded-full p-1 shadow"><Trash2 className="w-3 h-3 text-red-600" /></button>}
                       </div>
                     </div>

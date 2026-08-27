@@ -59,11 +59,8 @@ export const fetchMyProfile = asyncHandler(async (req, res) => {
   });
 });
 
-// Lets a student edit their OWN profile — deliberately restricted to a
-// small whitelist of safe fields. Anything that affects OJT tracking
-// (hours, status, company/supervisor assignment, studentId) stays
-// admin-only via updateStudentProfile below.
-const SELF_EDITABLE_FIELDS = ['course', 'section', 'email', 'contactNumber'];
+// Lets a student edit their OWN profile — profilePicture allowed for gallery/default choices
+const SELF_EDITABLE_FIELDS = ['course', 'section', 'email', 'contactNumber', 'profilePicture'];
 
 export const updateMyProfileSelf = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
@@ -101,10 +98,31 @@ export const addStudent = asyncHandler(async (req, res) => {
     email,
     password,
     contactNumber,
-    assignedCompany
+    assignedCompany,
+    role
   } = req.body;
 
-  // Validate required fields
+  // If role is COORDINATOR or SUPERVISOR, create staff account (User only, no Student)
+  if (role === 'COORDINATOR' || role === 'SUPERVISOR') {
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password required for staff' });
+    }
+    const { PrismaClient } = await import('@prisma/client');
+    const prisma = new PrismaClient();
+    const { hashPassword } = await import('../services/authService.js');
+    const hashed = await hashPassword(password);
+    try {
+      const user = await prisma.user.create({ data: { email, password: hashed, role, isActive: true } });
+      await prisma.$disconnect();
+      return res.status(201).json({ success: true, message: `${role} account created`, data: user });
+    } catch (e) {
+      await prisma.$disconnect();
+      if (e.code === 'P2002') return res.status(400).json({ success: false, message: 'email already exists' });
+      throw e;
+    }
+  }
+
+  // Default: STUDENT
   if (!studentId || !firstName || !lastName || !email || !password) {
     return res.status(400).json({
       success: false,

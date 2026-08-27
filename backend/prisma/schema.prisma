@@ -16,6 +16,7 @@ model User {
   role         Role       @default(STUDENT)
   isActive     Boolean    @default(true)
   theme        Theme      @default(LIGHT)
+  profilePicture String?  @db.Text
 
   // Password reset
   resetToken   String?
