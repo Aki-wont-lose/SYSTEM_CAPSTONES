@@ -100,25 +100,30 @@ const StudentProfile = () => {
               {initials}
             </div>
           )}
-          <button onClick={()=>setShowPicker(!showPicker)} className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-700 border border-black/10 rounded-full p-1.5 shadow hover:bg-sti-gray-light">
+          <button onClick={()=>setShowPicker(true)} className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-700 border border-black/10 rounded-full p-1.5 shadow hover:bg-sti-gray-light">
             <Camera className="w-3.5 h-3.5 text-sti-gray-dark dark:text-white" />
           </button>
           {showPicker && (
-            <div className="absolute top-full mt-2 left-1/2 sm:left-0 -translate-x-1/2 sm:translate-x-0 bg-white dark:bg-slate-800 rounded-xl shadow-cardHover border border-black/5 p-3 z-10 w-64">
-              <p className="text-xs font-semibold text-sti-gray-dark dark:text-white mb-2">Change profile photo</p>
-              <input ref={fileRef} type="file" accept="image/*" onChange={handleGalleryPick} className="hidden" />
-              <button onClick={()=>fileRef.current?.click()} disabled={savingPic} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sm">
-                <ImageIcon className="w-4 h-4" /> Gallery
-              </button>
-              <p className="text-xs text-sti-gray mt-2 mb-1">Default choices</p>
-              <div className="flex gap-2">
-                {defaultAvatars.map(d => (
-                  <button key={d.bg} onClick={()=>handleDefaultPick(d.bg)} disabled={savingPic} className={`w-10 h-10 rounded-full ${d.bg} flex items-center justify-center text-white text-xs font-bold border-2 ${getAvatarBg()===d.bg ? 'border-sti-blue' : 'border-transparent'}`}>
-                    {initials}
-                  </button>
-                ))}
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={()=>setShowPicker(false)}>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover border border-black/5 p-4 w-full max-w-xs" onClick={e=>e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white">Change profile photo</p>
+                  <button onClick={()=>setShowPicker(false)} className="text-sti-gray hover:text-sti-gray-dark"><Check className="w-4 h-4" /></button>
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleGalleryPick} className="hidden" />
+                <button onClick={()=>fileRef.current?.click()} disabled={savingPic} className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark">
+                  <ImageIcon className="w-4 h-4" /> Gallery
+                </button>
+                <p className="text-xs text-sti-gray mt-3 mb-2">Or choose default</p>
+                <div className="flex gap-2 justify-center">
+                  {defaultAvatars.map(d => (
+                    <button key={d.bg} onClick={()=>handleDefaultPick(d.bg)} disabled={savingPic} className={`w-12 h-12 rounded-full ${d.bg} flex items-center justify-center text-white text-sm font-bold border-2 ${getAvatarBg()===d.bg ? 'border-sti-blue ring-2 ring-sti-blue/20' : 'border-transparent'}`}>
+                      {initials}
+                    </button>
+                  ))}
+                </div>
+                {savingPic && <p className="text-xs text-sti-blue mt-3 text-center">Saving...</p>}
               </div>
-              {savingPic && <p className="text-xs text-sti-blue mt-2">Saving...</p>}
             </div>
           )}
         </div>

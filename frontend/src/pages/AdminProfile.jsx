@@ -30,15 +30,20 @@ const AdminProfile = () => {
       <Card className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
         <div className="relative shrink-0">
           {isImg ? <img src={user.profilePicture} alt="Pro" className="w-24 h-24 rounded-full object-cover border-2 border-white shadow" /> : <div className={`w-24 h-24 rounded-full ${bg} flex items-center justify-center text-white text-3xl font-bold`}>{user?.email?.[0]?.toUpperCase()}</div>}
-          <button onClick={()=>setShowPicker(!showPicker)} className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-700 border rounded-full p-1.5 shadow"><Camera className="w-3.5 h-3.5" /></button>
+          <button onClick={()=>setShowPicker(true)} className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-700 border rounded-full p-1.5 shadow"><Camera className="w-3.5 h-3.5" /></button>
           {showPicker && (
-            <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 rounded-xl shadow border p-3 z-10 w-64">
-              <p className="text-xs font-semibold mb-2">Change photo</p>
-              <input ref={fileRef} type="file" accept="image/*" onChange={handleGallery} className="hidden" />
-              <button onClick={()=>fileRef.current?.click()} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-sti-gray-light text-sm"><ImageIcon className="w-4 h-4" /> Gallery</button>
-              <p className="text-xs text-sti-gray mt-2 mb-1">Default choices</p>
-              <div className="flex gap-2">{defaults.map(d=> <button key={d.bg} onClick={()=>handleDefault(d.bg)} className={`w-10 h-10 rounded-full ${d.bg} flex items-center justify-center text-white text-xs font-bold border-2 ${bg===d.bg ? 'border-sti-blue' : 'border-transparent'}`}>{user?.email?.[0]?.toUpperCase()}</button>)}</div>
-              {saving && <p className="text-xs text-sti-blue mt-2">Saving...</p>}
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={()=>setShowPicker(false)}>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover border p-4 w-full max-w-xs" onClick={e=>e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold">Change photo</p>
+                  <button onClick={()=>setShowPicker(false)} className="text-sti-gray">✕</button>
+                </div>
+                <input ref={fileRef} type="file" accept="image/*" onChange={handleGallery} className="hidden" />
+                <button onClick={()=>fileRef.current?.click()} className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-sti-blue text-white text-sm font-semibold"><ImageIcon className="w-4 h-4" /> Gallery</button>
+                <p className="text-xs text-sti-gray mt-3 mb-2 text-center">Or choose default</p>
+                <div className="flex gap-2 justify-center">{defaults.map(d=> <button key={d.bg} onClick={()=>handleDefault(d.bg)} className={`w-12 h-12 rounded-full ${d.bg} flex items-center justify-center text-white text-sm font-bold border-2 ${bg===d.bg ? 'border-sti-blue ring-2 ring-sti-blue/20' : 'border-transparent'}`}>{user?.email?.[0]?.toUpperCase()}</button>)}</div>
+                {saving && <p className="text-xs text-sti-blue mt-3 text-center">Saving...</p>}
+              </div>
             </div>
           )}
         </div>
