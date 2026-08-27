@@ -250,7 +250,7 @@ const StudentManagement = () => {
       <Modal
         isOpen={modalMode === 'add' || modalMode === 'edit'}
         onClose={closeModal}
-        title={modalMode === 'add' ? 'Add New Student' : 'Edit Student'}
+        title={modalMode === 'add' ? 'Create Account' : 'Edit Student'}
         maxWidth="max-w-2xl"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -294,6 +294,14 @@ const StudentManagement = () => {
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">First Name</label>
+              <input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name</label>
+              <input required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
+            </div>
             {form.role === 'STUDENT' && (
               <>
                 <div>
@@ -309,14 +317,6 @@ const StudentManagement = () => {
                     <option value="ON_HOLD">On Hold</option>
                     <option value="FAILED">Failed</option>
                   </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">First Name</label>
-                  <input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input-field" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name</label>
-                  <input required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course</label>

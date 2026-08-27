@@ -1,54 +1,58 @@
-import { useEffect, useRef } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useState } from 'react';
 
-// Fix default marker icons for Vite
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
-
-// Simple Leaflet map with native +/- zoom in/out only - no All/Full toggle, no attribution text
+// New Google Map with fullscreen toggle (no +/- zoom, fullscreen instead)
 const MapEmbed = ({ latitude, longitude, address, className = '' }) => {
   const hasCoords = latitude != null && longitude != null && latitude !== '' && longitude !== '';
-  const mapRef = useRef(null);
-  const mapInstance = useRef(null);
+  const [fullscreen, setFullscreen] = useState(false);
+  const query = hasCoords ? `${latitude},${longitude}` : address;
+  const src = hasCoords
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=15&output=embed`
+    : address ? `https://maps.google.com/maps?q=${encodeURIComponent(address)}&z=15&output=embed` : null;
 
-  useEffect(() => {
-    if (!hasCoords || !mapRef.current) return;
-    if (mapInstance.current) {
-      mapInstance.current.setView([latitude, longitude], mapInstance.current.getZoom());
-      mapInstance.current.eachLayer((layer) => {
-        if (layer instanceof L.Marker) layer.setLatLng([latitude, longitude]);
-      });
-      setTimeout(() => mapInstance.current.invalidateSize(), 100);
-      return;
-    }
-    const map = L.map(mapRef.current, {
-      center: [latitude, longitude],
-      zoom: 15,
-      zoomControl: true,
-      scrollWheelZoom: true,
-      doubleClickZoom: true,
-      touchZoom: true,
-      dragging: true,
-    });
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '',
-      maxZoom: 19,
-    }).addTo(map);
-    L.marker([latitude, longitude]).addTo(map);
-    setTimeout(() => map.invalidateSize(), 150);
-    mapInstance.current = map;
-    return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-      }
-    };
-  }, [latitude, longitude, hasCoords]);
+  if (!query) {
+    return (
+      <div className={`flex items-center justify-center bg-sti-gray-light dark:bg-slate-700 text-sti-gray text-sm rounded-xl ${className}`}>
+        No location set yet
+      </div>
+    );
+  }
+
+  const frame = (
+    <iframe
+      title="Company location"
+      src={src}
+      className={`rounded-xl border-0 w-full h-full min-h-[18rem] ${fullscreen ? 'fixed inset-0 z-50 rounded-none min-h-screen' : ''}`}
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+      allowFullScreen
+    />
+  );
+
+  if (fullscreen) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/80 p-2 flex flex-col" onClick={()=>setFullscreen(false)}>
+        <div className="flex justify-end mb-2" onClick={e=>e.stopPropagation()}>
+          <button onClick={()=>setFullscreen(false)} className="bg-white rounded-full p-2 shadow">✕</button>
+        </div>
+        <div className="flex-1 rounded-xl overflow-hidden" onClick={e=>e.stopPropagation()}>
+          {frame}
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback for no coords handled above, this is for hasCoords case with Leaflet removed - now using Google Map div
+  return (
+    <div className={`rounded-xl overflow-hidden border-0 ${className} relative`}>
+      {frame}
+      <button
+        onClick={()=>setFullscreen(true)}
+        className="absolute top-2 right-2 bg-white dark:bg-slate-800 border border-black/10 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow flex items-center gap-1 hover:bg-sti-gray-light"
+      >
+        ⛶ Full screen
+      </button>
+    </div>
+  );
 
   // No coords: fallback to Google iframe for address search
   if (!hasCoords) {

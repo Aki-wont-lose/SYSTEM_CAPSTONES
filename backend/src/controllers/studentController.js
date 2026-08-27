@@ -12,15 +12,22 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 
 export const fetchAllStudents = asyncHandler(async (req, res) => {
   const { status, search } = req.query;
-  // Role-based filtering: coordinator sees only their course, supervisor only assigned company/students
+  // Role-based filtering: coordinator sees only their course, supervisor only assigned company/students (first supervisor sees all for testing if no company)
   const filters = { ojt_status: status, search };
   if (req.user?.role === 'COORDINATOR' && req.user?.coordinatorCourse) {
     filters.course = req.user.coordinatorCourse;
   }
   if (req.user?.role === 'SUPERVISOR') {
-    // Prefer company assignment, fallback to email match
     if (req.user?.supervisorCompanyId) filters.companyId = req.user.supervisorCompanyId;
-    else if (req.user?.email) filters.supervisorEmail = req.user.email;
+    else if (req.user?.supervisorEmail || req.user?.email) {
+      // Check if any students actually have this supervisorEmail; if none, show all for testing (first supervisor)
+      const hasAssigned = await (await import('../services/studentService.js')).getAllStudents({ supervisorEmail: req.user.supervisorEmail || req.user.email });
+      if (hasAssigned.length === 0) {
+        // No assigned students yet - show all for testing
+      } else {
+        filters.supervisorEmail = req.user.supervisorEmail || req.user.email;
+      }
+    }
   }
   const students = await getAllStudents(filters);
 
