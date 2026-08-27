@@ -28,7 +28,7 @@ export const ROLE_NAV = {
   ADMIN:       ['dashboard','students','requirements','companies','logs','announcements','messages','profile'],
   COORDINATOR: ['dashboard','students','requirements','companies','logs','announcements','messages','profile'],
   SUPERVISOR:  ['dashboard','students','logs','messages','profile'],
-  STUDENT:     ['dashboard','dtr','logs','requirements','find-company','schedule','profile'],
+  STUDENT:     ['dashboard','dtr','logs','requirements','find-company','schedule','messages','profile'],
 };
 
 export const isAllowed = (role, key) => (ROLE_NAV[role] || []).includes(key);

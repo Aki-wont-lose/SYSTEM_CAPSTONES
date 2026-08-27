@@ -67,6 +67,7 @@ function App() {
         <Route path="/requirements" element={<Requirements />} />
         <Route path="/find-company" element={<FindCompany />} />
         <Route path="/schedule" element={<Schedule />} />
+        <Route path="/messages" element={<Messages />} />
         <Route path="/profile" element={<StudentProfile />} />
       </Route>
 

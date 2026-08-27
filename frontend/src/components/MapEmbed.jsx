@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Maximize2, Minimize2, X } from 'lucide-react';
 
 // Fix default marker icons for Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -11,34 +10,25 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Interactive map with zoom in/out + toggle zoom (All vs Focused) for FindCompany.
-// Uses Leaflet + OSM when lat/lng exist, falls back to Google iframe for address-only.
-const MapEmbed = ({ latitude, longitude, address, className = '', allMarkers = null }) => {
+// Simple Leaflet map with native +/- zoom in/out only - no All/Full toggle, no attribution text
+const MapEmbed = ({ latitude, longitude, address, className = '' }) => {
   const hasCoords = latitude != null && longitude != null && latitude !== '' && longitude !== '';
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
-  const [wide, setWide] = useState(false);
 
   useEffect(() => {
     if (!hasCoords || !mapRef.current) return;
     if (mapInstance.current) {
-      // On selected change, keep current zoom unless toggling wide
-      const targetZoom = wide ? 12 : 15;
-      mapInstance.current.setView([latitude, longitude], targetZoom);
+      mapInstance.current.setView([latitude, longitude], mapInstance.current.getZoom());
       mapInstance.current.eachLayer((layer) => {
         if (layer instanceof L.Marker) layer.setLatLng([latitude, longitude]);
       });
-      // If allMarkers provided and wide mode, fit bounds to show all
-      if (wide && allMarkers && allMarkers.length > 1) {
-        const bounds = L.latLngBounds(allMarkers.map(m => [m.latitude, m.longitude]).filter(p => p[0] && p[1]));
-        if (bounds.isValid()) mapInstance.current.fitBounds(bounds.pad(0.2));
-      }
       setTimeout(() => mapInstance.current.invalidateSize(), 100);
       return;
     }
     const map = L.map(mapRef.current, {
       center: [latitude, longitude],
-      zoom: wide ? 12 : 15,
+      zoom: 15,
       zoomControl: true,
       scrollWheelZoom: true,
       doubleClickZoom: true,
@@ -46,15 +36,10 @@ const MapEmbed = ({ latitude, longitude, address, className = '', allMarkers = n
       dragging: true,
     });
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
+      attribution: '',
       maxZoom: 19,
     }).addTo(map);
     L.marker([latitude, longitude]).addTo(map);
-    if (wide && allMarkers && allMarkers.length > 1) {
-      const bounds = L.latLngBounds(allMarkers.map(m => [m.latitude, m.longitude]).filter(p => p[0] && p[1]));
-      if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
-    }
-    // Ensure proper size inside flex/grid
     setTimeout(() => map.invalidateSize(), 150);
     mapInstance.current = map;
     return () => {
@@ -63,21 +48,7 @@ const MapEmbed = ({ latitude, longitude, address, className = '', allMarkers = n
         mapInstance.current = null;
       }
     };
-  }, [latitude, longitude, hasCoords, wide, allMarkers]);
-
-  const [fullscreen, setFullscreen] = useState(false);
-  const toggleZoom = () => {
-    if (!mapInstance.current) return;
-    const newWide = !wide;
-    setWide(newWide);
-    if (newWide && allMarkers && allMarkers.length > 1) {
-      const bounds = L.latLngBounds(allMarkers.map(m => [m.latitude, m.longitude]).filter(p => p[0] && p[1]));
-      if (bounds.isValid()) mapInstance.current.fitBounds(bounds.pad(0.2));
-    } else {
-      mapInstance.current.setView([latitude, longitude], newWide ? 12 : 16);
-    }
-  };
-  useEffect(() => { if (fullscreen && mapInstance.current) setTimeout(()=>mapInstance.current.invalidateSize(), 200); }, [fullscreen]);
+  }, [latitude, longitude, hasCoords]);
 
   // No coords: fallback to Google iframe for address search
   if (!hasCoords) {
@@ -100,38 +71,9 @@ const MapEmbed = ({ latitude, longitude, address, className = '', allMarkers = n
     );
   }
 
-  if (fullscreen) {
-    return (
-      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-2 sm:p-4 flex flex-col" onClick={()=>setFullscreen(false)}>
-        <div className="flex justify-end mb-2" onClick={e=>e.stopPropagation()}>
-          <button onClick={()=>setFullscreen(false)} className="bg-white dark:bg-slate-800 rounded-full p-2 shadow"><X className="w-5 h-5" /></button>
-        </div>
-        <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl overflow-hidden relative" onClick={e=>e.stopPropagation()}>
-          <div ref={mapRef} className="w-full h-full" />
-          <button onClick={toggleZoom} className="absolute top-2 right-2 z-[400] bg-white dark:bg-slate-800 border rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow flex items-center gap-1.5">
-            {wide ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}{wide ? 'Focused' : 'All view'}
-          </button>
-        </div>
-      </div>
-    );
-  }
   return (
     <div className={`rounded-xl overflow-hidden border-0 ${className} relative`}>
       <div ref={mapRef} className="w-full h-full min-h-[18rem]" />
-      <div className="absolute top-2 left-2 z-[400] flex gap-1.5">
-        <button onClick={()=>setFullscreen(true)} className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow flex items-center gap-1 hover:bg-sti-gray-light"><Maximize2 className="w-3.5 h-3.5" /> Full</button>
-      </div>
-      <button
-        onClick={toggleZoom}
-        className="absolute top-2 right-2 z-[400] bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-sti-gray-dark dark:text-white shadow flex items-center gap-1.5 hover:bg-sti-gray-light dark:hover:bg-white/10"
-        title={wide ? 'Zoom to focused pin' : 'Zoom to show all area'}
-      >
-        {wide ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-        {wide ? 'Focused' : 'All'}
-      </button>
-      <div className="absolute bottom-2 left-2 bg-white/90 dark:bg-slate-800/90 text-[10px] px-2 py-1 rounded-full shadow pointer-events-none">
-        +/- • Pinch
-      </div>
     </div>
   );
 };

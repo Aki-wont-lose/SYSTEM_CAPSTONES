@@ -10,6 +10,7 @@ const titles = {
   '/requirements': 'Requirements',
   '/find-company': 'Find Company',
   '/schedule': 'Schedule',
+  '/messages': 'Messages',
   '/profile': 'My Profile',
 };
 

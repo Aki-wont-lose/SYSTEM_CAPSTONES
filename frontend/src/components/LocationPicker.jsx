@@ -41,7 +41,7 @@ const LocationPicker = ({ latitude, longitude, onChange, className = '' }) => {
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
+      attribution: '',
       maxZoom: 19,
     }).addTo(map);
 

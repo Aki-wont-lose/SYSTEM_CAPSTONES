@@ -37,6 +37,7 @@ const linksByRole = {
     { to: '/requirements', label: 'Requirements', icon: FileCheck2 },
     { to: '/find-company', label: 'Find Company', icon: MapPinned },
     { to: '/schedule', label: 'Schedule', icon: CalendarDays },
+    { to: '/messages', label: 'Messages', icon: MessageCircle },
     { to: '/profile', label: 'Profile', icon: UserCircle },
   ],
 };
