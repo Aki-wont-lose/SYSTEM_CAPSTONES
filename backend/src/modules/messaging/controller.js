@@ -20,6 +20,12 @@ export const postMessage = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: msg });
 });
 
+export const removeMessage = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  await svc.deleteMessage(req.user.userId, id);
+  res.json({ success: true, message: 'Message deleted' });
+});
+
 export const fetchUnread = asyncHandler(async (req, res) => {
   const counts = await svc.getUnreadCounts(req.user.userId);
   res.json({ success: true, data: counts });

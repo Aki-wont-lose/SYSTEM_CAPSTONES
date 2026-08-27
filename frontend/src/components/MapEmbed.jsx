@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize2, Minimize2, X } from 'lucide-react';
 
 // Fix default marker icons for Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -65,6 +65,7 @@ const MapEmbed = ({ latitude, longitude, address, className = '', allMarkers = n
     };
   }, [latitude, longitude, hasCoords, wide, allMarkers]);
 
+  const [fullscreen, setFullscreen] = useState(false);
   const toggleZoom = () => {
     if (!mapInstance.current) return;
     const newWide = !wide;
@@ -76,6 +77,7 @@ const MapEmbed = ({ latitude, longitude, address, className = '', allMarkers = n
       mapInstance.current.setView([latitude, longitude], newWide ? 12 : 16);
     }
   };
+  useEffect(() => { if (fullscreen && mapInstance.current) setTimeout(()=>mapInstance.current.invalidateSize(), 200); }, [fullscreen]);
 
   // No coords: fallback to Google iframe for address search
   if (!hasCoords) {
@@ -98,19 +100,37 @@ const MapEmbed = ({ latitude, longitude, address, className = '', allMarkers = n
     );
   }
 
+  if (fullscreen) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm p-2 sm:p-4 flex flex-col" onClick={()=>setFullscreen(false)}>
+        <div className="flex justify-end mb-2" onClick={e=>e.stopPropagation()}>
+          <button onClick={()=>setFullscreen(false)} className="bg-white dark:bg-slate-800 rounded-full p-2 shadow"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl overflow-hidden relative" onClick={e=>e.stopPropagation()}>
+          <div ref={mapRef} className="w-full h-full" />
+          <button onClick={toggleZoom} className="absolute top-2 right-2 z-[400] bg-white dark:bg-slate-800 border rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow flex items-center gap-1.5">
+            {wide ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}{wide ? 'Focused' : 'All view'}
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className={`rounded-xl overflow-hidden border-0 ${className} relative`}>
       <div ref={mapRef} className="w-full h-full min-h-[18rem]" />
+      <div className="absolute top-2 left-2 z-[400] flex gap-1.5">
+        <button onClick={()=>setFullscreen(true)} className="bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow flex items-center gap-1 hover:bg-sti-gray-light"><Maximize2 className="w-3.5 h-3.5" /> Full</button>
+      </div>
       <button
         onClick={toggleZoom}
         className="absolute top-2 right-2 z-[400] bg-white dark:bg-slate-800 border border-black/10 dark:border-white/10 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-sti-gray-dark dark:text-white shadow flex items-center gap-1.5 hover:bg-sti-gray-light dark:hover:bg-white/10"
         title={wide ? 'Zoom to focused pin' : 'Zoom to show all area'}
       >
         {wide ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-        {wide ? 'Focused' : 'All view'}
+        {wide ? 'Focused' : 'All'}
       </button>
       <div className="absolute bottom-2 left-2 bg-white/90 dark:bg-slate-800/90 text-[10px] px-2 py-1 rounded-full shadow pointer-events-none">
-        +/- to zoom • Pinch or drag
+        +/- • Pinch
       </div>
     </div>
   );
