@@ -155,10 +155,17 @@ export const deleteStudent = async (studentId) => {
       throw err;
     }
 
-    // Delete will cascade to dependent records
-    return prisma.student.delete({
+    // Delete student and its linked User so email/studentId can be reused
+    await prisma.student.delete({
       where: { id: studentId }
     });
+    // Remove the login account as well (was left orphaned before, causing "email already exists")
+    try {
+      await prisma.user.delete({ where: { id: student.userId } });
+    } catch (_) {
+      // user already gone or cascade - ignore
+    }
+    return { success: true };
   } catch (error) {
     throw error;
   }
