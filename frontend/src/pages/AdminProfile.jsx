@@ -69,7 +69,7 @@ const AdminProfile = () => {
             <label className="flex items-center gap-1.5 text-xs font-medium text-sti-gray mb-1.5">
               <Shield className="w-3.5 h-3.5" /> Role
             </label>
-            <p className="text-sm font-medium text-sti-gray-dark dark:text-slate-200 py-2.5">Administrator</p>
+            <p className="text-sm font-medium text-sti-gray-dark dark:text-slate-200 py-2.5">{user?.role ? user.role.charAt(0)+user.role.slice(1).toLowerCase() : 'Administrator'}</p>
           </div>
         </div>
       </Card>

@@ -72,7 +72,7 @@ function App() {
         <Route path="/profile" element={<StudentProfile />} />
       </Route>
 
-      {/* ADMIN — full access */}
+      {/* ADMIN — Create Account for all roles, no attendance (coordinator/supervisor only) */}
       <Route
         element={
           <ProtectedRoute allowedRoles={['ADMIN']}>
@@ -82,7 +82,6 @@ function App() {
       >
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/students" element={<StudentManagement />} />
-        <Route path="/admin/attendance" element={<AttendanceMonitoring />} />
         <Route path="/admin/requirements" element={<AdminRequirements />} />
         <Route path="/admin/companies" element={<Companies />} />
         <Route path="/admin/logs" element={<AdminLogs />} />

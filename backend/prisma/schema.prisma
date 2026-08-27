@@ -16,6 +16,8 @@ model User {
   role         Role       @default(STUDENT)
   isActive     Boolean    @default(true)
   theme        Theme      @default(LIGHT)
+  coordinatorCourse String? // BSHM / BSIT / BSTM - for COORDINATOR role
+  supervisorCompanyId String? // Company ID for SUPERVISOR to limit to assigned students
 
   // Password reset
   resetToken   String?
@@ -26,6 +28,7 @@ model User {
 
   // Relations
   student      Student?
+  supervisorCompany Company? @relation("SupervisorCompany", fields: [supervisorCompanyId], references: [id])
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
 
@@ -134,6 +137,7 @@ model Company {
 
   // Relations
   students        Student[]
+  supervisors     User[]    @relation("SupervisorCompany")
 
   @@index([status])
 }
