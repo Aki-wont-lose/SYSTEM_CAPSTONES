@@ -68,8 +68,8 @@ const StudentManagement = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, statusFilter]);
 
-  const openAddModal = () => {
-    setForm(emptyForm);
+  const openAddModal = (role = 'STUDENT') => {
+    setForm({ ...emptyForm, role });
     setError('');
     setModalMode('add');
   };
@@ -168,9 +168,14 @@ const StudentManagement = () => {
             <option value="FAILED">Failed</option>
           </select>
         </div>
-        <Button variant="primary" icon={Plus} onClick={openAddModal}>
-          Add Student
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="primary" icon={Plus} onClick={() => openAddModal('STUDENT')}>
+            Add Student
+          </Button>
+          <Button variant="secondary" icon={Plus} onClick={() => openAddModal('COORDINATOR')}>
+            Add Coordinator/Supervisor
+          </Button>
+        </div>
       </Card>
 
       {/* Table */}
@@ -256,6 +261,30 @@ const StudentManagement = () => {
               </select>
             </div>
           )}
+          {modalMode === 'add' && form.role === 'COORDINATOR' && (
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Course *</label>
+              <select required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field">
+                <option value="">Select course</option>
+                <option value="BSHM">BSHM</option>
+                <option value="BSIT">BSIT</option>
+                <option value="BSTM">BSTM</option>
+              </select>
+              <p className="text-xs text-sti-gray mt-1">This coordinator will lead the selected course</p>
+            </div>
+          )}
+          {modalMode === 'add' && form.role === 'SUPERVISOR' && (
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Company *</label>
+              <select required value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field">
+                <option value="">Select company</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <p className="text-xs text-sti-gray mt-1">Supervisor will see students assigned to this company</p>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID {form.role!=='STUDENT' && '(optional for staff)'}</label>
@@ -312,23 +341,12 @@ const StudentManagement = () => {
             </div>
           </div>
 
-          {form.role === 'STUDENT' && (
-            <div className="pt-2 border-t border-black/5 dark:border-white/10">
-              <p className="text-xs font-semibold text-sti-gray uppercase tracking-wide mb-3 mt-3">Supervisor & Schedule (optional)</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input placeholder="Supervisor name" value={form.supervisorName || ''} onChange={(e) => setForm({ ...form, supervisorName: e.target.value })} className="input-field" />
-                <input placeholder="Supervisor contact" value={form.supervisorContact || ''} onChange={(e) => setForm({ ...form, supervisorContact: e.target.value })} className="input-field" />
-                <input placeholder="Supervisor email" value={form.supervisorEmail || ''} onChange={(e) => setForm({ ...form, supervisorEmail: e.target.value })} className="input-field" />
-                <input placeholder="Working days (e.g. Mon-Fri)" value={form.workingDays || ''} onChange={(e) => setForm({ ...form, workingDays: e.target.value })} className="input-field" />
-                <input placeholder="Working hours (e.g. 8AM-5PM)" value={form.workingHours || ''} onChange={(e) => setForm({ ...form, workingHours: e.target.value })} className="input-field sm:col-span-2" />
-              </div>
-            </div>
-          )}
+
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button type="submit" variant="primary" loading={saving}>
-              {modalMode === 'add' ? 'Create Student' : 'Save Changes'}
+              {modalMode === 'add' ? (form.role === 'STUDENT' ? 'Create Student' : form.role === 'COORDINATOR' ? 'Create Coordinator' : 'Create Supervisor') : 'Save Changes'}
             </Button>
           </div>
         </form>

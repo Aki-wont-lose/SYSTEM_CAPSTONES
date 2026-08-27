@@ -63,9 +63,9 @@ export const verifyRole = (allowedRoles) => {
   };
 };
 
-export const generateToken = (userId, email, role) => {
+export const generateToken = (userId, email, role, extra = {}) => {
   return jwt.sign(
-    { userId, email, role },
+    { userId, email, role, ...extra },
     JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE || '7d' }
   );

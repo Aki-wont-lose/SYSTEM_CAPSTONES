@@ -5,7 +5,7 @@ import TopNav from '../components/TopNav';
 
 const titles = {
   '/admin/dashboard': 'Admin Dashboard',
-  '/admin/students': 'Student Management',
+  '/admin/students': 'Account Management',
   '/admin/attendance': 'Attendance',
   '/admin/requirements': 'Requirements',
   '/admin/companies': 'Partner Companies',

@@ -12,10 +12,17 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 
 export const fetchAllStudents = asyncHandler(async (req, res) => {
   const { status, search } = req.query;
-  const students = await getAllStudents({
-    ojt_status: status,
-    search
-  });
+  // Role-based filtering: coordinator sees only their course, supervisor only assigned company/students
+  const filters = { ojt_status: status, search };
+  if (req.user?.role === 'COORDINATOR' && req.user?.coordinatorCourse) {
+    filters.course = req.user.coordinatorCourse;
+  }
+  if (req.user?.role === 'SUPERVISOR') {
+    // Prefer company assignment, fallback to email match
+    if (req.user?.supervisorCompanyId) filters.companyId = req.user.supervisorCompanyId;
+    else if (req.user?.email) filters.supervisorEmail = req.user.email;
+  }
+  const students = await getAllStudents(filters);
 
   res.status(200).json({
     success: true,
@@ -111,8 +118,24 @@ export const addStudent = asyncHandler(async (req, res) => {
     const prisma = new PrismaClient();
     const { hashPassword } = await import('../services/authService.js');
     const hashed = await hashPassword(password);
+    // Coordinator must have assigned course (BSHM/BSIT/BSTM), Supervisor must have company
+    const extra = {};
+    if (role === 'COORDINATOR') {
+      if (!course || !['BSHM','BSIT','BSTM'].includes(course)) {
+        await prisma.$disconnect();
+        return res.status(400).json({ success: false, message: 'Assigned course (BSHM/BSIT/BSTM) required for coordinator' });
+      }
+      extra.coordinatorCourse = course;
+    }
+    if (role === 'SUPERVISOR') {
+      if (!req.body.companyId) {
+        await prisma.$disconnect();
+        return res.status(400).json({ success: false, message: 'Assigned company required for supervisor' });
+      }
+      extra.supervisorCompanyId = req.body.companyId;
+    }
     try {
-      const user = await prisma.user.create({ data: { email, password: hashed, role, isActive: true } });
+      const user = await prisma.user.create({ data: { email, password: hashed, role, isActive: true, ...extra } });
       await prisma.$disconnect();
       return res.status(201).json({ success: true, message: `${role} account created`, data: user });
     } catch (e) {

@@ -10,6 +10,15 @@ export const getAllStudents = async (filters = {}) => {
   if (filters.ojt_status) {
     where.ojt_status = filters.ojt_status;
   }
+  if (filters.course) {
+    where.course = filters.course;
+  }
+  if (filters.companyId) {
+    where.companyId = filters.companyId;
+  }
+  if (filters.supervisorEmail) {
+    where.supervisorEmail = filters.supervisorEmail;
+  }
   
   if (filters.search) {
     where.OR = [

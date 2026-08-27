@@ -5,7 +5,7 @@ import { LayoutDashboard, ClipboardList, UserCircle, Users, Megaphone, X, FileCh
 const linksByRole = {
   ADMIN: [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/admin/students', label: 'Create Account', icon: Users },
+    { to: '/admin/students', label: 'Account Management', icon: Users },
     { to: '/admin/requirements', label: 'Requirements', icon: FileCheck2 },
     { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
     { to: '/admin/logs', label: 'Student Logs', icon: ClipboardList },
