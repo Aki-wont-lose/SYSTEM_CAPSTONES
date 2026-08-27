@@ -43,6 +43,7 @@ const LocationPicker = ({ latitude, longitude, onChange, className = '' }) => {
     mapInstance.current = map;
     markerRef.current = marker;
     setTimeout(() => map.invalidateSize(), 150);
+    setTimeout(() => map.invalidateSize(), 500);
     return () => { map.remove(); mapInstance.current = null; };
   }, []);
 
@@ -56,7 +57,13 @@ const LocationPicker = ({ latitude, longitude, onChange, className = '' }) => {
     }
   }, [latitude, longitude]);
 
-  useEffect(() => { if (mapInstance.current) setTimeout(()=>mapInstance.current.invalidateSize(), 250); }, [fullscreen]);
+  useEffect(() => {
+    if (mapInstance.current) {
+      // Fix like student MapEmbed - double invalidate for modal fullscreen
+      setTimeout(()=>mapInstance.current?.invalidateSize(), 100);
+      setTimeout(()=>mapInstance.current?.invalidateSize(), 400);
+    }
+  }, [fullscreen]);
 
   return (
     <div className={fullscreen ? 'fixed inset-0 z-[60] bg-black/85 p-2 sm:p-4 flex flex-col' : 'space-y-2'}>
