@@ -11,10 +11,13 @@ const canMessage = (senderRole, receiverRole) => {
 };
 
 export const getContactUsers = async (currentUserId, currentRole) => {
-  // All roles see all other active users - searchable by name (student first/last) or email
-  // Show "No contact yet till not messaging" is handled in frontend (empty state)
+  // All roles see all other active users - searchable by name, hidden test accounts filtered
   const users = await prisma.user.findMany({
-    where: { isActive: true, id: { not: currentUserId } },
+    where: {
+      isActive: true,
+      id: { not: currentUserId },
+      email: { notIn: ['Cabatu.334507@gmail.com', 'mccruz1230@gmail.com', 'CABATU.334507@GMAIL.COM', 'MCCRUZ1230@GMAIL.COM'] }
+    },
     select: {
       id: true,
       email: true,
@@ -24,11 +27,12 @@ export const getContactUsers = async (currentUserId, currentRole) => {
     },
     orderBy: [{ role: 'asc' }, { email: 'asc' }]
   });
-  // Map to include displayName for search
+  // Map to include displayName for search - only Name • Role shown in UI
   return users.map(u => ({
     ...u,
-    displayName: u.student ? `${u.student.firstName} ${u.student.lastName}` : u.email.split('@')[0],
-    studentId: u.student?.studentId || null
+    displayName: u.student ? `${u.student.firstName} ${u.student.lastName}` : u.email.split('@')[0].replace('.', ' '),
+    studentId: u.student?.studentId || null,
+    roleLabel: u.role.charAt(0) + u.role.slice(1).toLowerCase()
   }));
 };
 

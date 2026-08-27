@@ -49,7 +49,9 @@ const Messages = () => {
     if (!q) return false;
     return c.email.toLowerCase().includes(q) || (c.displayName || '').toLowerCase().includes(q) || (c.studentId || '').toLowerCase().includes(q) || c.role.toLowerCase().includes(q);
   });
-  const displayContacts = search ? filteredContacts : [];
+  const [recentIds, setRecentIds] = useState(() => JSON.parse(localStorage.getItem('recentChats') || '[]'));
+  const displayContacts = search ? filteredContacts : contacts.filter(c => recentIds.includes(c.id));
+  useEffect(() => { if (selected) { const ids = JSON.parse(localStorage.getItem('recentChats') || '[]'); if (!ids.includes(selected.id)) { const next=[selected.id, ...ids].slice(0,20); localStorage.setItem('recentChats', JSON.stringify(next)); setRecentIds(next); } } }, [messages]);
 
   const isImage = (content) => content && content.startsWith('data:image');
 
@@ -98,20 +100,27 @@ const Messages = () => {
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sti-gray" />
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name or email..." className="input-field pl-8 py-2 text-sm" />
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name..." className="input-field pl-8 py-2 text-sm" />
             </div>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {!search ? (
-              <p className="text-sm text-sti-gray p-4 text-center">Search name or email to find contacts<br/><span className="text-xs">Type above, after chat it will pop up here</span></p>
-            ) : displayContacts.length === 0 ? (
-              <p className="text-sm text-sti-gray p-4">No matches for "{search}"</p>
-            ) : displayContacts.map(c => (
-              <button key={c.id} onClick={() => setSelected(c)} className={`w-full text-left px-4 py-3 border-b border-black/5 dark:border-white/10 hover:bg-sti-gray-light dark:hover:bg-white/5 ${selected?.id===c.id?'bg-sti-blue-50 dark:bg-white/10':''}`}>
-                <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{c.displayName || c.email}</p>
-                <p className="text-xs text-sti-gray truncate">{c.studentId ? `${c.studentId} • ` : ''}{c.email} • {formatRole(c.role)}</p>
-              </button>
-            ))}
+            {search ? (
+              displayContacts.length === 0 ? (
+                <p className="text-sm text-sti-gray p-4">No matches for "{search}"</p>
+              ) : displayContacts.map(c => (
+                <button key={c.id} onClick={() => setSelected(c)} className={`w-full text-left px-4 py-3 border-b border-black/5 dark:border-white/10 hover:bg-sti-gray-light dark:hover:bg-white/5 ${selected?.id===c.id?'bg-sti-blue-50 dark:bg-white/10':''}`}>
+                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{c.displayName || c.email.split('@')[0]} <span className="text-xs font-normal text-sti-gray">• {c.roleLabel || formatRole(c.role)}</span></p>
+                </button>
+              ))
+            ) : displayContacts.length > 0 ? (
+              displayContacts.map(c => (
+                <button key={c.id} onClick={() => setSelected(c)} className={`w-full text-left px-4 py-3 border-b border-black/5 dark:border-white/10 hover:bg-sti-gray-light dark:hover:bg-white/5 ${selected?.id===c.id?'bg-sti-blue-50 dark:bg-white/10':''}`}>
+                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{c.displayName || c.email.split('@')[0]} <span className="text-xs font-normal text-sti-gray">• {c.roleLabel || formatRole(c.role)}</span></p>
+                </button>
+              ))
+            ) : (
+              <p className="text-sm text-sti-gray p-4 text-center">Search name to find contacts<br/><span className="text-xs">After chat it will pop up here</span></p>
+            )}
           </div>
         </Card>
         <Card className="lg:col-span-2 p-0 flex flex-col overflow-hidden">
