@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, Hourglass, Megaphone, ClipboardList, UserCircle, ArrowRight, Camera, FileCheck2, CalendarDays } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import ProgressCircle from '../components/ProgressCircle';
+import WelcomeCarousel from '../components/WelcomeCarousel';
+import CalendarWidget from '../components/CalendarWidget';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentSummary } from '../services/attendanceService';
 import { getActiveAnnouncements } from '../services/announcementService';
@@ -63,20 +65,24 @@ const StudentDashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Welcome banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-sti-blue p-6 sm:p-8">
-        <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5" />
-        <div className="absolute bottom-0 right-16 w-24 h-24 rounded-full bg-sti-yellow/20" />
-        <div className="relative">
-          <p className="text-sti-yellow font-semibold text-sm mb-1">
-            {student?.ojt_status === 'COMPLETED' ? 'OJT Completed 🎉' : 'Welcome back'}
-          </p>
-          <h2 className="text-white text-2xl sm:text-3xl font-extrabold">
-            Hi, {student?.firstName}!
-          </h2>
-          <p className="text-white/70 text-sm mt-1">
-            {student?.company?.name ? `Interning at ${student.company.name}` : 'Keep tracking your progress every day.'}
-          </p>
+      {/* Welcome carousel + calendar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <WelcomeCarousel />
+          <div className="mt-2 bg-sti-blue rounded-xl px-4 py-2.5 flex items-center justify-between">
+            <div>
+              <p className="text-white font-bold text-sm">
+                Hi, {student?.firstName}! {student?.ojt_status === 'COMPLETED' ? '🎉' : ''}
+              </p>
+              <p className="text-white/70 text-xs">{student?.company?.name ? `Interning at ${student.company.name}` : 'Keep tracking your progress.'}</p>
+            </div>
+            <span className="text-sti-yellow font-semibold text-xs hidden sm:block">
+              {student?.ojt_status === 'COMPLETED' ? 'OJT Completed' : 'Welcome back'}
+            </span>
+          </div>
+        </div>
+        <div className="lg:col-span-1">
+          <CalendarWidget />
         </div>
       </div>
 

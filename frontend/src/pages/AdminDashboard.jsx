@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Users, UserCheck, CheckCircle2, Clock3, Megaphone, ArrowRight, UserPlus } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import Button from '../components/Button';
+import WelcomeCarousel from '../components/WelcomeCarousel';
+import CalendarWidget from '../components/CalendarWidget';
 import { getDashboardStats, getAllStudents } from '../services/studentService';
 import { getAllAnnouncements } from '../services/announcementService';
 
@@ -51,16 +53,22 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-sti-blue p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5" />
-        <div className="relative">
-          <p className="text-sti-yellow font-semibold text-sm mb-1">Admin Overview</p>
-          <h2 className="text-white text-2xl sm:text-3xl font-extrabold">Program Snapshot</h2>
-          <p className="text-white/70 text-sm mt-1">Monitor student progress and manage announcements.</p>
+      {/* Welcome carousel + calendar + admin banner */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2">
+          <WelcomeCarousel />
         </div>
-        <Button variant="accent" icon={UserPlus} onClick={() => navigate('/admin/students')} className="relative">
-          Add Student
+        <div className="lg:col-span-1">
+          <CalendarWidget />
+        </div>
+      </div>
+      <div className="relative overflow-hidden rounded-2xl bg-sti-blue p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="relative">
+          <p className="text-sti-yellow font-semibold text-xs sm:text-sm">Admin Overview</p>
+          <h2 className="text-white text-lg sm:text-xl font-extrabold">Program Snapshot</h2>
+        </div>
+        <Button variant="accent" icon={UserPlus} onClick={() => navigate('/admin/students')} className="relative text-sm">
+          Create Account
         </Button>
       </div>
 
