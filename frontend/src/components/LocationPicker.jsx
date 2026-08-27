@@ -17,6 +17,8 @@ const LocationPicker = ({ latitude, longitude, onChange, className = '' }) => {
   const mapInstance = useRef(null);
   const markerRef = useRef(null);
   const [fullscreen, setFullscreen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     if (mapInstance.current || !mapRef.current) return;
@@ -65,12 +67,38 @@ const LocationPicker = ({ latitude, longitude, onChange, className = '' }) => {
     }
   }, [fullscreen]);
 
+  const handleSearch = async () => {
+    if (!search.trim()) return;
+    setSearching(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(search)}&countrycodes=ph&limit=1`);
+      const data = await res.json();
+      if (data && data[0]) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        if (markerRef.current && mapInstance.current) {
+          markerRef.current.setLatLng([lat, lon]);
+          mapInstance.current.setView([lat, lon], 16);
+        }
+        onChange(lat, lon);
+      } else {
+        alert('Location not found. Try different search like "SM Mall, Sta Maria Bulacan"');
+      }
+    } catch { alert('Search failed'); } finally { setSearching(false); }
+  };
+
   return (
     <div className={fullscreen ? 'fixed inset-0 z-[60] bg-black/85 p-2 sm:p-4 flex flex-col' : 'space-y-2'}>
       {fullscreen && (
-        <div className="flex justify-between items-center mb-2 shrink-0">
-          <span className="text-white text-sm font-medium flex items-center gap-2"><MapPin className="w-4 h-4" /> Pick location - click or drag pin</span>
-          <button onClick={()=>setFullscreen(false)} className="bg-white hover:bg-gray-100 rounded-full px-4 py-2 shadow text-sm font-semibold">✕ Exit</button>
+        <div className="flex flex-col gap-2 mb-2 shrink-0" onClick={e=>e.stopPropagation()}>
+          <div className="flex justify-between items-center">
+            <span className="text-white text-sm font-medium flex items-center gap-2"><MapPin className="w-4 h-4" /> Pick location - search or click pin</span>
+            <button onClick={()=>setFullscreen(false)} className="bg-white hover:bg-gray-100 rounded-full px-4 py-2 shadow text-sm font-semibold">✕ Exit</button>
+          </div>
+          <div className="flex gap-2">
+            <input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==='Enter' && handleSearch()} placeholder="Search address e.g. Sta Maria Bulacan" className="flex-1 px-3 py-2 rounded-lg text-sm" />
+            <button onClick={handleSearch} disabled={searching} className="bg-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-100">{searching ? '...' : 'Search'}</button>
+          </div>
         </div>
       )}
       <div className={fullscreen ? 'flex-1 rounded-xl overflow-hidden bg-white relative' : 'relative'}>
@@ -83,9 +111,8 @@ const LocationPicker = ({ latitude, longitude, onChange, className = '' }) => {
       </div>
       <p className={`flex items-center gap-1.5 text-xs ${fullscreen ? 'text-white/80 justify-center' : 'text-sti-gray'} mt-2`}>
         <MapPin className="w-3.5 h-3.5" />
-        Click on map or drag pin to set location - no need to type lat/lng
+        {fullscreen ? 'Search above, then click map or drag pin' : 'Click Full to search and pinpoint faster'}
       </p>
-      {fullscreen && <div className="absolute inset-0" onClick={()=>setFullscreen(false)} style={{pointerEvents:'none'}} />}
     </div>
   );
 };
