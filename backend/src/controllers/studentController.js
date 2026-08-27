@@ -109,8 +109,11 @@ export const addStudent = asyncHandler(async (req, res) => {
     role
   } = req.body;
 
-  // If role is COORDINATOR or SUPERVISOR, create staff account (User only, no Student)
+  // If role is COORDINATOR or SUPERVISOR, only ADMIN can create them
   if (role === 'COORDINATOR' || role === 'SUPERVISOR') {
+    if (req.user?.role !== 'ADMIN') {
+      return res.status(403).json({ success: false, message: 'Only admin can create coordinator/supervisor accounts' });
+    }
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password required for staff' });
     }

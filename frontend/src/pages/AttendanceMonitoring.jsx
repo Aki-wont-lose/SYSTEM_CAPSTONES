@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Clock, CalendarDays, Search, Eye } from 'lucide-react';
+import { Clock, CalendarDays, Search, Eye, Image as ImageIcon, X } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { getAllStudents } from '../services/studentService';
@@ -13,6 +13,7 @@ const AttendanceMonitoring = () => {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null);
 
   useEffect(() => {
     getAllStudents().then(res => setStudents(res.data)).catch(console.error).finally(()=>setLoading(false));
@@ -75,17 +76,42 @@ const AttendanceMonitoring = () => {
               <div className="flex-1 overflow-y-auto p-4 space-y-2">
                 {history.length===0 ? <p className="text-sm text-sti-gray text-center py-8">No time records yet</p> : history.map(a=>(
                   <div key={a.id} className="flex items-center justify-between p-3 rounded-xl bg-sti-gray-light/50 dark:bg-white/5">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-sti-gray-dark dark:text-white">{new Date(a.date).toLocaleDateString()}</p>
                       <p className="text-xs text-sti-gray flex items-center gap-1"><CalendarDays className="w-3 h-3" /> {a.timeIn ? new Date(a.timeIn).toLocaleTimeString() : '—'} → {a.timeOut ? new Date(a.timeOut).toLocaleTimeString() : 'Not yet'}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold">{a.renderedHours?.toFixed(2)}h</p>
-                      <p className="text-xs text-sti-gray">{a.status}</p>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="text-sm font-bold">{a.renderedHours?.toFixed(2)}h</p>
+                        <p className="text-xs text-sti-gray">{a.status}</p>
+                      </div>
+                      {(a.timeInPhoto || a.timeOutPhoto) && (
+                        <button onClick={()=>setPhotoPreview(a)} className="p-1.5 rounded-lg bg-white dark:bg-slate-700 border hover:bg-sti-gray-light"><ImageIcon className="w-4 h-4 text-sti-blue" /></button>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
+              {photoPreview && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={()=>setPhotoPreview(null)}>
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 max-w-md w-full" onClick={e=>e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold text-sm">{new Date(photoPreview.date).toLocaleDateString()}</h4>
+                      <button onClick={()=>setPhotoPreview(null)} className="p-1 rounded-full hover:bg-sti-gray-light"><X className="w-4 h-4" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs text-sti-gray mb-1">Time In</p>
+                        {photoPreview.timeInPhoto ? <img src={photoPreview.timeInPhoto} className="rounded-lg w-full aspect-square object-cover" /> : <div className="rounded-lg bg-sti-gray-light h-32 flex items-center justify-center text-xs">No photo</div>}
+                      </div>
+                      <div>
+                        <p className="text-xs text-sti-gray mb-1">Time Out</p>
+                        {photoPreview.timeOutPhoto ? <img src={photoPreview.timeOutPhoto} className="rounded-lg w-full aspect-square object-cover" /> : <div className="rounded-lg bg-sti-gray-light h-32 flex items-center justify-center text-xs">No photo</div>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </Card>

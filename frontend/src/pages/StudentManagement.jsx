@@ -3,6 +3,7 @@ import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays } from 'lucid
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
+import { useAuth } from '../hooks/useAuth';
 import {
   getAllStudents,
   createStudent,
@@ -29,6 +30,8 @@ const emptyForm = {
 };
 
 const StudentManagement = () => {
+  const { user } = useAuth();
+  const role = user?.role;
   const [students, setStudents] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -169,12 +172,16 @@ const StudentManagement = () => {
           </select>
         </div>
         <div className="flex gap-2">
-          <Button variant="primary" icon={Plus} onClick={() => openAddModal('STUDENT')}>
-            Add Student
-          </Button>
-          <Button variant="secondary" icon={Plus} onClick={() => openAddModal('COORDINATOR')}>
-            Add Coordinator/Supervisor
-          </Button>
+          {role === 'ADMIN' && (
+            <Button variant="primary" icon={Plus} onClick={() => openAddModal('STUDENT')}>
+              Create Account
+            </Button>
+          )}
+          {role === 'COORDINATOR' && (
+            <Button variant="primary" icon={Plus} onClick={() => openAddModal('STUDENT')}>
+              Add Student
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -251,7 +258,7 @@ const StudentManagement = () => {
               {error}
             </div>
           )}
-          {modalMode === 'add' && (
+          {modalMode === 'add' && role === 'ADMIN' && (
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Account Type</label>
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="input-field">
@@ -261,7 +268,7 @@ const StudentManagement = () => {
               </select>
             </div>
           )}
-          {modalMode === 'add' && form.role === 'COORDINATOR' && (
+          {modalMode === 'add' && form.role === 'COORDINATOR' && role === 'ADMIN' && (
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Course *</label>
               <select required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field">
@@ -273,7 +280,7 @@ const StudentManagement = () => {
               <p className="text-xs text-sti-gray mt-1">This coordinator will lead the selected course</p>
             </div>
           )}
-          {modalMode === 'add' && form.role === 'SUPERVISOR' && (
+          {modalMode === 'add' && form.role === 'SUPERVISOR' && role === 'ADMIN' && (
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Company *</label>
               <select required value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field">
@@ -286,36 +293,40 @@ const StudentManagement = () => {
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID {form.role!=='STUDENT' && '(optional for staff)'}</label>
-              <input required={form.role==='STUDENT'} value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field" placeholder={form.role==='STUDENT' ? '352467' : '—'} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">OJT Status</label>
-              <select value={form.ojt_status} onChange={(e) => setForm({ ...form, ojt_status: e.target.value })} className="input-field" disabled={form.role!=='STUDENT'}>
-                <option value="NOT_STARTED">Not Started</option>
-                <option value="ONGOING">Ongoing</option>
-                <option value="COMPLETED">Completed</option>
-                <option value="ON_HOLD">On Hold</option>
-                <option value="FAILED">Failed</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">First Name {form.role!=='STUDENT' && '(optional)'}</label>
-              <input required={form.role==='STUDENT'} value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input-field" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name {form.role!=='STUDENT' && '(optional)'}</label>
-              <input required={form.role==='STUDENT'} value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course {form.role!=='STUDENT' && '(optional)'}</label>
-              <input required={form.role==='STUDENT'} value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Section {form.role!=='STUDENT' && '(optional)'}</label>
-              <input required={form.role==='STUDENT'} value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} className="input-field" />
-            </div>
+            {form.role === 'STUDENT' && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID</label>
+                  <input required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field" placeholder="352467" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">OJT Status</label>
+                  <select value={form.ojt_status} onChange={(e) => setForm({ ...form, ojt_status: e.target.value })} className="input-field">
+                    <option value="NOT_STARTED">Not Started</option>
+                    <option value="ONGOING">Ongoing</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="ON_HOLD">On Hold</option>
+                    <option value="FAILED">Failed</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">First Name</label>
+                  <input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name</label>
+                  <input required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course</label>
+                  <input required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Section</label>
+                  <input required value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} className="input-field" />
+                </div>
+              </>
+            )}
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
               <input required type="email" disabled={modalMode === 'edit'} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field disabled:bg-sti-gray-light" />
@@ -327,18 +338,20 @@ const StudentManagement = () => {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number {form.role!=='STUDENT' && '(optional)'}</label>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
               <input required={form.role==='STUDENT'} value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Partner Company {form.role!=='STUDENT' && '(staff: ignore)'}</label>
-              <select value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field" disabled={form.role!=='STUDENT'}>
-                <option value="">Not yet assigned</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
+            {form.role === 'STUDENT' && (
+              <div>
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Partner Company</label>
+                <select value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field">
+                  <option value="">Not yet assigned</option>
+                  {companies.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
 
