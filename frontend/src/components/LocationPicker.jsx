@@ -1,7 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin } from 'lucide-react';
+import { MapPin, Maximize2 } from 'lucide-react';
 
 // Fix Leaflet's default marker icons, which break under Vite's bundler
 // because the image paths it expects don't survive bundling. Loading them
@@ -25,6 +25,7 @@ const LocationPicker = ({ latitude, longitude, onChange, className = '' }) => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markerRef = useRef(null);
+  const [fullscreen, setFullscreen] = useState(false);
 
   useEffect(() => {
     if (mapInstance.current) return; // init once
@@ -82,9 +83,29 @@ const LocationPicker = ({ latitude, longitude, onChange, className = '' }) => {
     }
   }, [latitude, longitude]);
 
+  useEffect(() => { if (fullscreen && mapInstance.current) setTimeout(()=>mapInstance.current.invalidateSize(), 200); }, [fullscreen]);
+
+  if (fullscreen) {
+    return (
+      <div className="fixed inset-0 z-[60] bg-black/80 p-2 sm:p-4 flex flex-col" onClick={()=>setFullscreen(false)}>
+        <div className="flex justify-between items-center mb-2" onClick={e=>e.stopPropagation()}>
+          <span className="text-white text-sm font-medium">Pick Location</span>
+          <button onClick={()=>setFullscreen(false)} className="bg-white rounded-full px-3 py-1.5 shadow text-sm font-semibold">✕ Exit</button>
+        </div>
+        <div className="flex-1 rounded-xl overflow-hidden bg-white relative" onClick={e=>e.stopPropagation()}>
+          <div ref={mapRef} className="w-full h-full" />
+        </div>
+        <p className="text-white/80 text-xs mt-2 text-center flex items-center justify-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Click or drag pin to set location</p>
+      </div>
+    );
+  }
+
   return (
-    <div>
+    <div className="relative">
       <div ref={mapRef} className={`rounded-xl overflow-hidden ${className}`} />
+      <button type="button" onClick={()=>setFullscreen(true)} className="absolute top-2 right-2 bg-white border rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow flex items-center gap-1 hover:bg-gray-50 z-[400]">
+        <Maximize2 className="w-3.5 h-3.5" /> Full
+      </button>
       <p className="flex items-center gap-1.5 text-xs text-sti-gray mt-2">
         <MapPin className="w-3.5 h-3.5" />
         Click anywhere on the map, or drag the pin, to set the exact location.

@@ -30,54 +30,36 @@ const MapEmbed = ({ latitude, longitude, address, className = '' }) => {
 
   if (fullscreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/80 p-2 flex flex-col" onClick={()=>setFullscreen(false)}>
-        <div className="flex justify-end mb-2" onClick={e=>e.stopPropagation()}>
-          <button onClick={()=>setFullscreen(false)} className="bg-white rounded-full p-2 shadow">✕</button>
+      <div className="fixed inset-0 z-[60] bg-black/80 p-2 sm:p-4 flex flex-col" onClick={()=>setFullscreen(false)}>
+        <div className="flex justify-between items-center mb-2" onClick={e=>e.stopPropagation()}>
+          <span className="text-white text-sm font-medium">Company Location</span>
+          <button onClick={()=>setFullscreen(false)} className="bg-white hover:bg-gray-100 rounded-full p-2.5 shadow-lg flex items-center gap-1.5 text-sm font-semibold">
+            ✕ Exit
+          </button>
         </div>
-        <div className="flex-1 rounded-xl overflow-hidden" onClick={e=>e.stopPropagation()}>
-          {frame}
+        <div className="flex-1 rounded-xl overflow-hidden bg-white" onClick={e=>e.stopPropagation()}>
+          <iframe
+            title="Company location fullscreen"
+            src={src}
+            className="w-full h-full border-0"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            allowFullScreen
+          />
         </div>
       </div>
     );
   }
 
-  // Fallback for no coords handled above, this is for hasCoords case with Leaflet removed - now using Google Map div
   return (
     <div className={`rounded-xl overflow-hidden border-0 ${className} relative`}>
       {frame}
       <button
         onClick={()=>setFullscreen(true)}
-        className="absolute top-2 right-2 bg-white dark:bg-slate-800 border border-black/10 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow flex items-center gap-1 hover:bg-sti-gray-light"
+        className="absolute top-2 right-2 bg-white dark:bg-slate-800 border border-black/10 rounded-lg px-2.5 py-1.5 text-xs font-semibold shadow flex items-center gap-1.5 hover:bg-sti-gray-light z-10"
       >
         ⛶ Full screen
       </button>
-    </div>
-  );
-
-  // No coords: fallback to Google iframe for address search
-  if (!hasCoords) {
-    if (!address) {
-      return (
-        <div className={`flex items-center justify-center bg-sti-gray-light dark:bg-slate-700 text-sti-gray text-sm rounded-xl ${className}`}>
-          No location set yet
-        </div>
-      );
-    }
-    const src = `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
-    return (
-      <iframe
-        title="Company location"
-        src={src}
-        className={`rounded-xl border-0 ${className}`}
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-      />
-    );
-  }
-
-  return (
-    <div className={`rounded-xl overflow-hidden border-0 ${className} relative`}>
-      <div ref={mapRef} className="w-full h-full min-h-[18rem]" />
     </div>
   );
 };
