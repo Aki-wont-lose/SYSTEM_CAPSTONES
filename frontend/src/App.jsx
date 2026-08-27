@@ -24,6 +24,7 @@ import AdminLogs from './pages/AdminLogs';
 import AnnouncementManagement from './pages/AnnouncementManagement';
 import AdminProfile from './pages/AdminProfile';
 import Messages from './pages/Messages';
+import AttendanceMonitoring from './pages/AttendanceMonitoring';
 
 const ROLE_HOME = {
   ADMIN: '/admin/dashboard',
@@ -81,6 +82,7 @@ function App() {
       >
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/students" element={<StudentManagement />} />
+        <Route path="/admin/attendance" element={<AttendanceMonitoring />} />
         <Route path="/admin/requirements" element={<AdminRequirements />} />
         <Route path="/admin/companies" element={<Companies />} />
         <Route path="/admin/logs" element={<AdminLogs />} />
@@ -99,6 +101,7 @@ function App() {
       >
         <Route path="/coordinator/dashboard" element={<AdminDashboard />} />
         <Route path="/coordinator/students" element={<StudentManagement />} />
+        <Route path="/coordinator/attendance" element={<AttendanceMonitoring />} />
         <Route path="/coordinator/requirements" element={<AdminRequirements />} />
         <Route path="/coordinator/companies" element={<Companies />} />
         <Route path="/coordinator/logs" element={<AdminLogs />} />
@@ -117,6 +120,7 @@ function App() {
       >
         <Route path="/supervisor/dashboard" element={<AdminDashboard />} />
         <Route path="/supervisor/students" element={<StudentManagement />} />
+        <Route path="/supervisor/attendance" element={<AttendanceMonitoring />} />
         <Route path="/supervisor/logs" element={<AdminLogs />} />
         <Route path="/supervisor/messages" element={<Messages />} />
         <Route path="/supervisor/profile" element={<AdminProfile />} />

@@ -6,6 +6,7 @@ const linksByRole = {
   ADMIN: [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/admin/students', label: 'Students', icon: Users },
+    { to: '/admin/attendance', label: 'Attendance', icon: Clock },
     { to: '/admin/requirements', label: 'Requirements', icon: FileCheck2 },
     { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
     { to: '/admin/logs', label: 'Student Logs', icon: ClipboardList },
@@ -16,6 +17,7 @@ const linksByRole = {
   COORDINATOR: [
     { to: '/coordinator/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/coordinator/students', label: 'Students', icon: Users },
+    { to: '/coordinator/attendance', label: 'Attendance', icon: Clock },
     { to: '/coordinator/requirements', label: 'Requirements', icon: FileCheck2 },
     { to: '/coordinator/companies', label: 'Partner Companies', icon: Building2 },
     { to: '/coordinator/logs', label: 'Student Logs', icon: ClipboardList },
@@ -26,6 +28,7 @@ const linksByRole = {
   SUPERVISOR: [
     { to: '/supervisor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/supervisor/students', label: 'Students', icon: Users },
+    { to: '/supervisor/attendance', label: 'Attendance', icon: Clock },
     { to: '/supervisor/logs', label: 'Student Logs', icon: ClipboardList },
     { to: '/supervisor/messages', label: 'Messages', icon: MessageCircle },
     { to: '/supervisor/profile', label: 'Profile', icon: UserCircle },

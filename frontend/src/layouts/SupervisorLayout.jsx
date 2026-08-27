@@ -6,6 +6,7 @@ import TopNav from '../components/TopNav';
 const titles = {
   '/supervisor/dashboard': 'Supervisor Dashboard',
   '/supervisor/students': 'Students',
+  '/supervisor/attendance': 'Attendance',
   '/supervisor/logs': 'Student Logs',
   '/supervisor/messages': 'Messages',
   '/supervisor/profile': 'My Profile',

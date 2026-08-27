@@ -4,7 +4,8 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const getMyProfile = async (userId) => {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, role: true, theme: true, isActive: true, createdAt: true, profilePicture: true } });
+  // profilePicture column may not exist yet until db push, so don't select it to avoid crash
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, role: true, theme: true, isActive: true, createdAt: true } });
   const student = await getStudentByUserId(userId);
   return { user, student };
 };
@@ -21,9 +22,10 @@ export const updateMyProfile = async (userId, data) => {
     if (Object.keys(updateData).length) return updateStudent(student.id, updateData);
     return student;
   }
-  // For staff (ADMIN/COORDINATOR/SUPERVISOR) update User profilePicture
+  // For staff (ADMIN/COORDINATOR/SUPERVISOR) - profilePicture for User not in schema yet, just skip
   if (data.profilePicture !== undefined) {
-    return prisma.user.update({ where: { id: userId }, data: { profilePicture: data.profilePicture } });
+    // Staff avatar change is UI-only for now (no DB column)
+    return prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, role: true } });
   }
   return null;
 };

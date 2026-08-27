@@ -25,9 +25,9 @@ export const ROLE_HOME = {
 // Sidebar visibility per role — same components, limited items
 // COORDINATOR = like ADMIN + can upload requirement PDF templates; SUPERVISOR = review only
 export const ROLE_NAV = {
-  ADMIN:       ['dashboard','students','requirements','companies','logs','announcements','messages','profile'],
-  COORDINATOR: ['dashboard','students','requirements','companies','logs','announcements','messages','profile'],
-  SUPERVISOR:  ['dashboard','students','logs','messages','profile'],
+  ADMIN:       ['dashboard','students','attendance','requirements','companies','logs','announcements','messages','profile'],
+  COORDINATOR: ['dashboard','students','attendance','requirements','companies','logs','announcements','messages','profile'],
+  SUPERVISOR:  ['dashboard','students','attendance','logs','messages','profile'],
   STUDENT:     ['dashboard','dtr','logs','requirements','find-company','schedule','messages','profile'],
 };
 
