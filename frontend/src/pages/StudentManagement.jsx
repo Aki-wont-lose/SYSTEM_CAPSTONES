@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, Eye, X } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -10,6 +10,7 @@ import {
   deleteStudent
 } from '../services/studentService';
 import { getCompanies } from '../services/companyService';
+import { getStudentAttendanceForStaff, getStudentSummaryForStaff } from '../services/attendanceService';
 
 const statusStyles = {
   NOT_STARTED: 'bg-gray-100 text-sti-gray-dark',
@@ -42,6 +43,8 @@ const StudentManagement = () => {
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [viewAttendance, setViewAttendance] = useState([]);
+  const [viewSummary, setViewSummary] = useState(null);
 
   const loadStudents = async () => {
     setLoading(true);
@@ -83,9 +86,19 @@ const StudentManagement = () => {
     setModalMode('edit');
   };
 
-  const openViewModal = (student) => {
+  const openViewModal = async (student) => {
     setSelectedStudent(student);
     setModalMode('view');
+    setViewAttendance([]);
+    setViewSummary(null);
+    try {
+      const [attRes, sumRes] = await Promise.all([
+        getStudentAttendanceForStaff(student.id, 20),
+        getStudentSummaryForStaff(student.id)
+      ]);
+      setViewAttendance(attRes.data || []);
+      setViewSummary(sumRes.data?.attendance || null);
+    } catch (e) { console.error(e); }
   };
 
   const closeModal = () => {
@@ -321,8 +334,8 @@ const StudentManagement = () => {
         </form>
       </Modal>
 
-      {/* View Modal */}
-      <Modal isOpen={modalMode === 'view'} onClose={closeModal} title="Student Details">
+      {/* View Modal - now with DTR monitoring for admin/coordinator/supervisor */}
+      <Modal isOpen={modalMode === 'view'} onClose={closeModal} title="Student Details" maxWidth="max-w-2xl">
         {selectedStudent && (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
@@ -331,7 +344,8 @@ const StudentManagement = () => {
               </div>
               <div>
                 <p className="font-bold text-sti-gray-dark dark:text-white">{selectedStudent.firstName} {selectedStudent.lastName}</p>
-                <p className="text-sm text-sti-gray">{selectedStudent.studentId}</p>
+                <p className="text-sm text-sti-gray">{selectedStudent.studentId} • {selectedStudent.email}</p>
+                {viewSummary && <p className="text-xs text-sti-blue font-medium mt-1">{viewSummary.totalHours}h rendered • {viewSummary.remainingHours}h left • {viewSummary.presentDays} days present</p>}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -340,9 +354,31 @@ const StudentManagement = () => {
               <div><p className="text-sti-gray text-xs mb-1">Email</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.email}</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Contact</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.contactNumber}</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Company</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.company?.name || 'Not yet assigned'}</p></div>
-              <div><p className="text-sti-gray text-xs mb-1">Hours</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.completedHours}/{selectedStudent.requiredHours}h</p></div>
+              <div><p className="text-sti-gray text-xs mb-1">Hours</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.completedHours}/{selectedStudent.requiredHours}h ({Math.max(0, selectedStudent.requiredHours - selectedStudent.completedHours)}h left)</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Supervisor</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.supervisorName || 'Not yet assigned'}</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Working Hours</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.workingHours || '—'}</p></div>
+            </div>
+            {/* DTR Monitoring - time in/out visible to supervisor/coordinator/admin */}
+            <div className="pt-3 border-t border-black/5 dark:border-white/10">
+              <h4 className="font-bold text-sti-gray-dark dark:text-white text-sm mb-3 flex items-center gap-2"><Clock className="w-4 h-4 text-sti-blue" /> Time In / Time Out History</h4>
+              {viewAttendance.length === 0 ? (
+                <p className="text-sm text-sti-gray text-center py-4">No time records yet</p>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {viewAttendance.map(a => (
+                    <div key={a.id} className="flex items-center justify-between p-3 rounded-xl bg-sti-gray-light/50 dark:bg-white/5 text-xs">
+                      <div>
+                        <p className="font-medium text-sti-gray-dark dark:text-white">{new Date(a.date).toLocaleDateString()}</p>
+                        <p className="text-sti-gray flex items-center gap-1"><CalendarDays className="w-3 h-3" /> {a.timeIn ? new Date(a.timeIn).toLocaleTimeString() : '—'} → {a.timeOut ? new Date(a.timeOut).toLocaleTimeString() : 'Not yet'}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-sti-gray-dark dark:text-white">{a.renderedHours?.toFixed(2)}h</p>
+                        <p className={`text-[10px] px-2 py-0.5 rounded-full ${a.status==='PRESENT' ? 'bg-sti-blue-50 text-sti-blue' : 'bg-yellow-50 text-sti-yellow-dark'}`}>{a.status}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

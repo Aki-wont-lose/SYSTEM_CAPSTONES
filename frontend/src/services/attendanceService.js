@@ -24,3 +24,13 @@ export const timeOut = async (photo) => {
   const response = await api.post('/attendance/time-out', { date: new Date(), photo });
   return response.data;
 };
+
+export const getStudentAttendanceForStaff = async (studentId, limit = 30) => {
+  const response = await api.get(`/attendance/student/${studentId}/history`, { params: { limit } });
+  return response.data;
+};
+
+export const getStudentSummaryForStaff = async (studentId) => {
+  const response = await api.get(`/attendance/student/${studentId}/summary`);
+  return response.data;
+};

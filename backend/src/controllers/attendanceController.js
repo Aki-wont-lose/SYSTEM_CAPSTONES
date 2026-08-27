@@ -129,3 +129,16 @@ export const updateAttendance = asyncHandler(async (req, res) => {
     data: updated
   });
 });
+
+export const fetchStudentAttendanceForStaff = asyncHandler(async (req, res) => {
+  const { studentId } = req.params;
+  const { limit = 30 } = req.query;
+  const attendance = await getAttendanceHistory(studentId, parseInt(limit));
+  res.status(200).json({ success: true, data: attendance });
+});
+
+export const fetchStudentSummaryForStaff = asyncHandler(async (req, res) => {
+  const { studentId } = req.params;
+  const summary = await getStudentSummary(studentId);
+  res.status(200).json({ success: true, data: summary });
+});

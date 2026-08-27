@@ -6,8 +6,11 @@ import {
   timeOut,
   fetchMonthlyAttendance,
   fetchStudentSummary,
-  updateAttendance
+  updateAttendance,
+  fetchStudentAttendanceForStaff,
+  fetchStudentSummaryForStaff
 } from '../controllers/attendanceController.js';
+import { verifyRole } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -17,5 +20,9 @@ router.get('/monthly', fetchMonthlyAttendance);
 router.post('/time-in', timeIn);
 router.post('/time-out', timeOut);
 router.put('/:id', updateAttendance);
+
+// Staff can view any student's DTR for monitoring (supervisor = company needs to see time in/out)
+router.get('/student/:studentId/history', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), fetchStudentAttendanceForStaff);
+router.get('/student/:studentId/summary', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), fetchStudentSummaryForStaff);
 
 export default router;
