@@ -137,9 +137,8 @@ export const updateStudentProfile = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const updateData = req.body;
 
-  // Prevent updating sensitive fields
+  // Prevent updating sensitive linking fields only - studentId is now editable by admin/coordinator
   delete updateData.userId;
-  delete updateData.studentId;
   delete updateData.user;
 
   const student = await updateStudent(id, updateData);
