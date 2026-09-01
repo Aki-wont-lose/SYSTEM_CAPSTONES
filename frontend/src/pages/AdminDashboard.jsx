@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Users, UserCheck, CheckCircle2, Clock3, ArrowRight } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
+import WelcomeCarousel from '../components/WelcomeCarousel';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -25,56 +26,13 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Welcome to STI - big banner like screenshot */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#0a4a8a] p-6 sm:p-8 h-48 sm:h-56 flex flex-col justify-center">
-        <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)', backgroundSize: '20px 20px'}} />
-        <div className="absolute top-4 right-20 w-3 h-3 bg-yellow-400 rounded-full" />
-        <div className="absolute bottom-8 left-10 w-2 h-2 bg-white rounded-full" />
-        <div className="absolute top-8 right-32 w-2 h-2 bg-yellow-300 rounded-full" />
-        <div className="relative text-center sm:text-left">
-          <h2 className="text-white text-2xl sm:text-3xl font-extrabold tracking-wide">WELCOME TO</h2>
-          <h2 className="text-yellow-400 text-2xl sm:text-3xl font-extrabold tracking-wide">STI COLLEGE</h2>
-          <p className="text-white/70 text-xs sm:text-sm mt-2">STI Education System • Admin Dashboard</p>
-        </div>
-        <div className="absolute -bottom-4 -right-4 w-32 h-24 bg-yellow-400 rounded-tl-[40px] opacity-90" />
-        <div className="absolute -bottom-2 -right-0 w-24 h-16 bg-orange-400 rounded-tl-[30px] opacity-80" />
-      </div>
-
-      {/* 3 big pictures aligned - like screenshot, exempt calendar */}
+      {/* Top: 3-pic carousel sliding auto every 3s + Calendar beside it */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Pic 1 - Welcome */}
-        <div className="relative overflow-hidden rounded-2xl h-56 sm:h-64 bg-[#0a6ebd] group">
-          <div className="absolute inset-0 p-4 flex flex-col justify-center">
-            <div className="bg-white rounded-xl p-3 sm:p-4 text-center shadow-lg">
-              <p className="text-[#0a6ebd] font-black text-lg sm:text-xl leading-tight">WELCOME TO</p>
-              <p className="text-[#0a6ebd] font-black text-xl sm:text-2xl leading-tight">STI COLLEGE</p>
-            </div>
-            <p className="text-white text-xs mt-3 text-center">STI College Sta. Maria</p>
-          </div>
-          <div className="absolute top-2 right-2 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-[10px]">☺</div>
+        <div className="lg:col-span-2">
+          <WelcomeCarousel />
         </div>
-        {/* Pic 2 - Feedback */}
-        <div className="relative overflow-hidden rounded-2xl h-56 sm:h-64 bg-[#fcee0a] p-4 sm:p-5 flex flex-col">
-          <h3 className="text-[#0a4a8a] font-black text-lg leading-tight">How's Your Experience?</h3>
-          <p className="text-[#0a4a8a] text-xs mt-1">Tell us more and rate us</p>
-          <div className="flex-1 flex items-center justify-center mt-3">
-            <div className="bg-white rounded-xl p-3 w-24 h-24 flex items-center justify-center border-2 border-[#0a4a8a]">
-              <div className="w-16 h-16 border-2 border-dashed border-[#0a4a8a] rounded-lg flex items-center justify-center text-[8px] text-[#0a4a8a] text-center">QR<br/>STI<br/>Cares</div>
-            </div>
-          </div>
-          <p className="text-[#0a4a8a] text-[10px] font-bold mt-2">feedback.sti.edu</p>
-          <div className="absolute bottom-0 left-0 right-0 h-6 bg-[#0a4a8a] flex items-center px-3">
-            <span className="text-white text-[10px]">STI Feedback Center</span>
-          </div>
-        </div>
-        {/* Pic 3 - Announcement */}
-        <div className="relative overflow-hidden rounded-2xl h-56 sm:h-64 bg-[#1a2b4a] p-4 sm:p-5 flex flex-col">
-          <div className="bg-red-500 text-white text-xs font-black px-2 py-1 rounded w-fit">ANNOUNCEMENT</div>
-          <h3 className="text-yellow-300 font-black text-base sm:text-lg leading-tight mt-2">Office 365 Services<br/>Important Security Update</h3>
-          <p className="text-white text-xs mt-2">Starting April 23, 2024, all students will be required to activate MFA</p>
-          <div className="mt-3 bg-white rounded-lg p-2 text-center">
-            <p className="text-red-500 text-xs font-bold">Get instructions on how to activate MFA here.</p>
-          </div>
+        <div className="lg:col-span-1">
+          <CalendarWidget />
         </div>
       </div>
 
@@ -86,17 +44,17 @@ const AdminDashboard = () => {
         <StatCard label="Pending" value={stats.pending} icon={Clock3} accent="red" />
       </div>
 
-      {/* Calendar back - small right like screenshot */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <h3 className="font-bold text-sti-gray-dark dark:text-white mb-3">Recent Students</h3>
+        <Card className="lg:col-span-2 p-0 overflow-hidden">
+          <div className="p-6">
+            <h3 className="font-bold text-sti-gray-dark dark:text-white">Recent Students</h3>
             <p className="text-sm text-sti-gray">Manage via Account Management → Create Account</p>
-          </Card>
-        </div>
-        <div>
-          <CalendarWidget />
-        </div>
+          </div>
+        </Card>
+        <Card>
+          <h3 className="font-bold text-sti-gray-dark dark:text-white mb-3">Announcements</h3>
+          <p className="text-sm text-sti-gray">No announcements yet</p>
+        </Card>
       </div>
     </div>
   );

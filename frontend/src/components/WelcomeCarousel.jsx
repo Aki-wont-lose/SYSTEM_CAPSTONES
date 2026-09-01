@@ -73,7 +73,7 @@ const WelcomeCarousel = () => {
   const [current, setCurrent] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(() => setCurrent((c) => (c + 1) % slides.length), 3500);
+    const id = setInterval(() => setCurrent((c) => (c + 1) % slides.length), 3000);
     return () => clearInterval(id);
   }, []);
 
