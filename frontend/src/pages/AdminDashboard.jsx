@@ -43,19 +43,25 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Stats - 4 cards aligned to 3 picture width, a little more spacing */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      {/* Stats - 4 cards, 3 on first line aligned to carousel, 1 below like 3 picture 3 lines */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-6">
         <StatCard label="Total Students" value={stats.total} icon={Users} accent="blue" />
         <StatCard label="Active Students" value={stats.active} icon={UserCheck} accent="green" />
         <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} accent="yellow" />
-        <StatCard label="Pending" value={stats.pending} icon={Clock3} accent="red" />
       </div>
-
-      <Card className="p-0 overflow-hidden">
-        <div className="p-4">
-          <h3 className="font-bold text-sti-gray-dark dark:text-white">Recent Students</h3>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
+            <StatCard label="Pending" value={stats.pending} icon={Clock3} accent="red" />
+          </div>
+          <Card className="p-0 overflow-hidden">
+            <div className="p-4">
+              <h3 className="font-bold text-sti-gray-dark dark:text-white">Recent Students</h3>
+            </div>
+          </Card>
         </div>
-      </Card>
+        <div className="hidden lg:block" />
+      </div>
     </div>
   );
 };
