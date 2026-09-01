@@ -43,25 +43,19 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Stats - 4 cards, 3 on first line aligned to carousel, 1 below like 3 picture 3 lines */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-6">
+      {/* Stats - 2 and 2, moved upward near 3 pics */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 -mt-2">
         <StatCard label="Total Students" value={stats.total} icon={Users} accent="blue" />
         <StatCard label="Active Students" value={stats.active} icon={UserCheck} accent="green" />
         <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} accent="yellow" />
+        <StatCard label="Pending" value={stats.pending} icon={Clock3} accent="red" />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
-            <StatCard label="Pending" value={stats.pending} icon={Clock3} accent="red" />
-          </div>
-          <Card className="p-0 overflow-hidden">
-            <div className="p-4">
-              <h3 className="font-bold text-sti-gray-dark dark:text-white">Recent Students</h3>
-            </div>
-          </Card>
+
+      <Card className="p-0 overflow-hidden">
+        <div className="p-4">
+          <h3 className="font-bold text-sti-gray-dark dark:text-white">Recent Students</h3>
         </div>
-        <div className="hidden lg:block" />
-      </div>
+      </Card>
     </div>
   );
 };
