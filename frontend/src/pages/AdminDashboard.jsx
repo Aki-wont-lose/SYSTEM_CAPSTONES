@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, UserCheck, CheckCircle2, Clock3, Megaphone, ArrowRight, UserPlus, Building2, FileCheck2 } from 'lucide-react';
+import { Users, UserCheck, CheckCircle2, Clock3, Megaphone, ArrowRight, UserPlus } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import Button from '../components/Button';
+import WelcomeCarousel from '../components/WelcomeCarousel';
+import CalendarWidget from '../components/CalendarWidget';
 import { getDashboardStats, getAllStudents } from '../services/studentService';
 import { getAllAnnouncements } from '../services/announcementService';
 
@@ -49,85 +51,29 @@ const AdminDashboard = () => {
     );
   }
 
-  // 3 big picture cards aligned like STI screenshot (exempt calendar) - admin version
-  const bigCards = [
-    {
-      title: 'Students',
-      desc: `${stats.total} total • ${stats.active} active`,
-      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=600&h=400&fit=crop',
-      to: '/admin/students',
-      accent: 'from-sti-blue to-sti-blue-dark',
-      icon: Users
-    },
-    {
-      title: 'Companies',
-      desc: 'Partner companies',
-      image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=600&h=400&fit=crop',
-      to: '/admin/companies',
-      accent: 'from-sti-yellow to-sti-yellow-dark',
-      icon: Building2
-    },
-    {
-      title: 'Requirements',
-      desc: 'Documents review',
-      image: 'https://images.unsplash.com/photo-1454165205744-3b78555e5572?w=600&h=400&fit=crop',
-      to: '/admin/requirements',
-      accent: 'from-emerald-500 to-emerald-700',
-      icon: FileCheck2
-    },
-  ];
-
-  // For coordinator/supervisor, adjust links
-  const isCoordinator = window.location.pathname.startsWith('/coordinator');
-  const isSupervisor = window.location.pathname.startsWith('/supervisor');
-  const prefix = isCoordinator ? '/coordinator' : isSupervisor ? '/supervisor' : '/admin';
-  bigCards[0].to = `${prefix}/students`;
-  bigCards[1].to = `${prefix}/companies`;
-  if (isSupervisor) {
-    bigCards[1].title = 'Attendance';
-    bigCards[1].desc = 'Time In/Out';
-    bigCards[1].to = `${prefix}/attendance`;
-  }
-  bigCards[2].to = isSupervisor ? `${prefix}/logs` : `${prefix}/requirements`;
-
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Welcome banner - big like STI screenshot */}
-      <div className="relative overflow-hidden rounded-2xl bg-sti-blue p-6 sm:p-8 h-48 sm:h-56 flex flex-col justify-center">
-        <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)', backgroundSize: '20px 20px'}} />
-        <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-white/5" />
-        <div className="absolute bottom-0 right-16 w-24 h-24 rounded-full bg-sti-yellow/20" />
-        <div className="relative">
-          <p className="text-sti-yellow font-semibold text-sm mb-1">Admin Overview</p>
-          <h2 className="text-white text-2xl sm:text-3xl font-extrabold">WELCOME TO SIMES</h2>
-          <p className="text-white/90 text-sm sm:text-base font-semibold mt-1">STI College Sta. Maria • Program Snapshot</p>
-          <p className="text-white/70 text-xs sm:text-sm mt-2">Monitor student progress and manage announcements.</p>
+      {/* Welcome carousel + small calendar on right */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-3">
+          <WelcomeCarousel />
+        </div>
+        <div className="lg:col-span-1">
+          <CalendarWidget />
         </div>
       </div>
-
-      {/* 3 big picture cards - aligned like STI screenshot */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
-        {bigCards.map((card) => (
-          <button
-            key={card.to}
-            onClick={() => navigate(card.to)}
-            className="group relative overflow-hidden rounded-2xl h-48 sm:h-56 text-left shadow-card hover:shadow-cardHover transition-all"
-          >
-            <img src={card.image} alt={card.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-            <div className={`absolute inset-0 bg-gradient-to-t ${card.accent} opacity-80 group-hover:opacity-90 transition-opacity`} />
-            <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
-              <div className="flex items-center gap-2 mb-1">
-                <card.icon className="w-5 h-5 text-white" />
-                <h3 className="text-white font-bold text-base sm:text-lg">{card.title}</h3>
-              </div>
-              <p className="text-white/90 text-xs sm:text-sm">{card.desc}</p>
-            </div>
-          </button>
-        ))}
+      <div className="relative overflow-hidden rounded-2xl bg-sti-blue p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="relative">
+          <p className="text-sti-yellow font-semibold text-xs sm:text-sm">Admin Overview</p>
+          <h2 className="text-white text-lg sm:text-xl font-extrabold">Program Snapshot</h2>
+        </div>
+        <Button variant="accent" icon={UserPlus} onClick={() => navigate('/admin/students')} className="relative text-sm">
+          Create Account
+        </Button>
       </div>
 
-      {/* Stats - smaller below */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Students" value={stats.total} icon={Users} accent="blue" />
         <StatCard label="Active Students" value={stats.active} icon={UserCheck} accent="green" />
         <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} accent="yellow" />
@@ -140,7 +86,7 @@ const AdminDashboard = () => {
           <div className="flex items-center justify-between p-6 pb-4">
             <h3 className="font-bold text-sti-gray-dark dark:text-white">Recent Students</h3>
             <button
-              onClick={() => navigate(`${prefix}/students`)}
+              onClick={() => navigate('/admin/students')}
               className="text-sm text-sti-blue font-medium flex items-center gap-1 hover:gap-2 transition-all"
             >
               View all <ArrowRight className="w-3.5 h-3.5" />
@@ -201,7 +147,7 @@ const AdminDashboard = () => {
             ))}
           </div>
           <button
-            onClick={() => navigate(`${prefix}/announcements`)}
+            onClick={() => navigate('/admin/announcements')}
             className="w-full mt-4 text-sm text-sti-blue font-medium flex items-center justify-center gap-1 hover:gap-2 transition-all"
           >
             Manage announcements <ArrowRight className="w-3.5 h-3.5" />
