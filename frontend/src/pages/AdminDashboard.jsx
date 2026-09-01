@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, UserCheck, CheckCircle2, Clock3, ArrowRight } from 'lucide-react';
+import { Users, UserCheck, CheckCircle2, Clock3 } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
 import WelcomeCarousel from '../components/WelcomeCarousel';
@@ -26,36 +26,36 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Top: 3-pic carousel sliding auto every 3s + Calendar beside it */}
+      {/* Top: 3-pic carousel big + Calendar + Announcement same size */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2">
           <WelcomeCarousel />
         </div>
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-4">
           <CalendarWidget />
+          <Card className="p-0 overflow-hidden">
+            <button onClick={() => navigate('/admin/announcements')} className="w-full text-left p-4 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
+              <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm">Announcements</h3>
+              <p className="text-xs text-sti-gray mt-1">View and manage announcements</p>
+              <p className="text-xs text-sti-blue font-semibold mt-2">Go to Announcements →</p>
+            </button>
+          </Card>
         </div>
       </div>
 
-      {/* Stats below - keep small */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats - 4 cards aligned to 3 picture width, a little more spacing */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <StatCard label="Total Students" value={stats.total} icon={Users} accent="blue" />
         <StatCard label="Active Students" value={stats.active} icon={UserCheck} accent="green" />
         <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} accent="yellow" />
         <StatCard label="Pending" value={stats.pending} icon={Clock3} accent="red" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 p-0 overflow-hidden">
-          <div className="p-6">
-            <h3 className="font-bold text-sti-gray-dark dark:text-white">Recent Students</h3>
-            <p className="text-sm text-sti-gray">Manage via Account Management → Create Account</p>
-          </div>
-        </Card>
-        <Card>
-          <h3 className="font-bold text-sti-gray-dark dark:text-white mb-3">Announcements</h3>
-          <p className="text-sm text-sti-gray">No announcements yet</p>
-        </Card>
-      </div>
+      <Card className="p-0 overflow-hidden">
+        <div className="p-4">
+          <h3 className="font-bold text-sti-gray-dark dark:text-white">Recent Students</h3>
+        </div>
+      </Card>
     </div>
   );
 };
