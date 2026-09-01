@@ -65,9 +65,9 @@ const StudentDashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Welcome carousel + calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
+      {/* Welcome carousel + small calendar on right */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-3">
           <WelcomeCarousel />
           <div className="mt-2 bg-sti-blue rounded-xl px-4 py-2.5 flex items-center justify-between">
             <div>
@@ -81,8 +81,16 @@ const StudentDashboard = () => {
             </span>
           </div>
         </div>
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-4">
           <CalendarWidget />
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-card border border-black/5 dark:border-white/5 p-3">
+            <h4 className="font-bold text-xs text-sti-gray-dark dark:text-white mb-2">Quick Links</h4>
+            <div className="space-y-1.5">
+              <button onClick={()=>navigate('/my-dtr')} className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/5">📷 Time In / Out</button>
+              <button onClick={()=>navigate('/requirements')} className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/5">📄 Requirements</button>
+              <button onClick={()=>navigate('/find-company')} className="w-full text-left text-xs px-3 py-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/5">🏢 Find Company</button>
+            </div>
+          </div>
         </div>
       </div>
 

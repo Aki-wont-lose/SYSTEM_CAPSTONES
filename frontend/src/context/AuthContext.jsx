@@ -14,7 +14,12 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('simes_token'));
   const [loading, setLoading] = useState(true);
-  const [theme, setThemeState] = useState(localStorage.getItem('simes_theme') || 'LIGHT');
+  const [theme, setThemeState] = useState(() => {
+    const saved = localStorage.getItem('simes_theme');
+    // Default to LIGHT to avoid dark on reload if user never chose dark
+    if (saved === 'DARK' || saved === 'LIGHT') return saved;
+    return 'LIGHT';
+  });
 
   useEffect(() => {
     const initAuth = async () => {
@@ -27,7 +32,12 @@ export const AuthProvider = ({ children }) => {
           setToken(storedToken);
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-          if (parsedUser.theme) setThemeState(parsedUser.theme);
+          // Only apply user's theme if it's explicitly LIGHT/DARK, don't force dark on reload
+          const localTheme = localStorage.getItem('simes_theme');
+          if (parsedUser.theme && (parsedUser.theme === 'DARK' || parsedUser.theme === 'LIGHT')) {
+            // If user has a saved theme and local hasn't been set, use user's theme
+            if (!localTheme) setThemeState(parsedUser.theme);
+          }
         } catch (error) {
           localStorage.removeItem('simes_token');
           localStorage.removeItem('simes_user');

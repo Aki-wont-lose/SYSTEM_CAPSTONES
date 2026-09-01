@@ -53,9 +53,9 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Welcome carousel + calendar + admin banner */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
+      {/* Welcome carousel + small calendar on right */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="lg:col-span-3">
           <WelcomeCarousel />
         </div>
         <div className="lg:col-span-1">
