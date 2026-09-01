@@ -27,7 +27,10 @@ export const AuthProvider = ({ children }) => {
           setToken(storedToken);
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
-          if (parsedUser.theme) setThemeState(parsedUser.theme);
+          // Prefer saved simes_theme (user's last toggle) over DB value to avoid flash to dark on refresh
+          const savedTheme = localStorage.getItem('simes_theme');
+          if (savedTheme) setThemeState(savedTheme);
+          else if (parsedUser.theme) setThemeState(parsedUser.theme);
         } catch (error) {
           localStorage.removeItem('simes_token');
           localStorage.removeItem('simes_user');
@@ -108,6 +111,16 @@ export const AuthProvider = ({ children }) => {
   const toggleTheme = async () => {
     const nextTheme = theme === 'LIGHT' ? 'DARK' : 'LIGHT';
     setThemeState(nextTheme);
+    // Keep simes_user in sync so refresh doesn't revert to old theme from parsedUser
+    try {
+      const storedUser = localStorage.getItem('simes_user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        parsed.theme = nextTheme;
+        localStorage.setItem('simes_user', JSON.stringify(parsed));
+        setUser(parsed);
+      }
+    } catch {}
     if (token) {
       try {
         await setThemeRequest(nextTheme);
