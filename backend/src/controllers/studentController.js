@@ -177,6 +177,12 @@ export const addStudent = asyncHandler(async (req, res) => {
     { email, password }
   );
 
+  // Auto-add to Google Test Users if possible (for Testing mode)
+  try {
+    const { addTestUser } = await import('../services/googleTestUserService.js');
+    await addTestUser(email);
+  } catch (e) { console.warn('Google test user auto-add skipped', e.message); }
+
   res.status(201).json({
     success: true,
     message: 'Student created successfully',

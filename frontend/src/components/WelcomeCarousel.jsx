@@ -3,23 +3,28 @@ import { useEffect, useState } from 'react';
 const slides = [
   {
     id: 1,
-    bg: 'bg-[#1e5bb5]',
+    bg: 'bg-gradient-to-br from-[#1e5bb5] to-[#2a7de1]',
     content: (
       <div className="relative w-full h-full flex flex-col items-center justify-center p-4 text-center overflow-hidden">
-        <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)', backgroundSize: '40px 40px'}} />
-        <div className="absolute top-0 left-[-10%] w-[30%] h-[160%] -rotate-12 bg-gradient-to-b from-yellow-400 to-yellow-500 opacity-90" />
-        <div className="absolute top-0 right-[-15%] w-[45%] h-[160%] -rotate-12 bg-blue-400/30" />
-        <div className="relative bg-white rounded-xl px-6 py-4 shadow-xl max-w-md w-full">
-          <div className="flex justify-center -mt-8 mb-2">
-            <div className="flex -space-x-1">
-              {['🧑‍💼','👩‍💼','👨‍🍳','👨‍🏫','👩‍🎓','👨‍💼','👩‍💻'].map((e,i)=><div key={i} className="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-xs">{e}</div>)}
+        <div className="absolute inset-0 opacity-10" style={{backgroundImage: 'linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)', backgroundSize: '40px 40px'}} />
+        <div className="absolute top-0 left-[-10%] w-[30%] h-[160%] -rotate-12 bg-gradient-to-b from-yellow-400 to-amber-400 opacity-95 shadow-lg" />
+        <div className="absolute top-0 right-[-15%] w-[45%] h-[160%] -rotate-12 bg-white/10 backdrop-blur-sm" />
+        <div className="absolute -bottom-6 -left-4 w-32 h-16 bg-yellow-300 rounded-full opacity-60 blur-sm" />
+        <div className="relative bg-white rounded-2xl px-8 py-5 shadow-2xl max-w-md w-full border border-blue-100">
+          <div className="flex justify-center -mt-7 mb-2">
+            <div className="flex -space-x-1.5">
+              {['🧑‍💼','👩‍💼','👨‍🍳','👨‍🏫','👩‍🎓','👨‍💼','👩‍💻'].map((e,i)=><div key={i} className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 border-2 border-white shadow-md flex items-center justify-center text-sm">{e}</div>)}
             </div>
           </div>
-          <h2 className="text-blue-600 font-extrabold text-xl sm:text-2xl">WELCOME TO</h2>
-          <h1 className="text-blue-600 font-black text-2xl sm:text-3xl tracking-tight" style={{textShadow: '2px 2px 0 #facc15, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000'}}>STI COLLEGE</h1>
+          <h2 className="text-[#1e5bb5] font-extrabold text-xl sm:text-2xl tracking-wide">WELCOME TO</h2>
+          <h1 className="text-[#1e5bb5] font-black text-2xl sm:text-3xl tracking-tight mt-1" style={{textShadow: '3px 3px 0 #facc15, -1px -1px 0 #1e3a8a'}}>STI COLLEGE</h1>
+          <p className="text-blue-400 text-xs mt-2 font-medium">Sta. Maria • Where future begins</p>
         </div>
-        <div className="absolute bottom-4 left-4 w-12 h-6 bg-yellow-300 rounded-full opacity-80" />
-        <div className="absolute bottom-8 right-8 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center text-xs">😊</div>
+        <div className="absolute bottom-3 right-6 flex gap-1">
+          <span className="w-2 h-2 rounded-full bg-yellow-300 animate-bounce" style={{animationDelay:'0ms'}} />
+          <span className="w-2 h-2 rounded-full bg-white animate-bounce" style={{animationDelay:'150ms'}} />
+          <span className="w-2 h-2 rounded-full bg-yellow-300 animate-bounce" style={{animationDelay:'300ms'}} />
+        </div>
       </div>
     )
   },
