@@ -124,8 +124,10 @@ const StudentDashboard = () => {
             <p className="text-sm text-sti-gray py-8 text-center">No announcements yet. Check back soon.</p>
           ) : (
             <div className="space-y-3">
-              {announcements.map((a) => (
-                <div key={a.id} className="p-4 rounded-xl border border-black/5 dark:border-white/10 hover:border-sti-blue/20 transition-colors">
+            {announcements.map((a) => (
+              <div key={a.id} className="p-0 rounded-xl border border-black/5 dark:border-white/10 overflow-hidden hover:border-sti-blue/20 transition-colors">
+                {a.image && <img src={a.image} alt={a.title} className="w-full h-32 object-cover" />}
+                <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <h4 className="font-semibold text-sm text-sti-gray-dark dark:text-white">{a.title}</h4>
                     <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${priorityColors[a.priority]}`}>
@@ -137,7 +139,8 @@ const StudentDashboard = () => {
                     {new Date(a.publishedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </p>
                 </div>
-              ))}
+              </div>
+            ))}
             </div>
           )}
         </Card>

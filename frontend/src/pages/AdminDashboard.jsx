@@ -8,12 +8,17 @@ import WelcomeCarousel from '../components/WelcomeCarousel';
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    import('../services/studentService').then(({ getDashboardStats }) => {
-      getDashboardStats().then(res => setStats(res.data)).catch(console.error).finally(()=>setLoading(false));
-    });
+    Promise.all([
+      import('../services/studentService').then(m=>m.getDashboardStats()),
+      import('../services/announcementService').then(m=>m.getAllAnnouncements())
+    ]).then(async ([statsRes, annRes])=>{
+      setStats((await statsRes).data);
+      setAnnouncements((await annRes).data.slice(0,3));
+    }).catch(console.error).finally(()=>setLoading(false));
   }, []);
 
   if (loading) {
@@ -38,14 +43,27 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Announcement in the middle */}
+      {/* Announcement in the middle - shows latest posts like announcing */}
       <div className="flex justify-center">
         <Card className="w-full max-w-2xl p-0 overflow-hidden">
-          <button onClick={() => navigate('/admin/announcements')} className="w-full text-center p-6 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
-            <h3 className="font-bold text-sti-gray-dark dark:text-white">Announcements</h3>
-            <p className="text-sm text-sti-gray mt-1">View and manage announcements - posts go to dashboard</p>
-            <p className="text-sm text-sti-blue font-semibold mt-2">Go to Announcements →</p>
-          </button>
+          <div className="p-4 border-b border-black/5 dark:border-white/10">
+            <h3 className="font-bold text-sti-gray-dark dark:text-white text-center">📢 Announcements</h3>
+          </div>
+          {announcements.length===0 ? (
+            <p className="text-sm text-sti-gray text-center py-6">No announcements yet - create one and it will appear here</p>
+          ) : (
+            <div className="divide-y divide-black/5 dark:divide-white/10">
+              {announcements.map(a=>(
+                <div key={a.id} className="p-4">
+                  {a.image && <img src={a.image} alt={a.title} className="w-full h-40 object-cover rounded-xl mb-3" />}
+                  <h4 className="font-bold text-sm text-sti-gray-dark dark:text-white">{a.title}</h4>
+                  <p className="text-sm text-sti-gray mt-1">{a.content}</p>
+                  <p className="text-xs text-sti-gray/70 mt-2">{new Date(a.publishedAt || a.createdAt).toLocaleDateString()}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <button onClick={() => navigate('/admin/announcements')} className="w-full text-center py-3 text-sm text-sti-blue font-semibold hover:bg-sti-gray-light/30">Go to Announcements →</button>
         </Card>
       </div>
 

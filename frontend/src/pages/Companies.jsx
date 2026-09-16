@@ -108,7 +108,7 @@ const Companies = () => {
             try { const res=await batchCreateCompanies(companies); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed\n${res.data.errors.join('\n')}`); loadData(); } catch(err){ alert(err.response?.data?.message || 'Batch failed'); }
             e.target.value='';
           }} />
-          <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-company-csv').click()}>Batch Upload (CSV)</Button>
+          <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-company-csv').click()}>Batch Upload</Button>
         </div>
       </div>
 

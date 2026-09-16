@@ -209,7 +209,7 @@ const StudentManagement = () => {
                 e.target.value='';
               }} />
               <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-student-csv').click()}>
-                Batch Upload (CSV)
+                Batch Upload
               </Button>
             </>
           )}

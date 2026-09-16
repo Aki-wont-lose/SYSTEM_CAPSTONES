@@ -44,7 +44,7 @@ export const getAnnouncementById = async (id) => {
 };
 
 export const createAnnouncement = async (announcementData) => {
-  const { title, content, category = 'General', priority = 'NORMAL', isActive = true } = announcementData;
+  const { title, content, category = 'General', priority = 'NORMAL', isActive = true, image } = announcementData;
 
   if (!title || !content) {
     const error = new Error('Title and content are required');
@@ -59,6 +59,7 @@ export const createAnnouncement = async (announcementData) => {
       category,
       priority,
       isActive,
+      image: image || null,
       publishedAt: isActive ? new Date() : null
     }
   });

@@ -139,7 +139,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">{tab === 'requirements' ? 'Templates' : 'Submissions'}</h1>
-          <p className="text-sm text-sti-gray">{tab === 'requirements' ? 'Guide for students - templates (Excel batch upload)' : 'Student submissions'}</p>
+          <p className="text-sm text-sti-gray">{tab === 'requirements' ? 'Templates' : 'Student submissions'}</p>
         </div>
         {tab === 'requirements' && (
           <div className="flex gap-2">
@@ -158,7 +158,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
               loadData(); e.target.value='';
               alert(`Batch templates: ${reqs.length} processed`);
             }} />
-            <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()}>Batch Upload (CSV)</Button>
+            <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()}>Batch Upload</Button>
           </div>
         )}
       </div>
