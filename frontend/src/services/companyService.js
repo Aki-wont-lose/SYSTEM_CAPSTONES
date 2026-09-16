@@ -29,3 +29,8 @@ export const assignStudentToCompany = async (companyId, studentId) => {
   const response = await api.post(`/companies/${companyId}/assign`, { studentId });
   return response.data;
 };
+
+export const batchCreateCompanies = async (companies) => {
+  const response = await api.post('/companies/batch', { companies });
+  return response.data;
+};

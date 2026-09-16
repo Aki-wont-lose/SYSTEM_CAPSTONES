@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Building2, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Building2, Users, Upload } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import LocationPicker from '../components/LocationPicker';
-import { getCompanies, createCompany, updateCompany, deleteCompany } from '../services/companyService';
+import { getCompanies, createCompany, updateCompany, deleteCompany, batchCreateCompanies } from '../services/companyService';
 
 const emptyForm = { name: '', address: '', latitude: '', longitude: '', contactPerson: '', contactNumber: '', email: '', industryType: '', availableSlots: 0, status: 'ACTIVE' };
 
@@ -93,7 +93,23 @@ const Companies = () => {
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">Partner Companies</h1>
           <p className="text-sm text-sti-gray">Manage OJT host companies and available slots.</p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={openNew}>Add Company</Button>
+        <div className="flex gap-2">
+          <Button variant="primary" icon={Plus} onClick={openNew}>Add Company</Button>
+          <input type="file" accept=".csv" id="batch-company-csv" className="hidden" onChange={async (e)=>{
+            const file=e.target.files?.[0]; if(!file) return;
+            const text=await file.text();
+            const lines=text.trim().split('\n');
+            const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
+            const companies=lines.slice(1).map(line=>{
+              const vals=line.split(',').map(v=>v.trim());
+              const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
+              return { name: obj['name'], address: obj['address'], contactPerson: obj['contactperson'] || obj['contact person'], contactNumber: obj['contactnumber'] || obj['contact number'], email: obj['email'], industryType: obj['industrytype'] || obj['industry'], availableSlots: parseInt(obj['availableslots'] || obj['slots'] || '0') };
+            });
+            try { const res=await batchCreateCompanies(companies); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed\n${res.data.errors.join('\n')}`); loadData(); } catch(err){ alert(err.response?.data?.message || 'Batch failed'); }
+            e.target.value='';
+          }} />
+          <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-company-csv').click()}>Batch Upload (CSV)</Button>
+        </div>
       </div>
 
       {loading ? (

@@ -37,6 +37,11 @@ export const deleteStudent = async (id) => {
   return response.data;
 };
 
+export const batchCreateStudents = async (students) => {
+  const response = await api.post('/students/batch', { students });
+  return response.data;
+};
+
 export const getDashboardStats = async () => {
   const response = await api.get('/students/stats');
   return response.data;

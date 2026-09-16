@@ -25,22 +25,28 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Top: 3-pic carousel big + Calendar + Announcement same size */}
+    <div className="space-y-4 animate-fade-in">
+      {/* Top: 3-pic carousel big height, calendar smaller length beside it */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2">
           <WelcomeCarousel />
         </div>
-        <div className="lg:col-span-1 space-y-4">
-          <CalendarWidget />
-          <Card className="p-0 overflow-hidden">
-            <button onClick={() => navigate('/admin/announcements')} className="w-full text-left p-4 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
-              <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm">Announcements</h3>
-              <p className="text-xs text-sti-gray mt-1">View and manage announcements</p>
-              <p className="text-xs text-sti-blue font-semibold mt-2">Go to Announcements →</p>
-            </button>
-          </Card>
+        <div className="lg:col-span-1">
+          <div className="scale-90 origin-top">
+            <CalendarWidget />
+          </div>
         </div>
+      </div>
+
+      {/* Announcement in the middle */}
+      <div className="flex justify-center">
+        <Card className="w-full max-w-2xl p-0 overflow-hidden">
+          <button onClick={() => navigate('/admin/announcements')} className="w-full text-center p-6 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
+            <h3 className="font-bold text-sti-gray-dark dark:text-white">Announcements</h3>
+            <p className="text-sm text-sti-gray mt-1">View and manage announcements - posts go to dashboard</p>
+            <p className="text-sm text-sti-blue font-semibold mt-2">Go to Announcements →</p>
+          </button>
+        </Card>
       </div>
 
       {/* Stats - 2 and 2, moved upward near 3 pics */}

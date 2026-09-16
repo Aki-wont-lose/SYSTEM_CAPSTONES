@@ -220,3 +220,27 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
     data: stats
   });
 });
+
+export const batchCreateStudentsHandler = asyncHandler(async (req, res) => {
+  const { students } = req.body;
+  if (!Array.isArray(students) || students.length === 0) {
+    return res.status(400).json({ success: false, message: 'No students provided' });
+  }
+  const results = { created: 0, failed: 0, errors: [] };
+  for (const s of students) {
+    try {
+      if (!s.studentId || !s.firstName || !s.lastName || !s.email || !s.password) {
+        results.failed++; results.errors.push(`${s.email || 'unknown'}: missing required fields`); continue;
+      }
+      await createStudent(
+        { studentId: s.studentId, firstName: s.firstName, lastName: s.lastName, course: s.course, section: s.section, email: s.email, contactNumber: s.contactNumber, assignedCompany: s.companyId },
+        { email: s.email, password: s.password }
+      );
+      results.created++;
+    } catch (e) {
+      results.failed++;
+      results.errors.push(`${s.email}: ${e.message}`);
+    }
+  }
+  res.status(200).json({ success: true, data: results });
+});

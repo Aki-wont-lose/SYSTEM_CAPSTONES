@@ -11,8 +11,8 @@ import {
   reviewSubmission
 } from '../services/requirementService';
 
-const AdminRequirements = () => {
-  const [tab, setTab] = useState('requirements'); // 'requirements' | 'submissions'
+const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = false, hideSubmissions = false }) => {
+  const [tab, setTab] = useState(defaultTab); // 'requirements' | 'submissions'
   const [requirements, setRequirements] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -138,30 +138,55 @@ const AdminRequirements = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">Requirements</h1>
-          <p className="text-sm text-sti-gray">Manage required documents and review student submissions.</p>
+          <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">{tab === 'requirements' ? 'Templates' : 'Submissions'}</h1>
+          <p className="text-sm text-sti-gray">{tab === 'requirements' ? 'Guide for students - templates (Excel batch upload)' : 'Student submissions'}</p>
         </div>
-        {tab === 'requirements' && <Button variant="primary" icon={Plus} onClick={openNew}>Add Requirement</Button>}
+        {tab === 'requirements' && (
+          <div className="flex gap-2">
+            <Button variant="primary" icon={Plus} onClick={openNew}>Add Template</Button>
+            <input type="file" accept=".csv" id="batch-template-csv" className="hidden" onChange={async (e)=>{
+              const file=e.target.files?.[0]; if(!file) return;
+              const text=await file.text();
+              const lines=text.trim().split('\n');
+              const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
+              const reqs=lines.slice(1).map(line=>{
+                const vals=line.split(',').map(v=>v.trim());
+                const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
+                return { title: obj['title'], description: obj['description'], isRequired: obj['isrequired'] ? obj['isrequired'].toLowerCase()==='true' : true };
+              });
+              for(const r of reqs){ try{ await createRequirement(r); }catch(e){ console.error(e); } }
+              loadData(); e.target.value='';
+              alert(`Batch templates: ${reqs.length} processed`);
+            }} />
+            <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()}>Batch Upload (CSV)</Button>
+          </div>
+        )}
       </div>
 
-      <div className="flex gap-2 border-b border-black/5 dark:border-white/10">
-        <button
-          onClick={() => setTab('requirements')}
-          className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-            tab === 'requirements' ? 'border-sti-blue text-sti-blue' : 'border-transparent text-sti-gray hover:text-sti-gray-dark dark:hover:text-white'
-          }`}
-        >
-          Requirements
-        </button>
-        <button
-          onClick={() => setTab('submissions')}
-          className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-            tab === 'submissions' ? 'border-sti-blue text-sti-blue' : 'border-transparent text-sti-gray hover:text-sti-gray-dark dark:hover:text-white'
-          }`}
-        >
-          Submissions
-        </button>
-      </div>
+      {!(hideRequirements && hideSubmissions) && (
+        <div className="flex gap-2 border-b border-black/5 dark:border-white/10">
+          {!hideRequirements && (
+            <button
+              onClick={() => setTab('requirements')}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+                tab === 'requirements' ? 'border-sti-blue text-sti-blue' : 'border-transparent text-sti-gray hover:text-sti-gray-dark dark:hover:text-white'
+              }`}
+            >
+              Templates
+            </button>
+          )}
+          {!hideSubmissions && (
+            <button
+              onClick={() => setTab('submissions')}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+                tab === 'submissions' ? 'border-sti-blue text-sti-blue' : 'border-transparent text-sti-gray hover:text-sti-gray-dark dark:hover:text-white'
+              }`}
+            >
+              Submissions
+            </button>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center h-64">

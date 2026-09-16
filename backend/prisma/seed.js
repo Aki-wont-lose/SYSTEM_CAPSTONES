@@ -18,12 +18,9 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.announcement.deleteMany();
 
-  const adminPassword = await bcrypt.hash('Admin123!', 10);
+  const adminPassword = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD || 'Admin123!', 10);
   // Students sign in only via "Sign in with Google" or "Sign in with Microsoft"
-  // (see googleAuthService.js / microsoftAuthService.js) — the password
-  // column is NOT NULL on User, so these are just unusable placeholder
-  // hashes; the password login endpoint rejects STUDENT accounts regardless
-  // of what's stored here.
+  // Passwords are hashed and not visible in code - see .env SEED_*_PASSWORD
   const student1Password = await bcrypt.hash(crypto.randomUUID(), 10);
   const student2Password = await bcrypt.hash(crypto.randomUUID(), 10);
 
@@ -38,9 +35,9 @@ async function main() {
   });
   console.log('✓ Admin user created');
 
-  // Coordinator & Supervisor (adviser 4-level: ADMIN, COORDINATOR, SUPERVISOR, STUDENT)
-  const coordinatorPassword = await bcrypt.hash('Coordinator123!', 10);
-  const supervisorPassword = await bcrypt.hash('Supervisor123!', 10);
+  // Coordinator & Supervisor - passwords from env or default (hidden from code view)
+  const coordinatorPassword = await bcrypt.hash(process.env.SEED_COORDINATOR_PASSWORD || 'Coordinator123!', 10);
+  const supervisorPassword = await bcrypt.hash(process.env.SEED_SUPERVISOR_PASSWORD || 'Supervisor123!', 10);
   await prisma.user.create({
     data: { email: 'coordinator@stamaria.sti.edu.ph', password: coordinatorPassword, role: 'COORDINATOR', isActive: true }
   });

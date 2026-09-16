@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -8,7 +8,8 @@ import {
   getAllStudents,
   createStudent,
   updateStudent,
-  deleteStudent
+  deleteStudent,
+  batchCreateStudents
 } from '../services/studentService';
 import { getCompanies } from '../services/companyService';
 import { getStudentAttendanceForStaff, getStudentSummaryForStaff } from '../services/attendanceService';
@@ -172,7 +173,7 @@ const StudentManagement = () => {
             <option value="FAILED">Failed</option>
           </select>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {role === 'ADMIN' && (
             <Button variant="primary" icon={Plus} onClick={() => openAddModal('STUDENT')}>
               Create Account
@@ -182,6 +183,35 @@ const StudentManagement = () => {
             <Button variant="primary" icon={Plus} onClick={() => openAddModal('STUDENT')}>
               Add Student
             </Button>
+          )}
+          {(role === 'ADMIN' || role === 'COORDINATOR') && (
+            <>
+              <input type="file" accept=".csv" id="batch-student-csv" className="hidden" onChange={async (e)=>{
+                const file=e.target.files?.[0]; if(!file) return;
+                const text=await file.text();
+                const lines=text.trim().split('\n');
+                const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
+                const students=lines.slice(1).map(line=>{
+                  const vals=line.split(',').map(v=>v.trim());
+                  const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
+                  return {
+                    studentId: obj['studentid'] || obj['id'],
+                    firstName: obj['firstname'] || obj['first name'],
+                    lastName: obj['lastname'] || obj['last name'],
+                    course: obj['course'],
+                    section: obj['section'],
+                    email: obj['email'],
+                    password: obj['password'] || 'Student123!',
+                    contactNumber: obj['contactnumber'] || obj['contact'],
+                  };
+                });
+                try { const res=await batchCreateStudents(students); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed\n${res.data.errors.join('\n')}`); loadStudents(); } catch(err){ alert(err.response?.data?.message || 'Batch failed'); }
+                e.target.value='';
+              }} />
+              <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-student-csv').click()}>
+                Batch Upload (CSV)
+              </Button>
+            </>
           )}
         </div>
       </Card>

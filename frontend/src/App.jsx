@@ -19,6 +19,8 @@ import Schedule from './pages/Schedule';
 import AdminDashboard from './pages/AdminDashboard';
 import StudentManagement from './pages/StudentManagement';
 import AdminRequirements from './pages/AdminRequirements';
+import Templates from './pages/Templates';
+import Submissions from './pages/Submissions';
 import Companies from './pages/Companies';
 import AdminLogs from './pages/AdminLogs';
 import AnnouncementManagement from './pages/AnnouncementManagement';
@@ -65,6 +67,8 @@ function App() {
         <Route path="/dashboard" element={<StudentDashboard />} />
         <Route path="/my-dtr" element={<StudentDTR />} />
         <Route path="/my-logs" element={<MyLogs />} />
+        <Route path="/templates" element={<Requirements />} />
+        <Route path="/submissions" element={<Requirements />} />
         <Route path="/requirements" element={<Requirements />} />
         <Route path="/find-company" element={<FindCompany />} />
         <Route path="/schedule" element={<Schedule />} />
@@ -82,6 +86,8 @@ function App() {
       >
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/students" element={<StudentManagement />} />
+        <Route path="/admin/templates" element={<Templates />} />
+        <Route path="/admin/submissions" element={<Submissions />} />
         <Route path="/admin/requirements" element={<AdminRequirements />} />
         <Route path="/admin/companies" element={<Companies />} />
         <Route path="/admin/logs" element={<AdminLogs />} />
@@ -101,6 +107,8 @@ function App() {
         <Route path="/coordinator/dashboard" element={<AdminDashboard />} />
         <Route path="/coordinator/students" element={<StudentManagement />} />
         <Route path="/coordinator/attendance" element={<AttendanceMonitoring />} />
+        <Route path="/coordinator/templates" element={<Templates />} />
+        <Route path="/coordinator/submissions" element={<Submissions />} />
         <Route path="/coordinator/requirements" element={<AdminRequirements />} />
         <Route path="/coordinator/companies" element={<Companies />} />
         <Route path="/coordinator/logs" element={<AdminLogs />} />

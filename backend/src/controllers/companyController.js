@@ -41,3 +41,17 @@ export const assignStudent = asyncHandler(async (req, res) => {
   const student = await assignStudentToCompany(studentId, req.params.id);
   res.status(200).json({ success: true, message: 'Student assigned', data: student });
 });
+
+export const batchCreateCompaniesHandler = asyncHandler(async (req, res) => {
+  const { companies } = req.body;
+  if (!Array.isArray(companies) || companies.length === 0) return res.status(400).json({ success: false, message: 'No companies provided' });
+  const results = { created: 0, failed: 0, errors: [] };
+  for (const c of companies) {
+    try {
+      if (!c.name) { results.failed++; results.errors.push(`${c.name || 'unknown'}: missing name`); continue; }
+      await createCompany(c);
+      results.created++;
+    } catch (e) { results.failed++; results.errors.push(`${c.name}: ${e.message}`); }
+  }
+  res.status(200).json({ success: true, data: results });
+});
