@@ -42,20 +42,23 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Announcements feed in middle of dashboard - shows with photo */}
-      <div className="space-y-3">
-        {announcements.length===0 ? (
-          <Card className="text-center py-6"><p className="text-sm text-sti-gray">No announcements yet</p></Card>
-        ) : announcements.map(a=>(
-          <Card key={a.id} className="p-0 overflow-hidden">
-            {a.image && <img src={a.image} alt={a.title} className="w-full h-40 object-cover" />}
-            <div className="p-4">
-              <h4 className="font-bold text-sm">{a.title}</h4>
-              <p className="text-sm text-sti-gray mt-1">{a.content}</p>
-              <p className="text-xs text-sti-gray/70 mt-2">{new Date(a.publishedAt || a.createdAt).toLocaleDateString()}</p>
-            </div>
-          </Card>
-        ))}
+      {/* Announcements - fitted whole photo not cropped, aligned to Welcome width (2/3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 space-y-3">
+          {announcements.length===0 ? (
+            <Card className="text-center py-6"><p className="text-sm text-sti-gray">No announcements yet</p></Card>
+          ) : announcements.map(a=>(
+            <Card key={a.id} className="p-0 overflow-hidden">
+              {a.image && <img src={a.image} alt={a.title} className="w-full max-h-80 object-contain bg-sti-gray-light dark:bg-slate-900" />}
+              <div className="p-4">
+                <h4 className="font-bold text-sm">{a.title}</h4>
+                <p className="text-sm text-sti-gray mt-1">{a.content}</p>
+                <p className="text-xs text-sti-gray/70 mt-2">{new Date(a.publishedAt || a.createdAt).toLocaleDateString()}</p>
+              </div>
+            </Card>
+          ))}
+        </div>
+        <div className="hidden lg:block" />
       </div>
 
       {/* Stats - 2 and 2, aligned */}

@@ -75,26 +75,24 @@ const StudentDashboard = () => {
         </div>
       </div>
 
-      {/* Announcements in middle */}
-      <div className="flex justify-center">
-        <Card className="w-full max-w-2xl">
-          <div className="flex items-center gap-2 mb-3">
-            <Megaphone className="w-5 h-5 text-sti-blue" />
-            <h3 className="font-bold text-sti-gray-dark dark:text-white">Announcements</h3>
-          </div>
+      {/* Announcements in middle - fitted whole photo, aligned to Welcome width */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 space-y-3">
           {announcements.length === 0 ? (
-            <p className="text-sm text-sti-gray py-4 text-center">No announcements yet. Check back soon.</p>
+            <Card className="text-center py-6"><p className="text-sm text-sti-gray">No announcements yet</p></Card>
           ) : (
-            <div className="space-y-3">
-              {announcements.slice(0,2).map((a) => (
-                <div key={a.id} className="p-3 rounded-xl border border-black/5 dark:border-white/10">
+            announcements.slice(0,2).map((a) => (
+              <Card key={a.id} className="p-0 overflow-hidden">
+                {a.image && <img src={a.image} alt={a.title} className="w-full max-h-80 object-contain bg-sti-gray-light dark:bg-slate-900" />}
+                <div className="p-3">
                   <h4 className="font-semibold text-sm text-sti-gray-dark dark:text-white">{a.title}</h4>
                   <p className="text-sm text-sti-gray mt-1 line-clamp-2">{a.content}</p>
                 </div>
-              ))}
-            </div>
+              </Card>
+            ))
           )}
-        </Card>
+        </div>
+        <div className="hidden lg:block" />
       </div>
 
       {/* Stats - 3 like STI */}
