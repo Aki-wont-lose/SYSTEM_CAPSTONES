@@ -104,7 +104,7 @@ const Companies = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">Partner Companies</h1>
-          <p className="text-sm text-sti-gray">Manage OJT host companies and available slots. Drag CSV here or use Batch Upload.</p>
+          <p className="text-sm text-sti-gray">Manage OJT host companies and available slots.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="primary" icon={Plus} onClick={openNew}>Add Company</Button>

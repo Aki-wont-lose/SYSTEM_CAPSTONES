@@ -42,25 +42,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Layer 2: 3 borders like button section - Account, Companies, Announcements */}
-      <Card className="p-0 overflow-hidden">
-        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-black/5 dark:divide-white/10">
-          <button onClick={()=>navigate('/admin/students')} className="p-4 text-left hover:bg-sti-gray-light/50">
-            <h4 className="font-bold text-sm">Account Management</h4>
-            <p className="text-xs text-sti-gray mt-1">Create accounts</p>
-          </button>
-          <button onClick={()=>navigate('/admin/companies')} className="p-4 text-left hover:bg-sti-gray-light/50">
-            <h4 className="font-bold text-sm">Partner Companies</h4>
-            <p className="text-xs text-sti-gray mt-1">Manage companies</p>
-          </button>
-          <button onClick={()=>navigate('/admin/announcements')} className="p-4 text-left hover:bg-sti-gray-light/50">
-            <h4 className="font-bold text-sm">Announcements</h4>
-            <p className="text-xs text-sti-gray mt-1">Post to dashboard</p>
-          </button>
-        </div>
-      </Card>
-
-      {/* Layer 2b: Announcements feed in middle of dashboard */}
+      {/* Announcements feed in middle of dashboard - shows with photo */}
       <div className="space-y-3">
         {announcements.length===0 ? (
           <Card className="text-center py-6"><p className="text-sm text-sti-gray">No announcements yet</p></Card>
