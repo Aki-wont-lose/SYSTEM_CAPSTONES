@@ -67,8 +67,8 @@ function App() {
         <Route path="/dashboard" element={<StudentDashboard />} />
         <Route path="/my-dtr" element={<StudentDTR />} />
         <Route path="/my-logs" element={<MyLogs />} />
-        <Route path="/templates" element={<Requirements />} />
-        <Route path="/submissions" element={<Requirements />} />
+        <Route path="/templates" element={<Requirements mode="templates" />} />
+        <Route path="/submissions" element={<Requirements mode="submissions" />} />
         <Route path="/requirements" element={<Requirements />} />
         <Route path="/find-company" element={<FindCompany />} />
         <Route path="/schedule" element={<Schedule />} />

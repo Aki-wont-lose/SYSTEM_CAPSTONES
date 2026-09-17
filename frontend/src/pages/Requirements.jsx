@@ -19,7 +19,8 @@ const fileToBase64 = (file) =>
     reader.readAsDataURL(file);
   });
 
-const Requirements = () => {
+const Requirements = ({ mode = 'all' }) => {
+  // mode: 'templates' = guide only (download), 'submissions' = upload only, 'all' = both (legacy)
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState(null);
@@ -78,11 +79,13 @@ const Requirements = () => {
     );
   }
 
+  const isTemplates = mode === 'templates';
+  const isSubmissions = mode === 'submissions';
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">Requirements</h1>
-        <p className="text-sm text-sti-gray">Upload and track the documents needed for your OJT.</p>
+        <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">{isTemplates ? 'Templates' : isSubmissions ? 'My Submissions' : 'Requirements'}</h1>
+        <p className="text-sm text-sti-gray">{isTemplates ? 'Download guides for requirements' : isSubmissions ? 'Upload and track your submissions' : 'Upload and track the documents needed for your OJT.'}</p>
       </div>
 
       {error && (
@@ -124,7 +127,7 @@ const Requirements = () => {
                   )}
                 </div>
 
-                {req.templateFile && (
+                {(isTemplates || mode === 'all') && req.templateFile && (
                   <button
                     onClick={() => { const a=document.createElement('a'); a.href=req.templateFile; a.download=req.templateFileName || `${req.title}_template.pdf`; a.click(); }}
                     className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-sti-blue hover:text-sti-blue-dark border border-sti-blue/20 px-3 py-2 rounded-lg hover:bg-sti-blue-50 w-full justify-center"
@@ -132,22 +135,24 @@ const Requirements = () => {
                     <Download className="w-4 h-4" /> Download template: {req.templateFileName || 'template.pdf'} — edit your name then upload
                   </button>
                 )}
-                {submission && (
+                {(isSubmissions || mode === 'all') && submission && (
                   <p className="text-xs text-sti-gray mb-3 truncate">📎 {submission.fileName}</p>
                 )}
-                {submission?.status === 'REJECTED' && submission.remarks && (
+                {(isSubmissions || mode === 'all') && submission?.status === 'REJECTED' && submission.remarks && (
                   <p className="text-xs text-red-600 mb-3">Reason: {submission.remarks}</p>
                 )}
 
-                <Button
-                  variant={submission?.status === 'APPROVED' ? 'secondary' : 'primary'}
-                  icon={Upload}
-                  className="w-full"
-                  loading={uploadingId === req.id}
-                  onClick={() => triggerUpload(req.id)}
-                >
-                  {!submission ? 'Upload File' : submission.status === 'REJECTED' ? 'Re-upload' : 'Replace File'}
-                </Button>
+                {(isSubmissions || mode === 'all') && (
+                  <Button
+                    variant={submission?.status === 'APPROVED' ? 'secondary' : 'primary'}
+                    icon={Upload}
+                    className="w-full"
+                    loading={uploadingId === req.id}
+                    onClick={() => triggerUpload(req.id)}
+                  >
+                    {!submission ? 'Upload File' : submission.status === 'REJECTED' ? 'Re-upload' : 'Replace File'}
+                  </Button>
+                )}
               </Card>
             );
           })}
