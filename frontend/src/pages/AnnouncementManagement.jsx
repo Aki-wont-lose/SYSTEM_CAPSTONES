@@ -154,13 +154,13 @@ const AnnouncementManagement = () => {
             <textarea required rows={5} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="input-field resize-none" placeholder="Write the announcement details..." />
           </div>
           <div>
-            <label className="block text-sm font-medium text-sti-gray-dark dark:text-white mb-1.5">Photo (optional)</label>
+            <label className="block text-sm font-medium text-sti-gray-dark dark:text-white mb-1.5">Photo (optional, 298KB ok, max 4MB)</label>
             <input type="file" accept="image/*" onChange={async (e)=>{
               const file=e.target.files?.[0]; if(!file) return;
-              if(file.size>4*1024*1024){alert('Max 4MB'); return;}
-              const r=new FileReader(); r.onload=()=>setForm({...form, image: r.result}); r.readAsDataURL(file);
+              if(file.size>4*1024*1024){alert('Max 4MB - your file is ' + (file.size/1024).toFixed(0) + 'KB'); return;}
+              const r=new FileReader(); r.onload=()=>setForm(prev=>({...prev, image: r.result})); r.onerror=()=>alert('Failed to read file'); r.readAsDataURL(file);
             }} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white" />
-            {form.image && <div className="mt-2 relative"><img src={form.image} alt="preview" className="w-full h-32 object-cover rounded-lg" /><button type="button" onClick={()=>setForm({...form, image: null})} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 text-xs">✕</button></div>}
+            {form.image ? <div className="mt-2 relative"><img src={form.image} alt="preview" className="w-full h-32 object-cover rounded-lg border" /><button type="button" onClick={()=>setForm(prev=>({...prev, image: null}))} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 text-xs">✕</button><p className="text-xs text-green-600 mt-1">✓ Photo ready ({(form.image.length/1024).toFixed(0)}KB)</p></div> : <p className="text-xs text-sti-gray mt-1">No photo selected</p>}
           </div>
           <label className="flex items-center gap-2 text-sm text-sti-gray-dark dark:text-white">
             <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded accent-sti-blue" />
