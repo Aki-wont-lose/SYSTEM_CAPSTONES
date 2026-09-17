@@ -32,8 +32,8 @@ const WelcomeCarousel = () => {
   return (
     <div className="relative w-full h-64 sm:h-72 lg:h-80 rounded-2xl overflow-hidden shadow-card bg-black">
       {slides.map((s, i) => (
-        <div key={s.id} className={`absolute inset-0 transition-opacity duration-700 ${i === current ? 'opacity-100' : 'opacity-0'}`}>
-          <img src={s.image} alt={s.alt} className="w-full h-full object-cover" onError={(e)=>{e.target.style.display='none'; e.target.nextSibling.style.display='flex'}} />
+        <div key={s.id} className={`absolute inset-0 transition-opacity duration-700 ${i === current ? 'opacity-100' : 'opacity-0'} bg-black flex items-center justify-center`}>
+          <img src={s.image} alt={s.alt} className="w-full h-full object-contain" onError={(e)=>{e.target.style.display='none'; e.target.nextSibling.style.display='flex'}} />
           <div className={`hidden absolute inset-0 ${s.bg} flex items-center justify-center p-4 text-center`}>
             <p className="text-white font-bold text-sm">{s.alt} - Place {s.image} in frontend/public/</p>
           </div>
