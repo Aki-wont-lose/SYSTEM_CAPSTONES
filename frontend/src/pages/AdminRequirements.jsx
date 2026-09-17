@@ -151,7 +151,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   };
 
   return (
-    <div className="space-y-6 animate-fade-in" onDragOver={e=>{if(tab==='requirements'){e.preventDefault(); setDragOver(true)}}} onDragLeave={()=>setDragOver(false)} onDrop={e=>{if(tab==='requirements'){e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}}>
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">{tab === 'requirements' ? 'Templates' : 'Submissions'}</h1>
@@ -160,16 +160,18 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
         {tab === 'requirements' && (
           <div className="flex gap-2">
             <Button variant="primary" icon={Plus} onClick={openNew}>Add Template</Button>
-            <input type="file" accept=".csv" id="batch-template-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
-            <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()}>Batch Upload</Button>
+            <div
+              onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
+              onDragLeave={()=>setDragOver(false)}
+              onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
+              className={dragOver ? 'ring-2 ring-sti-blue rounded-xl' : ''}
+            >
+              <input type="file" accept=".csv" id="batch-template-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
+              <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()}>Batch Upload</Button>
+            </div>
           </div>
         )}
       </div>
-      {tab === 'requirements' && (
-        <div className={`border-2 border-dashed rounded-xl p-3 text-center text-sm ${dragOver ? 'border-sti-blue bg-sti-blue-50 text-sti-blue' : 'border-black/10 text-sti-gray bg-sti-gray-light/30'}`}>
-          {dragOver ? 'Drop CSV here to batch upload' : 'Drag & drop CSV file here for batch upload (Excel → Save as CSV)'}
-        </div>
-      )}
 
       {!(hideRequirements && hideSubmissions) && (
         <div className="flex gap-2 border-b border-black/5 dark:border-white/10">
