@@ -118,20 +118,23 @@ const AnnouncementManagement = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {announcements.map((a) => (
-            <Card key={a.id} hover className="flex flex-col">
-              <h4 className="font-bold text-sti-gray-dark dark:text-white mb-2">{a.title}</h4>
-              <p className="text-sm text-sti-gray flex-1 line-clamp-3">{a.content}</p>
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-black/5 dark:border-white/10">
-                <span className={`text-xs font-medium ${a.isActive ? 'text-sti-blue' : 'text-sti-gray'}`}>
-                  {a.isActive ? 'Published' : 'Draft'}
-                </span>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => openEditModal(a)} className="p-2 rounded-lg hover:bg-sti-gray-light text-sti-gray hover:text-sti-blue transition-colors">
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setDeleteTarget(a)} className="p-2 rounded-lg hover:bg-red-50 text-sti-gray hover:text-red-600 transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            <Card key={a.id} hover className="flex flex-col p-0 overflow-hidden">
+              {a.image && <img src={a.image} alt={a.title} className="w-full h-32 object-cover" />}
+              <div className="p-4 flex flex-col flex-1">
+                <h4 className="font-bold text-sti-gray-dark dark:text-white mb-2">{a.title}</h4>
+                <p className="text-sm text-sti-gray flex-1 line-clamp-3">{a.content}</p>
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-black/5 dark:border-white/10">
+                  <span className={`text-xs font-medium ${a.isActive ? 'text-sti-blue' : 'text-sti-gray'}`}>
+                    {a.isActive ? 'Published' : 'Draft'}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEditModal(a)} className="p-2 rounded-lg hover:bg-sti-gray-light text-sti-gray hover:text-sti-blue transition-colors">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => setDeleteTarget(a)} className="p-2 rounded-lg hover:bg-red-50 text-sti-gray hover:text-red-600 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </Card>

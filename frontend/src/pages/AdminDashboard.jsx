@@ -61,18 +61,22 @@ const AdminDashboard = () => {
         <div className="hidden lg:block" />
       </div>
 
-      {/* Stats - 2 and 2, aligned */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+      {/* 5 cards aligned to 3 pictures - 3 on first line, 2 on second, like 3 lines */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Total Students" value={stats.total} icon={Users} accent="blue" />
         <StatCard label="Active Students" value={stats.active} icon={UserCheck} accent="green" />
         <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} accent="yellow" />
-        <StatCard label="Pending" value={stats.pending} icon={Clock3} accent="red" />
       </div>
-
-      <Card>
-        <h3 className="font-bold text-sti-gray-dark dark:text-white">Recent Students</h3>
-        <p className="text-sm text-sti-gray mt-1">Manage via Account Management → Create Account</p>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <StatCard label="Pending" value={stats.pending} icon={Clock3} accent="red" />
+          <Card>
+            <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm">Recent Students</h3>
+            <p className="text-xs text-sti-gray mt-1">Manage via Account Management → Create Account</p>
+          </Card>
+        </div>
+        <div className="hidden lg:block" />
+      </div>
     </div>
   );
 };
