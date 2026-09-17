@@ -14,6 +14,19 @@ const Companies = () => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const handleBatchFile = async (file) => {
+    if (!file || !file.name.endsWith('.csv')) { alert('Please use CSV'); return; }
+    const text=await file.text();
+    const lines=text.trim().split('\n');
+    const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
+    const companies=lines.slice(1).map(line=>{
+      const vals=line.split(',').map(v=>v.trim());
+      const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
+      return { name: obj['name'], address: obj['address'], contactPerson: obj['contactperson'] || obj['contact person'], contactNumber: obj['contactnumber'] || obj['contact number'], email: obj['email'], industryType: obj['industrytype'] || obj['industry'], availableSlots: parseInt(obj['availableslots'] || obj['slots'] || '0') };
+    });
+    try { const res=await batchCreateCompanies(companies); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed`); loadData(); } catch(err){ alert('Batch failed'); }
+  };
 
   const loadData = async () => {
     setLoading(true);
@@ -88,29 +101,26 @@ const Companies = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      <div
+        onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
+        onDragLeave={()=>setDragOver(false)}
+        onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
+        className={`border-2 border-dashed rounded-xl p-3 text-center text-sm ${dragOver ? 'border-sti-blue bg-sti-blue-50 text-sti-blue' : 'border-black/10 text-sti-gray bg-sti-gray-light/30'}`}
+      >
+        {dragOver ? 'Drop CSV here to batch upload' : 'Drag & drop CSV file here for batch upload (Excel → Save as CSV)'}
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">Partner Companies</h1>
-          <p className="text-sm text-sti-gray">Manage OJT host companies and available slots.</p>
+          <p className="text-sm text-sti-gray">Manage OJT host companies and available slots. Drag CSV here or use Batch Upload.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="primary" icon={Plus} onClick={openNew}>Add Company</Button>
-          <input type="file" accept=".csv" id="batch-company-csv" className="hidden" onChange={async (e)=>{
-            const file=e.target.files?.[0]; if(!file) return;
-            const text=await file.text();
-            const lines=text.trim().split('\n');
-            const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
-            const companies=lines.slice(1).map(line=>{
-              const vals=line.split(',').map(v=>v.trim());
-              const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
-              return { name: obj['name'], address: obj['address'], contactPerson: obj['contactperson'] || obj['contact person'], contactNumber: obj['contactnumber'] || obj['contact number'], email: obj['email'], industryType: obj['industrytype'] || obj['industry'], availableSlots: parseInt(obj['availableslots'] || obj['slots'] || '0') };
-            });
-            try { const res=await batchCreateCompanies(companies); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed\n${res.data.errors.join('\n')}`); loadData(); } catch(err){ alert(err.response?.data?.message || 'Batch failed'); }
-            e.target.value='';
-          }} />
+          <input type="file" accept=".csv" id="batch-company-csv" className="hidden" onChange={e=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
           <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-company-csv').click()}>Batch Upload</Button>
         </div>
       </div>
+      {dragOver && <p className="text-sm text-sti-blue text-center font-semibold">Drop CSV file here</p>}
 
       {loading ? (
         <div className="flex items-center justify-center h-64">

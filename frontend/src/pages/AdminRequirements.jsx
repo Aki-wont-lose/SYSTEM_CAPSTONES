@@ -23,6 +23,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   const [saving, setSaving] = useState(false);
   const [rejectingId, setRejectingId] = useState(null);
   const [remarks, setRemarks] = useState('');
+  const [dragOver, setDragOver] = useState(false);
 
   const fileToBase64 = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -134,8 +135,23 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     link.click();
   };
 
+  const handleBatchFile = async (file) => {
+    if (!file || !file.name.endsWith('.csv')) { alert('Please use CSV'); return; }
+    const text = await file.text();
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+    const reqs = lines.slice(1).map(line=>{
+      const vals=line.split(',').map(v=>v.trim());
+      const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
+      return { title: obj['title'], description: obj['description'], isRequired: obj['isrequired'] ? obj['isrequired'].toLowerCase()==='true' : true };
+    });
+    for(const r of reqs){ try{ await createRequirement(r); }catch(e){ console.error(e); } }
+    loadData();
+    alert(`Batch templates: ${reqs.length} processed`);
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in" onDragOver={e=>{if(tab==='requirements'){e.preventDefault(); setDragOver(true)}}} onDragLeave={()=>setDragOver(false)} onDrop={e=>{if(tab==='requirements'){e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">{tab === 'requirements' ? 'Templates' : 'Submissions'}</h1>
@@ -144,24 +160,16 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
         {tab === 'requirements' && (
           <div className="flex gap-2">
             <Button variant="primary" icon={Plus} onClick={openNew}>Add Template</Button>
-            <input type="file" accept=".csv" id="batch-template-csv" className="hidden" onChange={async (e)=>{
-              const file=e.target.files?.[0]; if(!file) return;
-              const text=await file.text();
-              const lines=text.trim().split('\n');
-              const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
-              const reqs=lines.slice(1).map(line=>{
-                const vals=line.split(',').map(v=>v.trim());
-                const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
-                return { title: obj['title'], description: obj['description'], isRequired: obj['isrequired'] ? obj['isrequired'].toLowerCase()==='true' : true };
-              });
-              for(const r of reqs){ try{ await createRequirement(r); }catch(e){ console.error(e); } }
-              loadData(); e.target.value='';
-              alert(`Batch templates: ${reqs.length} processed`);
-            }} />
+            <input type="file" accept=".csv" id="batch-template-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
             <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()}>Batch Upload</Button>
           </div>
         )}
       </div>
+      {tab === 'requirements' && (
+        <div className={`border-2 border-dashed rounded-xl p-3 text-center text-sm ${dragOver ? 'border-sti-blue bg-sti-blue-50 text-sti-blue' : 'border-black/10 text-sti-gray bg-sti-gray-light/30'}`}>
+          {dragOver ? 'Drop CSV here to batch upload' : 'Drag & drop CSV file here for batch upload (Excel → Save as CSV)'}
+        </div>
+      )}
 
       {!(hideRequirements && hideSubmissions) && (
         <div className="flex gap-2 border-b border-black/5 dark:border-white/10">

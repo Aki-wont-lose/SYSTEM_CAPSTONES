@@ -50,6 +50,7 @@ const StudentManagement = () => {
   const [viewAttendance, setViewAttendance] = useState([]);
   const [viewSummary, setViewSummary] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
 
   const loadStudents = async () => {
     setLoading(true);
@@ -145,8 +146,39 @@ const StudentManagement = () => {
     }
   };
 
+  const handleBatchFile = async (file) => {
+    if (!file || !file.name.endsWith('.csv')) { alert('Please use CSV file (Excel → Save as CSV)'); return; }
+    const text = await file.text();
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+    const students = lines.slice(1).map(line=>{
+      const vals=line.split(',').map(v=>v.trim());
+      const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
+      return {
+        studentId: obj['studentid'] || obj['id'],
+        firstName: obj['firstname'] || obj['first name'],
+        lastName: obj['lastname'] || obj['last name'],
+        course: obj['course'],
+        section: obj['section'],
+        email: obj['email'],
+        password: obj['password'] || 'Student123!',
+        contactNumber: obj['contactnumber'] || obj['contact'],
+      };
+    });
+    try { const res=await batchCreateStudents(students); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed\n${res.data.errors.join('\n')}`); loadStudents(); } catch(err){ alert(err.response?.data?.message || 'Batch failed'); }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Drag & Drop Batch Upload Zone */}
+      <div
+        onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
+        onDragLeave={()=>setDragOver(false)}
+        onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
+        className={`border-2 border-dashed rounded-xl p-3 text-center text-sm ${dragOver ? 'border-sti-blue bg-sti-blue-50 text-sti-blue' : 'border-black/10 text-sti-gray bg-sti-gray-light/30'}`}
+      >
+        {dragOver ? 'Drop CSV here to batch upload' : 'Drag & drop CSV file here for batch upload (Excel → Save as CSV) or use Batch Upload button'}
+      </div>
       {/* Toolbar */}
       <Card className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="flex flex-col sm:flex-row gap-3 flex-1">
@@ -186,31 +218,11 @@ const StudentManagement = () => {
           )}
           {(role === 'ADMIN' || role === 'COORDINATOR') && (
             <>
-              <input type="file" accept=".csv" id="batch-student-csv" className="hidden" onChange={async (e)=>{
-                const file=e.target.files?.[0]; if(!file) return;
-                const text=await file.text();
-                const lines=text.trim().split('\n');
-                const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
-                const students=lines.slice(1).map(line=>{
-                  const vals=line.split(',').map(v=>v.trim());
-                  const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
-                  return {
-                    studentId: obj['studentid'] || obj['id'],
-                    firstName: obj['firstname'] || obj['first name'],
-                    lastName: obj['lastname'] || obj['last name'],
-                    course: obj['course'],
-                    section: obj['section'],
-                    email: obj['email'],
-                    password: obj['password'] || 'Student123!',
-                    contactNumber: obj['contactnumber'] || obj['contact'],
-                  };
-                });
-                try { const res=await batchCreateStudents(students); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed\n${res.data.errors.join('\n')}`); loadStudents(); } catch(err){ alert(err.response?.data?.message || 'Batch failed'); }
-                e.target.value='';
-              }} />
+              <input type="file" accept=".csv" id="batch-student-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
               <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-student-csv').click()}>
                 Batch Upload
               </Button>
+              {dragOver && <span className="text-xs text-sti-blue font-semibold">Drop CSV here</span>}
             </>
           )}
         </div>
