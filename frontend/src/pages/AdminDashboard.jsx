@@ -15,7 +15,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     Promise.all([
       import('../services/studentService').then(m=>m.getDashboardStats().then(r=>r.data)),
-      getActiveAnnouncements(3).then(r=>r.data).catch(()=>[])
+      import('../services/announcementService').then(m=>m.getAllAnnouncements().then(r=>r.data.slice(0,3)).catch(()=>[]))
     ]).then(([statsData, annData])=>{
       setStats(statsData);
       setAnnouncements(annData);
