@@ -113,13 +113,36 @@ const AdminView = ({ onBack, onForgot }) => {
   );
 };
 
+const LoginShell = ({ children }) => (
+  <div className="min-h-[calc(100vh-64px)] relative overflow-hidden bg-sti-blue-dark flex items-center justify-center p-4 sm:p-8">
+    <div className="absolute inset-0 opacity-95">
+      <div className="absolute top-0 left-[-10%] w-[30%] h-[160%] -rotate-12 bg-gradient-to-b from-sti-yellow to-sti-yellow-dark" />
+      <div className="absolute top-0 left-[24%] w-[8%] h-[160%] -rotate-12 bg-sti-yellow/25" />
+      <div className="absolute top-0 right-[-15%] w-[45%] h-[160%] -rotate-12 bg-sti-blue-light/30" />
+      <div className="absolute top-0 right-[10%] w-[10%] h-[160%] -rotate-12 bg-sti-blue-light/15" />
+    </div>
+    <div className="absolute inset-0 bg-gradient-to-br from-sti-blue-dark/90 via-sti-blue-dark/70 to-sti-blue-dark/90" />
+    <div className="absolute -bottom-32 -left-20 w-96 h-96 rounded-full bg-sti-blue-light/10 blur-2xl" />
+    <div className="absolute -top-24 right-10 w-80 h-80 rounded-full bg-sti-yellow/10 blur-2xl" />
+    <div className="relative w-full max-w-[380px] bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover p-6 sm:p-8 animate-slide-up">
+      {children}
+    </div>
+  </div>
+);
+
+const StartView = ({ onStart }) => (
+  <Button variant="primary" className="w-full" onClick={onStart}>
+    Log In
+  </Button>
+);
+
 const Login = () => {
-  const [view, setView] = useState(null); // null = landing, 'choice' | 'student' | 'admin' = modal
+  const [view, setView] = useState('start');
   const [showForgot, setShowForgot] = useState(false);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header like elms.sti.edu - Log in on upper right */}
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header like elms.sti.edu - Log in on upper right - keep STI */}
       <header className="sticky top-0 z-30 bg-white border-b border-black/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -129,64 +152,18 @@ const Login = () => {
           <div className="flex items-center gap-6">
             <a href="#" className="hidden sm:block text-sm font-medium text-sti-gray hover:text-sti-blue">Campus Helpdesk</a>
             <a href="#" className="hidden sm:block text-sm font-medium text-sti-gray hover:text-sti-blue">FAQ</a>
-            <button onClick={() => setView('choice')} className="bg-[#0a4a8a] text-white px-5 py-2 rounded-full text-sm font-semibold hover:bg-[#083a6d]">Log in</button>
+            <span className="hidden sm:block text-sm font-medium text-sti-gray">STI Sta. Maria</span>
           </div>
         </div>
       </header>
 
-      {/* Hero like STI - photo on left, text on right */}
-      <section className="bg-[#0a2a5a] text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-          <div className="relative rounded-2xl overflow-hidden bg-white">
-            <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&h=400&fit=crop" alt="Students" className="w-full h-64 sm:h-80 object-cover" />
-            <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur rounded-xl p-3 flex items-center gap-3">
-              <span className="bg-[#0a4a8a] text-white text-xs font-bold px-2 py-1 rounded">CASE STUDY</span>
-              <span className="font-bold text-[#0a4a8a] text-sm">NEO LMS AND STI COLLEGE</span>
-              <img src="/sti-logo.png" alt="STI" className="w-8 h-8 ml-auto" />
-            </div>
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold leading-tight">For more than 4 years, STI's blended learning approach using eLearning Management System (eLMS) makes education effective and accessible anytime, anywhere.</h1>
-            <button onClick={() => setView('choice')} className="mt-6 border border-white text-white px-6 py-2 rounded-full text-sm font-semibold hover:bg-white hover:text-[#0a2a5a]">Learn more</button>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats */}
-      <section className="bg-white border-t">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-2 gap-8 text-center">
-          <div>
-            <p className="text-3xl font-bold text-sti-gray-dark">19,167</p>
-            <p className="text-sm text-sti-gray">Courses</p>
-          </div>
-          <div>
-            <p className="text-3xl font-bold text-sti-gray-dark">2,109</p>
-            <p className="text-sm text-sti-gray">Teachers</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Photo you will give - placeholder for now */}
-      <section className="bg-[#ffcb05] py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-[#0a4a8a] font-bold">BE MORE. BE STI. - Photo you will provide will go here</p>
-        </div>
-      </section>
-
-      {/* Login Modal */}
-      {view && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={()=>setView(null)}>
-          <div className="bg-white rounded-2xl shadow-cardHover w-full max-w-md p-6 relative" onClick={e=>e.stopPropagation()}>
-            <button onClick={()=>setView(null)} className="absolute top-4 right-4 text-sti-gray"><X className="w-5 h-5" /></button>
-            <div className="mt-2">
-              {view === 'choice' && <LoginModalContent view={view} setView={setView} onClose={()=>setView(null)} />}
-              {view === 'student' && <StudentView onBack={()=>setView('choice')} />}
-              {view === 'admin' && <AdminView onBack={()=>setView('choice')} onForgot={()=>{setView(null); setShowForgot(true)}} />}
-            </div>
-          </div>
-        </div>
-      )}
-      {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}
+      <LoginShell>
+        {view === 'start' && <StartView onStart={() => setView('choice')} />}
+        {view === 'choice' && <LoginModalContent view={view} setView={setView} onClose={() => setView('start')} />}
+        {view === 'student' && <StudentView onBack={() => setView('choice')} />}
+        {view === 'admin' && <AdminView onBack={() => setView('choice')} onForgot={() => setShowForgot(true)} />}
+        {showForgot && <ForgotPasswordModal onClose={() => setShowForgot(false)} />}
+      </LoginShell>
     </div>
   );
 };

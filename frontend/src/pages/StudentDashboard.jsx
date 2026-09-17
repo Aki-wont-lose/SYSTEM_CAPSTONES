@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, Hourglass, Megaphone } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
+import WelcomeCarousel from '../components/WelcomeCarousel';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentSummary } from '../services/attendanceService';
 import { getActiveAnnouncements } from '../services/announcementService';
@@ -48,25 +49,14 @@ const StudentDashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Aligned like STI screenshot: main yellow + right calendar */}
+      {/* Top: carousel + calendar like admin */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2">
-          <div className="bg-[#ffeb00] rounded-2xl p-5 sm:p-6 h-full flex flex-col">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 flex-1">
-              <div className="flex-1">
-                <h2 className="text-[#0a4a8a] font-black text-xl">How's Your Experience?</h2>
-                <p className="text-[#0a4a8a] text-sm mt-1">Tell us more about it and rate us, whether it was great, or you feel there's room for improvement.</p>
-                <p className="text-[#0a4a8a] text-xs mt-4">Leave a comment by scanning QR or clicking</p>
-                <span className="inline-block mt-2 bg-white border-2 border-[#0a4a8a] text-[#0a4a8a] font-bold text-xs px-3 py-1 rounded">feedback.sti.edu</span>
-                <p className="text-[#0a4a8a] text-xs mt-3">Hi, {student?.firstName}! • {student?.company?.name ? `Interning at ${student.company.name}` : 'Keep tracking your progress.'}</p>
-              </div>
-              <div className="w-32 h-32 bg-white rounded-xl border-2 border-[#0a4a8a] flex items-center justify-center shrink-0">
-                <div className="w-20 h-20 border-2 border-dashed border-[#0a4a8a] rounded-lg flex items-center justify-center text-[10px] text-[#0a4a8a] text-center">QR<br/>STI Cares</div>
-              </div>
-            </div>
-            <div className="mt-4 bg-[#0a4a8a] -mx-5 -mb-5 sm:-mx-6 sm:-mb-6 px-5 py-2 rounded-b-2xl flex items-center justify-between">
-              <span className="text-white text-xs">STI Feedback Center • {completedHours}h / {requiredHours}h</span>
-              <span className="bg-[#ffeb00] text-[#0a4a8a] text-xs font-black px-2 py-1 rounded">STI</span>
+          <WelcomeCarousel />
+          <div className="mt-2 bg-sti-blue rounded-xl px-4 py-2.5 flex items-center justify-between">
+            <div>
+              <p className="text-white font-bold text-sm">Hi, {student?.firstName}! • {student?.company?.name ? `Interning at ${student.company.name}` : 'Keep tracking your progress.'}</p>
+              <p className="text-white/70 text-xs">{completedHours}h / {requiredHours}h • {remainingHours}h left</p>
             </div>
           </div>
         </div>
