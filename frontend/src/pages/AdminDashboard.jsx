@@ -3,16 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { Users, UserCheck, CheckCircle2, Clock3 } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
+import WelcomeCarousel from '../components/WelcomeCarousel';
+import { getActiveAnnouncements } from '../services/announcementService';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
+  const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    import('../services/studentService').then(({ getDashboardStats }) => {
-      getDashboardStats().then(res => setStats(res.data)).catch(console.error).finally(()=>setLoading(false));
-    });
+    Promise.all([
+      import('../services/studentService').then(m=>m.getDashboardStats().then(r=>r.data)),
+      getActiveAnnouncements(3).then(r=>r.data).catch(()=>[])
+    ]).then(([statsData, annData])=>{
+      setStats(statsData);
+      setAnnouncements(annData);
+    }).catch(console.error).finally(()=>setLoading(false));
   }, []);
 
   if (loading) {
@@ -25,37 +32,48 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Aligned like STI screenshot: main yellow Welcome + right calendar sidebar */}
+      {/* Layer 1: 3-pic carousel + Calendar beside it */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Main - How's Your Experience yellow like STI */}
         <div className="lg:col-span-2">
-          <div className="bg-[#ffeb00] rounded-2xl p-5 sm:p-6 h-full flex flex-col">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 flex-1">
-              <div className="flex-1">
-                <h2 className="text-[#0a4a8a] font-black text-xl">How's Your Experience?</h2>
-                <p className="text-[#0a4a8a] text-sm mt-1">Tell us more about it and rate us, whether it was great, or you feel there's room for improvement.</p>
-                <p className="text-[#0a4a8a] text-xs mt-4">Leave a comment, feedback, or suggestions by scanning the QR code or clicking</p>
-                <span className="inline-block mt-2 bg-white border-2 border-[#0a4a8a] text-[#0a4a8a] font-bold text-xs px-3 py-1 rounded">feedback.sti.edu</span>
-              </div>
-              <div className="w-32 h-32 bg-white rounded-xl border-2 border-[#0a4a8a] flex items-center justify-center shrink-0">
-                <div className="w-20 h-20 border-2 border-dashed border-[#0a4a8a] rounded-lg flex items-center justify-center text-[10px] text-[#0a4a8a] text-center">QR<br/>STI Cares</div>
-              </div>
-            </div>
-            <div className="mt-4 bg-[#0a4a8a] -mx-5 -mb-5 sm:-mx-6 sm:-mb-6 px-5 py-2 rounded-b-2xl flex items-center justify-between">
-              <span className="text-white text-xs">STI Feedback Center</span>
-              <span className="bg-[#ffeb00] text-[#0a4a8a] text-xs font-black px-2 py-1 rounded">STI</span>
-            </div>
-          </div>
+          <WelcomeCarousel />
         </div>
-        {/* Right sidebar - Calendar like STI */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="lg:col-span-1">
           <CalendarWidget />
-          <Card>
-            <h3 className="font-bold text-sm text-sti-gray-dark dark:text-white">Announcements</h3>
-            <p className="text-xs text-sti-gray mt-1">View and manage announcements</p>
-            <button onClick={() => navigate('/admin/announcements')} className="text-xs text-sti-blue font-semibold mt-2">Go to Announcements →</button>
-          </Card>
         </div>
+      </div>
+
+      {/* Layer 2: 3 borders like button section - Account, Companies, Announcements */}
+      <Card className="p-0 overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-black/5 dark:divide-white/10">
+          <button onClick={()=>navigate('/admin/students')} className="p-4 text-left hover:bg-sti-gray-light/50">
+            <h4 className="font-bold text-sm">Account Management</h4>
+            <p className="text-xs text-sti-gray mt-1">Create accounts</p>
+          </button>
+          <button onClick={()=>navigate('/admin/companies')} className="p-4 text-left hover:bg-sti-gray-light/50">
+            <h4 className="font-bold text-sm">Partner Companies</h4>
+            <p className="text-xs text-sti-gray mt-1">Manage companies</p>
+          </button>
+          <button onClick={()=>navigate('/admin/announcements')} className="p-4 text-left hover:bg-sti-gray-light/50">
+            <h4 className="font-bold text-sm">Announcements</h4>
+            <p className="text-xs text-sti-gray mt-1">Post to dashboard</p>
+          </button>
+        </div>
+      </Card>
+
+      {/* Layer 2b: Announcements feed in middle of dashboard */}
+      <div className="space-y-3">
+        {announcements.length===0 ? (
+          <Card className="text-center py-6"><p className="text-sm text-sti-gray">No announcements yet</p></Card>
+        ) : announcements.map(a=>(
+          <Card key={a.id} className="p-0 overflow-hidden">
+            {a.image && <img src={a.image} alt={a.title} className="w-full h-40 object-cover" />}
+            <div className="p-4">
+              <h4 className="font-bold text-sm">{a.title}</h4>
+              <p className="text-sm text-sti-gray mt-1">{a.content}</p>
+              <p className="text-xs text-sti-gray/70 mt-2">{new Date(a.publishedAt || a.createdAt).toLocaleDateString()}</p>
+            </div>
+          </Card>
+        ))}
       </div>
 
       {/* Stats - 2 and 2, aligned */}

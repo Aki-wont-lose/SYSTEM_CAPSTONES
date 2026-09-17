@@ -101,14 +101,6 @@ const Companies = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div
-        onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
-        onDragLeave={()=>setDragOver(false)}
-        onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
-        className={`border-2 border-dashed rounded-xl p-3 text-center text-sm ${dragOver ? 'border-sti-blue bg-sti-blue-50 text-sti-blue' : 'border-black/10 text-sti-gray bg-sti-gray-light/30'}`}
-      >
-        {dragOver ? 'Drop CSV here to batch upload' : 'Drag & drop CSV file here for batch upload (Excel → Save as CSV)'}
-      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">Partner Companies</h1>
@@ -116,11 +108,17 @@ const Companies = () => {
         </div>
         <div className="flex gap-2">
           <Button variant="primary" icon={Plus} onClick={openNew}>Add Company</Button>
-          <input type="file" accept=".csv" id="batch-company-csv" className="hidden" onChange={e=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
-          <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-company-csv').click()}>Batch Upload</Button>
+          <div
+            onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
+            onDragLeave={()=>setDragOver(false)}
+            onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
+            className={dragOver ? 'ring-2 ring-sti-blue rounded-xl' : ''}
+          >
+            <input type="file" accept=".csv" id="batch-company-csv" className="hidden" onChange={e=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
+            <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-company-csv').click()}>Batch Upload</Button>
+          </div>
         </div>
       </div>
-      {dragOver && <p className="text-sm text-sti-blue text-center font-semibold">Drop CSV file here</p>}
 
       {loading ? (
         <div className="flex items-center justify-center h-64">

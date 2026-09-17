@@ -170,15 +170,6 @@ const StudentManagement = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Drag & Drop Batch Upload Zone */}
-      <div
-        onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
-        onDragLeave={()=>setDragOver(false)}
-        onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
-        className={`border-2 border-dashed rounded-xl p-3 text-center text-sm ${dragOver ? 'border-sti-blue bg-sti-blue-50 text-sti-blue' : 'border-black/10 text-sti-gray bg-sti-gray-light/30'}`}
-      >
-        {dragOver ? 'Drop CSV here to batch upload' : 'Drag & drop CSV file here for batch upload (Excel → Save as CSV) or use Batch Upload button'}
-      </div>
       {/* Toolbar */}
       <Card className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
         <div className="flex flex-col sm:flex-row gap-3 flex-1">
@@ -217,13 +208,17 @@ const StudentManagement = () => {
             </Button>
           )}
           {(role === 'ADMIN' || role === 'COORDINATOR') && (
-            <>
+            <div
+              onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
+              onDragLeave={()=>setDragOver(false)}
+              onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
+              className={`flex items-center gap-2 ${dragOver ? 'ring-2 ring-sti-blue rounded-xl p-1' : ''}`}
+            >
               <input type="file" accept=".csv" id="batch-student-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
               <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-student-csv').click()}>
                 Batch Upload
               </Button>
-              {dragOver && <span className="text-xs text-sti-blue font-semibold">Drop CSV here</span>}
-            </>
+            </div>
           )}
         </div>
       </Card>
