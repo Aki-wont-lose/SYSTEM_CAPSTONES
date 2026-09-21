@@ -31,6 +31,7 @@ model User {
   supervisorCompany Company? @relation("SupervisorCompany", fields: [supervisorCompanyId], references: [id])
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
+  notifications Notification[]
 
   @@index([email])
   @@index([role])
@@ -111,6 +112,7 @@ model Announcement {
   priority    Priority  @default(NORMAL)
   isActive    Boolean   @default(true)
   image       String?   @db.Text // base64 photo for dashboard announcing
+  images      String?   @db.Text // JSON array of 3 photos for sliding carousel
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
@@ -270,5 +272,21 @@ model Message {
   @@index([receiverId])
   @@index([createdAt])
   @@index([isRead])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  content   String   @db.Text
+  image     String?  @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
 }
 

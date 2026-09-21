@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, X, Building2, Users, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import LocationPicker from '../components/LocationPicker';
@@ -16,15 +17,31 @@ const Companies = () => {
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const handleBatchFile = async (file) => {
-    if (!file || !file.name.endsWith('.csv')) { alert('Please use CSV'); return; }
-    const text=await file.text();
-    const lines=text.trim().split('\n');
-    const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
-    const companies=lines.slice(1).map(line=>{
-      const vals=line.split(',').map(v=>v.trim());
-      const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
-      return { name: obj['name'], address: obj['address'], contactPerson: obj['contactperson'] || obj['contact person'], contactNumber: obj['contactnumber'] || obj['contact number'], email: obj['email'], industryType: obj['industrytype'] || obj['industry'], availableSlots: parseInt(obj['availableslots'] || obj['slots'] || '0') };
-    });
+    if (!file) return;
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    const isCsv = file.name.endsWith('.csv');
+    if (!isExcel && !isCsv) { alert('Please use CSV or Excel'); return; }
+    let companies = [];
+    if (isExcel) {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
+      companies = rows.slice(1).map(vals=>{
+        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i] ? String(vals[i]).trim() : '');
+        return { name: obj['name'], address: obj['address'], contactPerson: obj['contactperson'] || obj['contact person'], contactNumber: obj['contactnumber'] || obj['contact number'], email: obj['email'], industryType: obj['industrytype'] || obj['industry'], availableSlots: parseInt(obj['availableslots'] || obj['slots'] || '0') };
+      });
+    } else {
+      const text=await file.text();
+      const lines=text.trim().split('\n');
+      const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
+      companies=lines.slice(1).map(line=>{
+        const vals=line.split(',').map(v=>v.trim());
+        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
+        return { name: obj['name'], address: obj['address'], contactPerson: obj['contactperson'] || obj['contact person'], contactNumber: obj['contactnumber'] || obj['contact number'], email: obj['email'], industryType: obj['industrytype'] || obj['industry'], availableSlots: parseInt(obj['availableslots'] || obj['slots'] || '0') };
+      });
+    }
     try { const res=await batchCreateCompanies(companies); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed`); loadData(); } catch(err){ alert('Batch failed'); }
   };
 
@@ -114,7 +131,7 @@ const Companies = () => {
             onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
             className={dragOver ? 'ring-2 ring-sti-blue rounded-xl' : ''}
           >
-            <input type="file" accept=".csv" id="batch-company-csv" className="hidden" onChange={e=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
+            <input type="file" accept=".csv,.xlsx,.xls" id="batch-company-csv" className="hidden" onChange={e=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
             <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-company-csv').click()}>Batch Upload</Button>
           </div>
         </div>

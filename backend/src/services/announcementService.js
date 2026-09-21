@@ -44,7 +44,7 @@ export const getAnnouncementById = async (id) => {
 };
 
 export const createAnnouncement = async (announcementData) => {
-  const { title, content, category = 'General', priority = 'NORMAL', isActive = true, image } = announcementData;
+  const { title, content, category = 'General', priority = 'NORMAL', isActive = true, image, images } = announcementData;
 
   if (!title || !content) {
     const error = new Error('Title and content are required');
@@ -52,7 +52,7 @@ export const createAnnouncement = async (announcementData) => {
     throw error;
   }
 
-  return prisma.announcement.create({
+  const announcement = await prisma.announcement.create({
     data: {
       title,
       content,
@@ -60,9 +60,29 @@ export const createAnnouncement = async (announcementData) => {
       priority,
       isActive,
       image: image || null,
+      images: images || null,
       publishedAt: isActive ? new Date() : null
     }
   });
+
+  // Create notification for all users when announcement is published
+  if (isActive) {
+    try {
+      const users = await prisma.user.findMany({ select: { id: true } });
+      const notifData = users.map(u => ({
+        userId: u.id,
+        title: `New Announcement: ${title}`,
+        content: content.slice(0, 200),
+        image: image || null
+      }));
+      // Batch create in chunks to avoid too many
+      for (let i = 0; i < notifData.length; i += 50) {
+        await prisma.notification.createMany({ data: notifData.slice(i, i+50) });
+      }
+    } catch (e) { console.error('Failed to create notifications', e.message); }
+  }
+
+  return announcement;
 };
 
 export const updateAnnouncement = async (id, updateData) => {

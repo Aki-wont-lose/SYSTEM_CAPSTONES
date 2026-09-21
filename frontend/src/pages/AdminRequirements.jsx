@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, X, FileCheck2, Check, XCircle, Download, Filter } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import {
@@ -136,15 +137,31 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   };
 
   const handleBatchFile = async (file) => {
-    if (!file || !file.name.endsWith('.csv')) { alert('Please use CSV'); return; }
-    const text = await file.text();
-    const lines = text.trim().split('\n');
-    const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
-    const reqs = lines.slice(1).map(line=>{
-      const vals=line.split(',').map(v=>v.trim());
-      const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
-      return { title: obj['title'], description: obj['description'], isRequired: obj['isrequired'] ? obj['isrequired'].toLowerCase()==='true' : true };
-    });
+    if (!file) return;
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    const isCsv = file.name.endsWith('.csv');
+    if (!isExcel && !isCsv) { alert('Please use CSV or Excel'); return; }
+    let reqs = [];
+    if (isExcel) {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
+      reqs = rows.slice(1).map(vals=>{
+        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i] ? String(vals[i]).trim() : '');
+        return { title: obj['title'], description: obj['description'], isRequired: obj['isrequired'] ? obj['isrequired'].toLowerCase()==='true' : true };
+      });
+    } else {
+      const text = await file.text();
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+      reqs = lines.slice(1).map(line=>{
+        const vals=line.split(',').map(v=>v.trim());
+        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
+        return { title: obj['title'], description: obj['description'], isRequired: obj['isrequired'] ? obj['isrequired'].toLowerCase()==='true' : true };
+      });
+    }
     for(const r of reqs){ try{ await createRequirement(r); }catch(e){ console.error(e); } }
     loadData();
     alert(`Batch templates: ${reqs.length} processed`);
@@ -166,7 +183,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
               onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
               className={dragOver ? 'ring-2 ring-sti-blue rounded-xl' : ''}
             >
-              <input type="file" accept=".csv" id="batch-template-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
+              <input type="file" accept=".csv,.xlsx,.xls" id="batch-template-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
               <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()}>Batch Upload</Button>
             </div>
           </div>

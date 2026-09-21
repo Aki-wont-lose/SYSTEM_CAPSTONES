@@ -157,13 +157,26 @@ const AnnouncementManagement = () => {
             <textarea required rows={5} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="input-field resize-none" placeholder="Write the announcement details..." />
           </div>
           <div>
-            <label className="block text-sm font-medium text-sti-gray-dark dark:text-white mb-1.5">Photo (optional, 298KB ok, max 4MB)</label>
-            <input type="file" accept="image/*" onChange={async (e)=>{
-              const file=e.target.files?.[0]; if(!file) return;
-              if(file.size>4*1024*1024){alert('Max 4MB - your file is ' + (file.size/1024).toFixed(0) + 'KB'); return;}
-              const r=new FileReader(); r.onload=()=>setForm(prev=>({...prev, image: r.result})); r.onerror=()=>alert('Failed to read file'); r.readAsDataURL(file);
+            <label className="block text-sm font-medium text-sti-gray-dark dark:text-white mb-1.5">Photos (optional, up to 3 for sliding carousel)</label>
+            <input type="file" accept="image/*" multiple onChange={async (e)=>{
+              const files=Array.from(e.target.files || []).slice(0,3); if(!files.length) return;
+              const results=[];
+              for(const file of files){
+                if(file.size>4*1024*1024){alert(file.name + ' too large (max 4MB)'); continue;}
+                const b64 = await new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file); });
+                results.push(b64);
+              }
+              if(results.length===1) setForm(prev=>({...prev, image: results[0], images: null}));
+              else if(results.length>1) setForm(prev=>({...prev, image: results[0], images: JSON.stringify(results)}));
             }} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white" />
-            {form.image ? <div className="mt-2 relative"><img src={form.image} alt="preview" className="w-full h-32 object-cover rounded-lg border" /><button type="button" onClick={()=>setForm(prev=>({...prev, image: null}))} className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-1 text-xs">✕</button><p className="text-xs text-green-600 mt-1">✓ Photo ready ({(form.image.length/1024).toFixed(0)}KB)</p></div> : <p className="text-xs text-sti-gray mt-1">No photo selected</p>}
+            {(form.image || form.images) && (
+              <div className="mt-2">
+                {form.images ? JSON.parse(form.images).map((img,i)=> <img key={i} src={img} alt={`preview ${i}`} className="w-full h-24 object-cover rounded-lg border mb-2" />) : <img src={form.image} alt="preview" className="w-full h-32 object-cover rounded-lg border" />}
+                <button type="button" onClick={()=>setForm(prev=>({...prev, image: null, images: null}))} className="mt-1 text-xs text-red-600 hover:underline">Remove all</button>
+                <p className="text-xs text-green-600 mt-1">✓ {form.images ? JSON.parse(form.images).length : 1} photo(s) ready</p>
+              </div>
+            )}
+            {!form.image && !form.images && <p className="text-xs text-sti-gray mt-1">No photos selected - choose 1 or 3 for sliding</p>}
           </div>
           <label className="flex items-center gap-2 text-sm text-sti-gray-dark dark:text-white">
             <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded accent-sti-blue" />

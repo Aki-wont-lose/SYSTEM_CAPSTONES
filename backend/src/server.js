@@ -15,6 +15,7 @@ import logEntryRoutes from './modules/logs/routes.js';
 import dashboardRoutes from './modules/dashboard/routes.js';
 import profileRoutes from './modules/profile/routes.js';
 import messagingRoutes from './modules/messaging/routes.js';
+import notificationRoutes from './modules/notifications/routes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
@@ -62,6 +63,7 @@ app.use('/api/logs', verifyToken, logEntryRoutes);
 app.use('/api/dashboard', dashboardRoutes); // ADMIN/COORDINATOR/SUPERVISOR stats + STUDENT /me
 app.use('/api/profile', profileRoutes); // any role: GET /api/profile , PUT /api/profile
 app.use('/api/messages', verifyToken, messagingRoutes); // Coordinator ↔ Supervisor (+ADMIN)
+app.use('/api/notifications', notificationRoutes);
 
 // 404 handler
 app.use((req, res) => {

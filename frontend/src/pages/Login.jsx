@@ -142,21 +142,6 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
-      {/* Header like elms.sti.edu - Log in on upper right - keep STI */}
-      <header className="sticky top-0 z-30 bg-white border-b border-black/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/sti-logo.png" alt="STI" className="w-10 h-10 rounded object-cover" />
-            <span className="font-bold text-sti-gray-dark">STI Education Services Group</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <a href="#" className="hidden sm:block text-sm font-medium text-sti-gray hover:text-sti-blue">Campus Helpdesk</a>
-            <a href="#" className="hidden sm:block text-sm font-medium text-sti-gray hover:text-sti-blue">FAQ</a>
-            <span className="hidden sm:block text-sm font-medium text-sti-gray">STI Sta. Maria</span>
-          </div>
-        </div>
-      </header>
-
       <LoginShell>
         {view === 'start' && <StartView onStart={() => setView('choice')} />}
         {view === 'choice' && <LoginModalContent view={view} setView={setView} onClose={() => setView('start')} />}

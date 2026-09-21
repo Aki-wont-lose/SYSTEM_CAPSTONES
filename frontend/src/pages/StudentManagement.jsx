@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -147,24 +148,49 @@ const StudentManagement = () => {
   };
 
   const handleBatchFile = async (file) => {
-    if (!file || !file.name.endsWith('.csv')) { alert('Please use CSV file (Excel → Save as CSV)'); return; }
-    const text = await file.text();
-    const lines = text.trim().split('\n');
-    const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
-    const students = lines.slice(1).map(line=>{
-      const vals=line.split(',').map(v=>v.trim());
-      const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
-      return {
-        studentId: obj['studentid'] || obj['id'],
-        firstName: obj['firstname'] || obj['first name'],
-        lastName: obj['lastname'] || obj['last name'],
-        course: obj['course'],
-        section: obj['section'],
-        email: obj['email'],
-        password: obj['password'] || 'Student123!',
-        contactNumber: obj['contactnumber'] || obj['contact'],
-      };
-    });
+    if (!file) return;
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    const isCsv = file.name.endsWith('.csv');
+    if (!isExcel && !isCsv) { alert('Please use CSV or Excel file'); return; }
+    let students = [];
+    if (isExcel) {
+      const data = await file.arrayBuffer();
+      const wb = XLSX.read(data);
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
+      students = rows.slice(1).map(vals=>{
+        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i] ? String(vals[i]).trim() : '');
+        return {
+          studentId: obj['studentid'] || obj['id'],
+          firstName: obj['firstname'] || obj['first name'],
+          lastName: obj['lastname'] || obj['last name'],
+          course: obj['course'],
+          section: obj['section'],
+          email: obj['email'],
+          password: obj['password'] || 'Student123!',
+          contactNumber: obj['contactnumber'] || obj['contact'],
+        };
+      });
+    } else {
+      const text = await file.text();
+      const lines = text.trim().split('\n');
+      const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
+      students = lines.slice(1).map(line=>{
+        const vals=line.split(',').map(v=>v.trim());
+        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
+        return {
+          studentId: obj['studentid'] || obj['id'],
+          firstName: obj['firstname'] || obj['first name'],
+          lastName: obj['lastname'] || obj['last name'],
+          course: obj['course'],
+          section: obj['section'],
+          email: obj['email'],
+          password: obj['password'] || 'Student123!',
+          contactNumber: obj['contactnumber'] || obj['contact'],
+        };
+      });
+    }
     try { const res=await batchCreateStudents(students); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed\n${res.data.errors.join('\n')}`); loadStudents(); } catch(err){ alert(err.response?.data?.message || 'Batch failed'); }
   };
 
@@ -214,7 +240,7 @@ const StudentManagement = () => {
               onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
               className={`flex items-center gap-2 ${dragOver ? 'ring-2 ring-sti-blue rounded-xl p-1' : ''}`}
             >
-              <input type="file" accept=".csv" id="batch-student-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
+              <input type="file" accept=".csv,.xlsx,.xls" id="batch-student-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
               <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-student-csv').click()}>
                 Batch Upload
               </Button>
