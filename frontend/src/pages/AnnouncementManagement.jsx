@@ -92,17 +92,17 @@ const AnnouncementManagement = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <Card className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-sti-blue-50 flex items-center justify-center">
+      <Card className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-11 h-11 rounded-xl bg-sti-blue-50 flex items-center justify-center shrink-0">
             <Megaphone className="w-5 h-5 text-sti-blue" />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="font-bold text-sti-gray-dark dark:text-white">Announcements</p>
             <p className="text-xs text-sti-gray">Visible on student dashboards</p>
           </div>
         </div>
-        <Button variant="primary" icon={Plus} onClick={openAddModal}>
+        <Button variant="primary" icon={Plus} onClick={openAddModal} className="w-full sm:w-auto shrink-0">
           New Announcement
         </Button>
       </Card>

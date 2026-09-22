@@ -52,6 +52,8 @@ const StudentManagement = () => {
   const [viewSummary, setViewSummary] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [dragOver, setDragOver] = useState(false);
+  const [batchResult, setBatchResult] = useState(null);
+  const [batchLoading, setBatchLoading] = useState(false);
 
   const loadStudents = async () => {
     setLoading(true);
@@ -149,49 +151,70 @@ const StudentManagement = () => {
 
   const handleBatchFile = async (file) => {
     if (!file) return;
-    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-    const isCsv = file.name.endsWith('.csv');
-    if (!isExcel && !isCsv) { alert('Please use CSV or Excel file'); return; }
+    const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+    const isCsv = file.name.toLowerCase().endsWith('.csv');
+    if (!isExcel && !isCsv) { setBatchResult({ created: 0, failed: 1, errors: ['Please use CSV or Excel file (.csv, .xlsx)'] }); return; }
+    // helper: normalize header to simple key (remove spaces, underscores, dashes)
+    const normalize = (h) => String(h || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     let students = [];
-    if (isExcel) {
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
-      students = rows.slice(1).map(vals=>{
-        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i] ? String(vals[i]).trim() : '');
-        return {
-          studentId: obj['studentid'] || obj['id'],
-          firstName: obj['firstname'] || obj['first name'],
-          lastName: obj['lastname'] || obj['last name'],
-          course: obj['course'],
-          section: obj['section'],
-          email: obj['email'],
-          password: obj['password'] || 'Student123!',
-          contactNumber: obj['contactnumber'] || obj['contact'],
-        };
-      });
-    } else {
-      const text = await file.text();
-      const lines = text.trim().split('\n');
-      const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
-      students = lines.slice(1).map(line=>{
-        const vals=line.split(',').map(v=>v.trim());
-        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
-        return {
-          studentId: obj['studentid'] || obj['id'],
-          firstName: obj['firstname'] || obj['first name'],
-          lastName: obj['lastname'] || obj['last name'],
-          course: obj['course'],
-          section: obj['section'],
-          email: obj['email'],
-          password: obj['password'] || 'Student123!',
-          contactNumber: obj['contactnumber'] || obj['contact'],
-        };
-      });
-    }
-    try { const res=await batchCreateStudents(students); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed\n${res.data.errors.join('\n')}`); loadStudents(); } catch(err){ alert(err.response?.data?.message || 'Batch failed'); }
+    try {
+      if (isExcel) {
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data, { raw: false });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        if (!ws) { setBatchResult({ created: 0, failed: 1, errors: ['Empty sheet'] }); return; }
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (!rows.length) { setBatchResult({ created: 0, failed: 1, errors: ['File is empty'] }); return; }
+        const headers = rows[0].map(normalize);
+        students = rows.slice(1).map(vals=>{
+          const obj={}; headers.forEach((h,i)=>obj[h]= vals[i] != null ? String(vals[i]).trim() : '');
+          // skip completely empty rows
+          if (!Object.values(obj).some(v=>v)) return null;
+          return {
+            studentId: obj['studentid'] || obj['id'] || obj['studentno'] || '',
+            firstName: obj['firstname'] || '',
+            lastName: obj['lastname'] || '',
+            course: obj['course'] || '',
+            section: obj['section'] || '',
+            email: obj['email'] || '',
+            password: obj['password'] || 'Student123!',
+            contactNumber: obj['contactnumber'] || obj['contact'] || obj['contactno'] || obj['phone'] || obj['mobile'] || '',
+          };
+        }).filter(Boolean);
+      } else {
+        const text = await file.text();
+        const lines = text.trim().split(/\r?\n/).filter(l=>l.trim());
+        if (lines.length < 2) { setBatchResult({ created: 0, failed: 1, errors: ['CSV needs header + at least 1 row'] }); return; }
+        const headers = lines[0].split(',').map(h=>normalize(h.replace(/^"|"$/g,'')));
+        students = lines.slice(1).map(line=>{
+          // simple CSV split respecting quoted commas
+          const vals = [];
+          let cur = ''; let inQuote = false;
+          for (let ch of line) { if (ch === '"') inQuote = !inQuote; else if (ch === ',' && !inQuote) { vals.push(cur.trim()); cur=''; } else cur+=ch; }
+          vals.push(cur.trim());
+          const cleaned = vals.map(v=>v.replace(/^"|"$/g,'').trim());
+          const obj={}; headers.forEach((h,i)=>obj[h]=cleaned[i] || '');
+          if (!Object.values(obj).some(v=>v)) return null;
+          return {
+            studentId: obj['studentid'] || obj['id'] || obj['studentno'] || '',
+            firstName: obj['firstname'] || '',
+            lastName: obj['lastname'] || '',
+            course: obj['course'] || '',
+            section: obj['section'] || '',
+            email: obj['email'] || '',
+            password: obj['password'] || 'Student123!',
+            contactNumber: obj['contactnumber'] || obj['contact'] || obj['contactno'] || obj['phone'] || obj['mobile'] || '',
+          };
+        }).filter(Boolean);
+      }
+      if (!students.length) { setBatchResult({ created: 0, failed: 1, errors: ['No valid rows found - check headers: studentId, firstName, lastName, email, course, section are required'] }); return; }
+      setBatchLoading(true);
+      const res = await batchCreateStudents(students);
+      setBatchResult(res.data);
+      loadStudents();
+    } catch(err){
+      setBatchResult({ created: 0, failed: students.length || 1, errors: [err.response?.data?.message || err.message || 'Batch failed'] });
+    } finally { setBatchLoading(false); }
   };
 
   return (
@@ -515,6 +538,42 @@ const StudentManagement = () => {
           <Button variant="danger" onClick={handleDelete} loading={deleting}>Delete</Button>
         </div>
       </Modal>
+
+      {/* Batch Result - in-app modal replaces ugly native alert on mobile */}
+      <Modal isOpen={!!batchResult} onClose={() => setBatchResult(null)} title={batchResult?.failed ? 'Batch Upload Result' : 'Batch Upload Complete'} maxWidth="max-w-md">
+        {batchResult && (
+          <div className="space-y-3">
+            <div className={`p-3 rounded-xl text-sm font-medium ${batchResult.failed ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-200' : 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-950 dark:text-green-200'}`}>
+              Batch: {batchResult.created} created, {batchResult.failed} failed
+            </div>
+            {batchResult.errors?.length > 0 && (
+              <div className="max-h-64 overflow-y-auto bg-sti-gray-light dark:bg-slate-900 rounded-xl p-3 space-y-1">
+                {batchResult.errors.map((e,i)=>(
+                  <p key={i} className="text-xs text-sti-gray-dark dark:text-slate-300 break-words border-b border-black/5 dark:border-white/10 last:border-0 py-1">{e}</p>
+                ))}
+              </div>
+            )}
+            {batchResult.failed > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-xl">
+                <p className="text-xs font-semibold text-sti-blue">Tip: Required columns</p>
+                <p className="text-xs text-sti-gray mt-1">Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">studentId</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>. Accepts variants like "Student ID", "First Name" with spaces/underscores. Password defaults to Student123! if empty. Empty rows are ignored.</p>
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button variant="primary" onClick={()=>setBatchResult(null)}>OK</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {batchLoading && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-40">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 flex items-center gap-3 shadow-xl">
+            <div className="w-6 h-6 border-3 border-sti-blue border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm font-medium">Uploading batch...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

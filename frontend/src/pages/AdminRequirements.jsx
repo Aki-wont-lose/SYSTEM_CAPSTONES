@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, X, FileCheck2, Check, XCircle, Download, Filter }
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import Modal from '../components/Modal';
 import {
   getRequirements,
   createRequirement,
@@ -25,6 +26,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   const [rejectingId, setRejectingId] = useState(null);
   const [remarks, setRemarks] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const [batchResult, setBatchResult] = useState(null);
 
   const fileToBase64 = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -138,53 +140,72 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
 
   const handleBatchFile = async (file) => {
     if (!file) return;
-    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-    const isCsv = file.name.endsWith('.csv');
-    if (!isExcel && !isCsv) { alert('Please use CSV or Excel'); return; }
+    const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+    const isCsv = file.name.toLowerCase().endsWith('.csv');
+    if (!isExcel && !isCsv) { setBatchResult({ created: 0, failed: 1, errors: ['Please use CSV or Excel (.csv, .xlsx)'] }); return; }
+    const normalize = (h) => String(h || '').trim().toLowerCase().replace(/[^a-z0-9]/g,'');
     let reqs = [];
-    if (isExcel) {
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
-      reqs = rows.slice(1).map(vals=>{
-        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i] ? String(vals[i]).trim() : '');
-        return { title: obj['title'], description: obj['description'], isRequired: obj['isrequired'] ? obj['isrequired'].toLowerCase()==='true' : true };
-      });
-    } else {
-      const text = await file.text();
-      const lines = text.trim().split('\n');
-      const headers = lines[0].split(',').map(h=>h.trim().toLowerCase());
-      reqs = lines.slice(1).map(line=>{
-        const vals=line.split(',').map(v=>v.trim());
-        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
-        return { title: obj['title'], description: obj['description'], isRequired: obj['isrequired'] ? obj['isrequired'].toLowerCase()==='true' : true };
-      });
-    }
-    for(const r of reqs){ try{ await createRequirement(r); }catch(e){ console.error(e); } }
-    loadData();
-    alert(`Batch templates: ${reqs.length} processed`);
+    try {
+      if (isExcel) {
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data, { raw: false });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (!rows.length) { setBatchResult({ created: 0, failed: 1, errors: ['File is empty'] }); return; }
+        const headers = rows[0].map(normalize);
+        reqs = rows.slice(1).map(vals=>{
+          const obj={}; headers.forEach((h,i)=>obj[h]= vals[i]!=null?String(vals[i]).trim():'' );
+          if (!Object.values(obj).some(v=>v)) return null;
+          const rawReq = (obj['isrequired']||'').toLowerCase();
+          const isReq = rawReq ? ['true','1','yes','required'].includes(rawReq) : true;
+          return { title: obj['title']||'', description: obj['description']||'', isRequired: isReq };
+        }).filter(Boolean);
+      } else {
+        const text = await file.text();
+        const lines = text.trim().split(/\r?\n/).filter(l=>l.trim());
+        if (lines.length<2){ setBatchResult({ created:0, failed:1, errors:['CSV needs header + at least 1 row'] }); return; }
+        const headers = lines[0].split(',').map(h=>normalize(h.replace(/^"|"$/g,'')));
+        reqs = lines.slice(1).map(line=>{
+          const vals=[]; let cur=''; let inQuote=false;
+          for(let ch of line){ if(ch==='"') inQuote=!inQuote; else if(ch===',' && !inQuote){ vals.push(cur.trim()); cur=''; } else cur+=ch; }
+          vals.push(cur.trim());
+          const cleaned = vals.map(v=>v.replace(/^"|"$/g,'').trim());
+          const obj={}; headers.forEach((h,i)=>obj[h]=cleaned[i]||'');
+          if (!Object.values(obj).some(v=>v)) return null;
+          const rawReq=(obj['isrequired']||'').toLowerCase();
+          const isReq = rawReq ? ['true','1','yes','required'].includes(rawReq) : true;
+          return { title: obj['title']||'', description: obj['description']||'', isRequired: isReq };
+        }).filter(Boolean);
+      }
+      if (!reqs.length){ setBatchResult({ created:0, failed:1, errors:['No valid rows - need at least "title" column'] }); return; }
+      let created=0, failed=0; const errors=[];
+      for(const r of reqs){
+        if(!r.title){ failed++; errors.push(`(no title): missing title`); continue; }
+        try{ await createRequirement(r); created++; }catch(e){ failed++; errors.push(`${r.title}: ${e.response?.data?.message||e.message}`); }
+      }
+      loadData();
+      setBatchResult({ created, failed, errors });
+    } catch(e){ setBatchResult({ created:0, failed:1, errors:[e.message||'Batch failed'] }); }
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">{tab === 'requirements' ? 'Templates' : 'Submissions'}</h1>
           <p className="text-sm text-sti-gray">{tab === 'requirements' ? 'Templates' : 'Student submissions'}</p>
         </div>
         {tab === 'requirements' && (
-          <div className="flex gap-2">
-            <Button variant="primary" icon={Plus} onClick={openNew}>Add Template</Button>
+          <div className="flex gap-2 shrink-0 w-full sm:w-auto">
+            <Button variant="primary" icon={Plus} onClick={openNew} className="flex-1 sm:flex-none justify-center">Add Template</Button>
             <div
               onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
               onDragLeave={()=>setDragOver(false)}
               onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
-              className={dragOver ? 'ring-2 ring-sti-blue rounded-xl' : ''}
+              className={`flex-1 sm:flex-none ${dragOver ? 'ring-2 ring-sti-blue rounded-xl' : ''}`}
             >
               <input type="file" accept=".csv,.xlsx,.xls" id="batch-template-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
-              <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()}>Batch Upload</Button>
+              <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()} className="w-full justify-center">Batch Upload</Button>
             </div>
           </div>
         )}
@@ -398,6 +419,24 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
           </div>
         </div>
       )}
+
+      <Modal isOpen={!!batchResult} onClose={() => setBatchResult(null)} title={batchResult?.failed ? 'Batch Upload Result' : 'Batch Complete'} maxWidth="max-w-md">
+        {batchResult && (
+          <div className="space-y-3">
+            <div className={`p-3 rounded-xl text-sm font-medium ${batchResult.failed ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-200' : 'bg-green-50 text-green-800 border border-green-200'}`}>
+              Batch: {batchResult.created} created, {batchResult.failed} failed
+            </div>
+            {batchResult.errors?.length >0 && (
+              <div className="max-h-64 overflow-y-auto bg-sti-gray-light dark:bg-slate-900 rounded-xl p-3 space-y-1">
+                {batchResult.errors.slice(0,20).map((e,i)=><p key={i} className="text-xs text-sti-gray-dark dark:text-slate-300 border-b border-black/5 last:border-0 py-1 break-words">{e}</p>)}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button variant="primary" onClick={()=>setBatchResult(null)}>OK</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, MessageCircle, Users, Search, Trash2, Image as ImageIcon, X, CheckCheck } from 'lucide-react';
+import { Send, MessageCircle, Users, Search, Trash2, Image as ImageIcon, X, CheckCheck, ArrowLeft } from 'lucide-react';
 import Card from '../components/Card';
+import Modal from '../components/Modal';
 import { getContacts, getConversation, sendMessage, deleteMessage } from '../services/messageService';
 import { useAuth } from '../hooks/useAuth';
 
@@ -15,6 +16,7 @@ const Messages = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [previewImg, setPreviewImg] = useState(null);
+  const [toast, setToast] = useState('');
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
 
@@ -55,6 +57,8 @@ const Messages = () => {
 
   const isImage = (content) => content && content.startsWith('data:image');
 
+  const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(''), 3000); };
+
   const handleSend = async (e) => {
     e.preventDefault();
     if ((!text.trim() && !previewImg) || !selected) return;
@@ -65,18 +69,18 @@ const Messages = () => {
       setText('');
       setPreviewImg(null);
       loadConversation();
-    } catch (err) { alert(err.response?.data?.message || 'Failed to send'); } finally { setSending(false); }
+    } catch (err) { showToast(err.response?.data?.message || 'Failed to send'); } finally { setSending(false); }
   };
 
   const handleDelete = async (msgId) => {
     if (!confirm('Delete this message?')) return;
-    try { await deleteMessage(msgId); loadConversation(); } catch (e) { alert('Failed to delete'); }
+    try { await deleteMessage(msgId); loadConversation(); } catch (e) { showToast('Failed to delete'); }
   };
 
   const handlePickImage = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 8 * 1024 * 1024) { alert('Image too large (max 8MB)'); return; }
+    if (file.size > 8 * 1024 * 1024) { showToast('Image too large (max 8MB)'); return; }
     const reader = new FileReader();
     reader.onload = () => setPreviewImg(reader.result);
     reader.readAsDataURL(file);
@@ -91,19 +95,20 @@ const Messages = () => {
         <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white flex items-center gap-2"><MessageCircle className="w-5 h-5 text-sti-blue" /> Messages</h1>
         <p className="text-sm text-sti-gray">All users can message all — searchable by name.</p>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[65vh]">
-        <Card className="p-0 overflow-hidden flex flex-col">
-          <div className="px-4 py-3 border-b border-black/5 dark:border-white/10">
+      {/* Mobile: toggle between contacts and chat; Desktop: side-by-side */}
+      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 lg:h-[65vh] h-[calc(100dvh-160px)] min-h-[480px]">
+        <Card className={`p-0 overflow-hidden flex flex-col ${selected ? 'hidden lg:flex' : 'flex'} lg:h-auto h-full`}>
+          <div className="px-4 py-3 border-b border-black/5 dark:border-white/10 shrink-0">
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4 text-sti-gray" /> <span className="text-sm font-semibold text-sti-gray-dark dark:text-white">Contacts</span>
-              <span className="text-xs text-sti-gray ml-auto">{filteredContacts.length}</span>
+              <span className="text-xs text-sti-gray ml-auto">{search ? filteredContacts.length : recentIds.length}</span>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sti-gray" />
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name..." className="input-field pl-8 py-2 text-sm" />
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name..." className="input-field pl-8 py-2.5 text-sm" />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {search ? (
               displayContacts.length === 0 ? (
                 <p className="text-sm text-sti-gray p-4">No matches for "{search}"</p>
@@ -123,22 +128,27 @@ const Messages = () => {
             )}
           </div>
         </Card>
-        <Card className="lg:col-span-2 p-0 flex flex-col overflow-hidden">
+        <Card className={`lg:col-span-2 p-0 flex flex-col overflow-hidden ${!selected ? 'hidden lg:flex' : 'flex'} flex-1 min-h-0`}>
           {!selected ? (
             <div className="flex-1 flex items-center justify-center text-sti-gray text-sm p-8 text-center">Select a contact to start messaging<br/><span className="text-xs">No contact yet — pick someone and send a hello</span></div>
           ) : (
             <>
-              <div className="px-4 py-3 border-b border-black/5 dark:border-white/10">
-                <p className="text-sm font-semibold text-sti-gray-dark dark:text-white">{selected.displayName || selected.email}</p>
-                <p className="text-xs text-sti-gray">{selected.email} • {formatRole(selected.role)}</p>
+              <div className="px-3 sm:px-4 py-3 border-b border-black/5 dark:border-white/10 flex items-center gap-2 shrink-0">
+                <button onClick={()=>setSelected(null)} className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 shrink-0">
+                  <ArrowLeft className="w-5 h-5 text-sti-gray-dark dark:text-white" />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{selected.displayName || selected.email}</p>
+                  <p className="text-xs text-sti-gray truncate">{selected.email} • {formatRole(selected.role)}</p>
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-sti-gray-light/30 dark:bg-slate-900/50">
+              <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-sti-gray-light/30 dark:bg-slate-900/50 min-h-0">
                 {messages.map(m => {
                   const isMine = m.senderId === currentUserId;
                   const isImg = isImage(m.content);
                   return (
                     <div key={m.id} className={`flex ${isMine?'justify-end':'justify-start'} group`}>
-                      <div className={`max-w-[70%] px-3 py-2 rounded-2xl text-sm relative ${isMine?'bg-sti-blue text-white rounded-br-sm':'bg-white dark:bg-slate-800 border border-black/5 dark:border-white/10 text-sti-gray-dark dark:text-white rounded-bl-sm'}`}>
+                      <div className={`max-w-[78%] sm:max-w-[70%] px-3 py-2 rounded-2xl text-sm relative break-words ${isMine?'bg-sti-blue text-white rounded-br-sm':'bg-white dark:bg-slate-800 border border-black/5 dark:border-white/10 text-sti-gray-dark dark:text-white rounded-bl-sm'}`}>
                         {isImg ? <img src={m.content} alt="pic" className="max-w-[200px] rounded-lg" /> : <p className="whitespace-pre-wrap break-words">{m.content}</p>}
                         <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
                           <p className={`text-[10px] ${isMine?'text-white/70':'text-sti-gray'}`}>{new Date(m.createdAt).toLocaleString()}</p>
@@ -157,24 +167,29 @@ const Messages = () => {
                 <div ref={bottomRef} />
               </div>
               {previewImg && (
-                <div className="px-3 py-2 border-t border-black/5 dark:border-white/10 flex items-center gap-2 bg-white dark:bg-slate-800">
-                  <img src={previewImg} alt="preview" className="w-16 h-16 object-cover rounded-lg" />
-                  <span className="text-xs text-sti-gray flex-1">Ready to send</span>
-                  <button onClick={()=>setPreviewImg(null)} className="p-1.5 rounded-full hover:bg-sti-gray-light"><X className="w-4 h-4" /></button>
+                <div className="px-3 py-2 border-t border-black/5 dark:border-white/10 flex items-center gap-2 bg-white dark:bg-slate-800 shrink-0">
+                  <img src={previewImg} alt="preview" className="w-16 h-16 object-cover rounded-lg shrink-0" />
+                  <span className="text-xs text-sti-gray flex-1 min-w-0 truncate">Ready to send</span>
+                  <button onClick={()=>setPreviewImg(null)} className="p-1.5 rounded-full hover:bg-sti-gray-light shrink-0"><X className="w-4 h-4" /></button>
                 </div>
               )}
-              <form onSubmit={handleSend} className="p-3 border-t border-black/5 dark:border-white/10 flex gap-2">
+              <form onSubmit={handleSend} className="p-3 border-t border-black/5 dark:border-white/10 flex gap-2 items-center min-w-0 shrink-0">
                 <input type="file" ref={fileRef} accept="image/*" onChange={handlePickImage} className="hidden" />
-                <button type="button" onClick={()=>fileRef.current?.click()} className="p-2.5 rounded-xl border border-black/10 dark:border-white/10 hover:bg-sti-gray-light dark:hover:bg-white/10"><ImageIcon className="w-4 h-4 text-sti-gray" /></button>
-                <input value={text} onChange={e=>setText(e.target.value)} placeholder="Type a message…" className="input-field flex-1" />
-                <button type="submit" disabled={sending || (!text.trim() && !previewImg)} className="px-4 py-2 rounded-xl bg-sti-blue text-white hover:bg-sti-blue-dark disabled:opacity-50 flex items-center gap-1.5 text-sm font-semibold">
-                  <Send className="w-4 h-4" /> Send
+                <button type="button" onClick={()=>fileRef.current?.click()} className="p-2.5 rounded-xl border border-black/10 dark:border-white/10 hover:bg-sti-gray-light dark:hover:bg-white/10 shrink-0"><ImageIcon className="w-4 h-4 text-sti-gray" /></button>
+                <input value={text} onChange={e=>setText(e.target.value)} placeholder="Type a message…" className="input-field flex-1 min-w-0 text-sm py-2.5" />
+                <button type="submit" disabled={sending || (!text.trim() && !previewImg)} className="px-3 sm:px-4 py-2.5 rounded-xl bg-sti-blue text-white hover:bg-sti-blue-dark disabled:opacity-50 flex items-center gap-1.5 text-sm font-semibold shrink-0">
+                  <Send className="w-4 h-4 shrink-0" /> <span className="hidden sm:inline">Send</span>
                 </button>
               </form>
             </>
           )}
         </Card>
       </div>
+      {toast && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-sm px-4 py-3 rounded-xl shadow-lg z-50 max-w-[90vw] text-center">
+          {toast}
+        </div>
+      )}
     </div>
   );
 };

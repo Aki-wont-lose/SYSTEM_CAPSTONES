@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, X, Building2, Users, Upload } from 'lucide-react'
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import Modal from '../components/Modal';
 import LocationPicker from '../components/LocationPicker';
 import { getCompanies, createCompany, updateCompany, deleteCompany, batchCreateCompanies } from '../services/companyService';
 
@@ -16,33 +17,67 @@ const Companies = () => {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [batchResult, setBatchResult] = useState(null);
+  const [batchLoading, setBatchLoading] = useState(false);
   const handleBatchFile = async (file) => {
     if (!file) return;
-    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-    const isCsv = file.name.endsWith('.csv');
-    if (!isExcel && !isCsv) { alert('Please use CSV or Excel'); return; }
-    let companies = [];
-    if (isExcel) {
-      const data = await file.arrayBuffer();
-      const wb = XLSX.read(data);
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      const headers = rows[0].map(h=>String(h).trim().toLowerCase());
-      companies = rows.slice(1).map(vals=>{
-        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i] ? String(vals[i]).trim() : '');
-        return { name: obj['name'], address: obj['address'], contactPerson: obj['contactperson'] || obj['contact person'], contactNumber: obj['contactnumber'] || obj['contact number'], email: obj['email'], industryType: obj['industrytype'] || obj['industry'], availableSlots: parseInt(obj['availableslots'] || obj['slots'] || '0') };
-      });
-    } else {
-      const text=await file.text();
-      const lines=text.trim().split('\n');
-      const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
-      companies=lines.slice(1).map(line=>{
-        const vals=line.split(',').map(v=>v.trim());
-        const obj={}; headers.forEach((h,i)=>obj[h]=vals[i]);
-        return { name: obj['name'], address: obj['address'], contactPerson: obj['contactperson'] || obj['contact person'], contactNumber: obj['contactnumber'] || obj['contact number'], email: obj['email'], industryType: obj['industrytype'] || obj['industry'], availableSlots: parseInt(obj['availableslots'] || obj['slots'] || '0') };
-      });
-    }
-    try { const res=await batchCreateCompanies(companies); alert(`Batch: ${res.data.created} created, ${res.data.failed} failed`); loadData(); } catch(err){ alert('Batch failed'); }
+    const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+    const isCsv = file.name.toLowerCase().endsWith('.csv');
+    if (!isExcel && !isCsv) { setBatchResult({ created: 0, failed: 1, errors: ['Please use CSV or Excel (.csv, .xlsx)'] }); return; }
+    const normalize = (h) => String(h || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    let payload = [];
+    try {
+      if (isExcel) {
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data, { raw: false });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        if (!ws) { setBatchResult({ created: 0, failed: 1, errors: ['Empty sheet'] }); return; }
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (!rows.length) { setBatchResult({ created: 0, failed: 1, errors: ['File is empty'] }); return; }
+        const headers = rows[0].map(normalize);
+        payload = rows.slice(1).map(vals=>{
+          const obj={}; headers.forEach((h,i)=>obj[h]= vals[i] != null ? String(vals[i]).trim() : '');
+          if (!Object.values(obj).some(v=>v)) return null;
+          return {
+            name: obj['name'] || '',
+            address: obj['address'] || '',
+            contactPerson: obj['contactperson'] || obj['contact'] || '',
+            contactNumber: obj['contactnumber'] || obj['contactno'] || obj['phone'] || '',
+            email: obj['email'] || '',
+            industryType: obj['industrytype'] || obj['industry'] || '',
+            availableSlots: parseInt(obj['availableslots'] || obj['slots'] || obj['slot'] || '0') || 0
+          };
+        }).filter(Boolean);
+      } else {
+        const text=await file.text();
+        const lines = text.trim().split(/\r?\n/).filter(l=>l.trim());
+        if (lines.length < 2) { setBatchResult({ created: 0, failed: 1, errors: ['CSV needs header + at least 1 row'] }); return; }
+        const headers = lines[0].split(',').map(h=>normalize(h.replace(/^"|"$/g,'')));
+        payload = lines.slice(1).map(line=>{
+          const vals=[]; let cur=''; let inQuote=false;
+          for(let ch of line){ if(ch==='"') inQuote=!inQuote; else if(ch===',' && !inQuote){ vals.push(cur.trim()); cur=''; } else cur+=ch; }
+          vals.push(cur.trim());
+          const cleaned = vals.map(v=>v.replace(/^"|"$/g,'').trim());
+          const obj={}; headers.forEach((h,i)=>obj[h]=cleaned[i]||'');
+          if (!Object.values(obj).some(v=>v)) return null;
+          return {
+            name: obj['name'] || '',
+            address: obj['address'] || '',
+            contactPerson: obj['contactperson'] || obj['contact'] || '',
+            contactNumber: obj['contactnumber'] || obj['contactno'] || obj['phone'] || '',
+            email: obj['email'] || '',
+            industryType: obj['industrytype'] || obj['industry'] || '',
+            availableSlots: parseInt(obj['availableslots'] || obj['slots'] || obj['slot'] || '0') || 0
+          };
+        }).filter(Boolean);
+      }
+      if (!payload.length) { setBatchResult({ created: 0, failed: 1, errors: ['No valid rows found - need at least a "name" column'] }); return; }
+      setBatchLoading(true);
+      const res=await batchCreateCompanies(payload);
+      setBatchResult(res.data);
+      loadData();
+    } catch(err){ setBatchResult({ created: 0, failed: payload.length||1, errors: [err.response?.data?.message || err.message || 'Batch failed'] }); }
+    finally { setBatchLoading(false); }
   };
 
   const loadData = async () => {
@@ -118,21 +153,21 @@ const Companies = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">Partner Companies</h1>
           <p className="text-sm text-sti-gray">Manage OJT host companies and available slots.</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="primary" icon={Plus} onClick={openNew}>Add Company</Button>
+        <div className="flex gap-2 shrink-0 w-full sm:w-auto">
+          <Button variant="primary" icon={Plus} onClick={openNew} className="flex-1 sm:flex-none justify-center">Add Company</Button>
           <div
             onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
             onDragLeave={()=>setDragOver(false)}
             onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
-            className={dragOver ? 'ring-2 ring-sti-blue rounded-xl' : ''}
+            className={`flex-1 sm:flex-none ${dragOver ? 'ring-2 ring-sti-blue rounded-xl' : ''}`}
           >
             <input type="file" accept=".csv,.xlsx,.xls" id="batch-company-csv" className="hidden" onChange={e=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
-            <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-company-csv').click()}>Batch Upload</Button>
+            <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-company-csv').click()} className="w-full justify-center">Batch Upload</Button>
           </div>
         </div>
       </div>
@@ -216,6 +251,33 @@ const Companies = () => {
                 {editing ? 'Save Changes' : 'Add Company'}
               </Button>
             </form>
+          </div>
+        </div>
+      )}
+
+      <Modal isOpen={!!batchResult} onClose={() => setBatchResult(null)} title={batchResult?.failed ? 'Batch Upload Result' : 'Batch Upload Complete'} maxWidth="max-w-md">
+        {batchResult && (
+          <div className="space-y-3">
+            <div className={`p-3 rounded-xl text-sm font-medium ${batchResult.failed ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-200' : 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-950 dark:text-green-200'}`}>
+              Batch: {batchResult.created} created, {batchResult.failed} failed
+            </div>
+            {batchResult.errors?.length > 0 && (
+              <div className="max-h-64 overflow-y-auto bg-sti-gray-light dark:bg-slate-900 rounded-xl p-3 space-y-1">
+                {batchResult.errors.slice(0,20).map((e,i)=><p key={i} className="text-xs text-sti-gray-dark dark:text-slate-300 break-words border-b border-black/5 dark:border-white/10 last:border-0 py-1">{e}</p>)}
+                {batchResult.errors.length>20 && <p className="text-xs text-sti-gray">+{batchResult.errors.length-20} more...</p>}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button variant="primary" onClick={()=>setBatchResult(null)}>OK</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+      {batchLoading && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-40">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 flex items-center gap-3 shadow-xl">
+            <div className="w-6 h-6 border-2 border-sti-blue border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm font-medium">Uploading batch...</span>
           </div>
         </div>
       )}
