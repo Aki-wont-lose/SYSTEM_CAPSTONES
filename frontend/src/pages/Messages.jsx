@@ -1,9 +1,17 @@
 import { useEffect, useState, useRef } from 'react';
 import { Send, MessageCircle, Users, Search, Trash2, Image as ImageIcon, X, CheckCheck, ArrowLeft } from 'lucide-react';
 import Card from '../components/Card';
-import Modal from '../components/Modal';
 import { getContacts, getConversation, sendMessage, deleteMessage } from '../services/messageService';
 import { useAuth } from '../hooks/useAuth';
+
+const readList = (key) => {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) || '[]');
+    return Array.isArray(value) ? value : [];
+  } catch {
+    return [];
+  }
+};
 
 const Messages = () => {
   const { user } = useAuth();
@@ -17,13 +25,15 @@ const Messages = () => {
   const [sending, setSending] = useState(false);
   const [previewImg, setPreviewImg] = useState(null);
   const [toast, setToast] = useState('');
+  const [recentIds, setRecentIds] = useState(() => readList('recentChats'));
+  const [hiddenIds, setHiddenIds] = useState(() => readList('hiddenChats'));
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
 
   const loadContacts = async () => {
     try {
       const res = await getContacts();
-      setContacts(res.data);
+      setContacts(res.data || []);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
@@ -32,12 +42,13 @@ const Messages = () => {
     if (!id) return;
     try {
       const res = await getConversation(id);
-      setMessages(res.data);
+      setMessages(res.data || []);
+      setContacts(current => current.map(contact => contact.id === id ? { ...contact, unreadCount: 0 } : contact));
       setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     } catch (e) { console.error(e); }
   };
 
-  useEffect(() => { loadContacts(); }, []);
+  useEffect(() => { loadContacts(); const interval = setInterval(loadContacts, 5000); return () => clearInterval(interval); }, []);
   useEffect(() => {
     setMessages([]);
     if (selected) loadConversation(selected.id);
@@ -51,13 +62,65 @@ const Messages = () => {
     if (!q) return false;
     return c.email.toLowerCase().includes(q) || (c.displayName || '').toLowerCase().includes(q) || (c.studentId || '').toLowerCase().includes(q) || c.role.toLowerCase().includes(q);
   });
-  const [recentIds, setRecentIds] = useState(() => JSON.parse(localStorage.getItem('recentChats') || '[]'));
-  const displayContacts = search ? filteredContacts : contacts.filter(c => recentIds.includes(c.id));
-  useEffect(() => { if (selected) { const ids = JSON.parse(localStorage.getItem('recentChats') || '[]'); if (!ids.includes(selected.id)) { const next=[selected.id, ...ids].slice(0,20); localStorage.setItem('recentChats', JSON.stringify(next)); setRecentIds(next); } } }, [messages]);
+  const visibleContacts = contacts
+    .filter(c => c.hasConversation || recentIds.includes(c.id))
+    .filter(c => !hiddenIds.includes(c.id))
+    .sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
+  const displayContacts = search ? filteredContacts.filter(c => !hiddenIds.includes(c.id)) : visibleContacts;
 
   const isImage = (content) => content && content.startsWith('data:image');
 
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(''), 3000); };
+
+  const updateStoredList = (key, value) => {
+    localStorage.setItem(key, JSON.stringify(value));
+  };
+
+  const openContact = (contact) => {
+    setSelected(contact);
+    setSearch('');
+    setHiddenIds(current => {
+      const next = current.filter(id => id !== contact.id);
+      updateStoredList('hiddenChats', next);
+      return next;
+    });
+    setRecentIds(current => {
+      const next = [contact.id, ...current.filter(id => id !== contact.id)].slice(0, 20);
+      updateStoredList('recentChats', next);
+      return next;
+    });
+  };
+
+  const removeContact = (contact) => {
+    const name = contact.displayName || contact.email;
+    if (!confirm(`Remove ${name} from your chat list?`)) return;
+    setHiddenIds(current => {
+      const next = current.includes(contact.id) ? current : [...current, contact.id];
+      updateStoredList('hiddenChats', next);
+      return next;
+    });
+    setRecentIds(current => {
+      const next = current.filter(id => id !== contact.id);
+      updateStoredList('recentChats', next);
+      return next;
+    });
+    if (selected?.id === contact.id) setSelected(null);
+    showToast('Contact removed from your chat list');
+  };
+
+  const renderContact = (contact) => {
+    const isSelected = selected?.id === contact.id;
+    return (
+      <div key={contact.id} className={`flex items-center border-b border-black/5 dark:border-white/10 ${isSelected ? 'bg-sti-blue-50 dark:bg-white/10' : ''}`}>
+        <button onClick={() => openContact(contact)} className="flex-1 min-w-0 text-left px-4 py-3 hover:bg-sti-gray-light dark:hover:bg-white/5">
+          <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{contact.displayName || contact.email.split('@')[0]} <span className="text-xs font-normal text-sti-gray">• {contact.roleLabel || formatRole(contact.role)}</span></p>
+          {contact.hasConversation && <p className="text-xs text-sti-gray truncate mt-1">{contact.lastMessagePreview || 'No messages yet'}</p>}
+        </button>
+        {contact.unreadCount > 0 && <span className="mr-2 min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{contact.unreadCount > 99 ? '99+' : contact.unreadCount}</span>}
+        <button onClick={() => removeContact(contact)} className="p-2 mr-1 rounded-lg text-sti-gray hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0" title="Remove from chat list" aria-label={`Remove ${contact.displayName || contact.email} from chat list`}><Trash2 className="w-4 h-4" /></button>
+      </div>
+    );
+  };
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -101,7 +164,7 @@ const Messages = () => {
           <div className="px-4 py-3 border-b border-black/5 dark:border-white/10 shrink-0">
             <div className="flex items-center gap-2 mb-2">
               <Users className="w-4 h-4 text-sti-gray" /> <span className="text-sm font-semibold text-sti-gray-dark dark:text-white">Contacts</span>
-              <span className="text-xs text-sti-gray ml-auto">{search ? filteredContacts.length : recentIds.length}</span>
+              <span className="text-xs text-sti-gray ml-auto">{search ? filteredContacts.length : displayContacts.length}</span>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sti-gray" />
@@ -109,23 +172,15 @@ const Messages = () => {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto min-h-0">
-            {search ? (
-              displayContacts.length === 0 ? (
-                <p className="text-sm text-sti-gray p-4">No matches for "{search}"</p>
-              ) : displayContacts.map(c => (
-                <button key={c.id} onClick={() => setSelected(c)} className={`w-full text-left px-4 py-3 border-b border-black/5 dark:border-white/10 hover:bg-sti-gray-light dark:hover:bg-white/5 ${selected?.id===c.id?'bg-sti-blue-50 dark:bg-white/10':''}`}>
-                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{c.displayName || c.email.split('@')[0]} <span className="text-xs font-normal text-sti-gray">• {c.roleLabel || formatRole(c.role)}</span></p>
-                </button>
-              ))
-            ) : displayContacts.length > 0 ? (
-              displayContacts.map(c => (
-                <button key={c.id} onClick={() => setSelected(c)} className={`w-full text-left px-4 py-3 border-b border-black/5 dark:border-white/10 hover:bg-sti-gray-light dark:hover:bg-white/5 ${selected?.id===c.id?'bg-sti-blue-50 dark:bg-white/10':''}`}>
-                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{c.displayName || c.email.split('@')[0]} <span className="text-xs font-normal text-sti-gray">• {c.roleLabel || formatRole(c.role)}</span></p>
-                </button>
-              ))
-            ) : (
-              <p className="text-sm text-sti-gray p-4 text-center">Search name to find contacts<br/><span className="text-xs">After chat it will pop up here</span></p>
-            )}
+             {search ? (
+               displayContacts.length === 0 ? (
+                 <p className="text-sm text-sti-gray p-4">No matches for "{search}"</p>
+               ) : displayContacts.map(renderContact)
+             ) : displayContacts.length > 0 ? (
+               displayContacts.map(renderContact)
+             ) : (
+               <p className="text-sm text-sti-gray p-4 text-center">No conversations yet<br/><span className="text-xs">Search for a user to start a chat</span></p>
+             )}
           </div>
         </Card>
         <Card className={`lg:col-span-2 p-0 flex flex-col overflow-hidden ${!selected ? 'hidden lg:flex' : 'flex'} flex-1 min-h-0`}>
@@ -141,6 +196,7 @@ const Messages = () => {
                   <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{selected.displayName || selected.email}</p>
                   <p className="text-xs text-sti-gray truncate">{selected.email} • {formatRole(selected.role)}</p>
                 </div>
+                <button onClick={() => removeContact(selected)} className="p-2 rounded-lg text-sti-gray hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0" title="Remove from chat list" aria-label="Remove contact from chat list"><Trash2 className="w-4 h-4" /></button>
               </div>
               <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-sti-gray-light/30 dark:bg-slate-900/50 min-h-0">
                 {messages.map(m => {

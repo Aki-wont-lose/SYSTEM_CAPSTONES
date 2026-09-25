@@ -10,8 +10,7 @@ const canMessage = (senderRole, receiverRole) => {
   return true; // allow any authenticated user to message any other active user
 };
 
-export const getContactUsers = async (currentUserId, currentRole) => {
-  // All roles see all other active users - searchable by name, hidden test accounts filtered
+export const getContactUsers = async (currentUserId) => {
   const users = await prisma.user.findMany({
     where: {
       isActive: true,
@@ -27,13 +26,53 @@ export const getContactUsers = async (currentUserId, currentRole) => {
     },
     orderBy: [{ role: 'asc' }, { email: 'asc' }]
   });
-  // Map to include displayName for search - only Name • Role shown in UI
-  return users.map(u => ({
-    ...u,
-    displayName: u.student ? `${u.student.firstName} ${u.student.lastName}` : u.email.split('@')[0].replace('.', ' '),
-    studentId: u.student?.studentId || null,
-    roleLabel: u.role.charAt(0) + u.role.slice(1).toLowerCase()
-  }));
+
+  const messages = await prisma.message.findMany({
+    where: {
+      OR: [
+        { senderId: currentUserId },
+        { receiverId: currentUserId }
+      ]
+    },
+    select: {
+      senderId: true,
+      receiverId: true,
+      content: true,
+      isRead: true,
+      createdAt: true
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const conversationByUser = new Map();
+  for (const message of messages) {
+    const otherUserId = message.senderId === currentUserId ? message.receiverId : message.senderId;
+    const current = conversationByUser.get(otherUserId) || {
+      unreadCount: 0,
+      lastMessageAt: null,
+      lastMessagePreview: null
+    };
+    if (message.receiverId === currentUserId && !message.isRead) current.unreadCount += 1;
+    if (!current.lastMessageAt || message.createdAt > current.lastMessageAt) {
+      current.lastMessageAt = message.createdAt;
+      current.lastMessagePreview = message.content.startsWith('data:image') ? 'Photo' : message.content.slice(0, 80);
+    }
+    conversationByUser.set(otherUserId, current);
+  }
+
+  return users.map(u => {
+    const conversation = conversationByUser.get(u.id);
+    return {
+      ...u,
+      displayName: u.student ? `${u.student.firstName} ${u.student.lastName}` : u.email.split('@')[0].replace('.', ' '),
+      studentId: u.student?.studentId || null,
+      roleLabel: u.role.charAt(0) + u.role.slice(1).toLowerCase(),
+      hasConversation: !!conversation,
+      unreadCount: conversation?.unreadCount || 0,
+      lastMessageAt: conversation?.lastMessageAt || null,
+      lastMessagePreview: conversation?.lastMessagePreview || null
+    };
+  });
 };
 
 export const getConversation = async (currentUserId, otherUserId) => {
