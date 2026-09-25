@@ -114,7 +114,7 @@ const AdminView = ({ onBack, onForgot }) => {
 };
 
 const LoginShell = ({ children }) => (
-  <div className="min-h-[calc(100vh-64px)] relative overflow-hidden bg-sti-blue-dark flex items-center justify-center p-4 sm:p-8">
+  <div className="min-h-screen relative overflow-hidden bg-sti-blue-dark flex items-center justify-center p-4 sm:p-8">
     <div className="absolute inset-0 opacity-95">
       <div className="absolute top-0 left-[-10%] w-[30%] h-[160%] -rotate-12 bg-gradient-to-b from-sti-yellow to-sti-yellow-dark" />
       <div className="absolute top-0 left-[24%] w-[8%] h-[160%] -rotate-12 bg-sti-yellow/25" />
@@ -141,7 +141,7 @@ const Login = () => {
   const [showForgot, setShowForgot] = useState(false);
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-sti-blue-dark flex flex-col">
       <LoginShell>
         {view === 'start' && <StartView onStart={() => setView('choice')} />}
         {view === 'choice' && <LoginModalContent view={view} setView={setView} onClose={() => setView('start')} />}
