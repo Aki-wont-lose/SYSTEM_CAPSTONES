@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Menu, LogOut, ChevronDown, Bell, Sun, Moon, X, CheckCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -11,12 +11,28 @@ const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [selectedNotif, setSelectedNotif] = useState(null);
+  const [messageToast, setMessageToast] = useState(null);
+  const knownNotificationIds = useRef(new Set());
+  const hasLoadedNotifications = useRef(false);
   const unread = notifications.filter(n=>!n.isRead).length;
 
   const fetchNotifs = async () => {
-    try { const res = await api.get('/notifications'); setNotifications(res.data.data || []); } catch {}
+    try {
+      const res = await api.get('/notifications');
+      const next = res.data.data || [];
+      if (hasLoadedNotifications.current) {
+        const newMessage = next.find(n => !n.isRead && !knownNotificationIds.current.has(n.id) && n.title.startsWith('New message from '));
+        if (newMessage) {
+          setMessageToast(newMessage);
+          window.setTimeout(() => setMessageToast(null), 8000);
+        }
+      }
+      knownNotificationIds.current = new Set(next.map(n => n.id));
+      hasLoadedNotifications.current = true;
+      setNotifications(next);
+    } catch {}
   };
-  useEffect(()=>{ fetchNotifs(); const id=setInterval(fetchNotifs, 15000); return ()=>clearInterval(id); }, []);
+  useEffect(()=>{ fetchNotifs(); const id=setInterval(fetchNotifs, 5000); return ()=>clearInterval(id); }, []);
   const markAllRead = async () => { await api.put('/notifications/read-all'); fetchNotifs(); };
   const openNotif = async (n) => {
     setSelectedNotif(n);
@@ -96,7 +112,20 @@ const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
               </div>
             </>
           )}
-          {selectedNotif && (
+          {messageToast && (
+        <div className="fixed top-24 right-4 z-40 w-[calc(100vw-2rem)] max-w-sm rounded-xl bg-[#1e1e1e] text-white shadow-cardHover border border-white/10 p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full bg-sti-blue flex items-center justify-center text-white text-xs font-bold shrink-0">{messageToast.title[0]}</div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white">{messageToast.title}</p>
+              <p className="text-xs text-gray-300 mt-1 line-clamp-3">{messageToast.content}</p>
+              <button onClick={() => { setMessageToast(null); setNotifOpen(true); openNotif(messageToast); }} className="text-xs text-sti-yellow hover:text-white mt-2">View notification</button>
+            </div>
+            <button onClick={() => setMessageToast(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+          </div>
+        </div>
+      )}
+      {selectedNotif && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setSelectedNotif(null)}>
               <div className="bg-[#232323] rounded-xl max-w-md w-full p-5" onClick={e=>e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-3">

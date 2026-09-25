@@ -13,7 +13,7 @@ import {
   reviewSubmission
 } from '../services/requirementService';
 
-const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = false, hideSubmissions = false }) => {
+const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = false, hideSubmissions = false, hideBatchUpload = false }) => {
   const [tab, setTab] = useState(defaultTab); // 'requirements' | 'submissions'
   const [requirements, setRequirements] = useState([]);
   const [submissions, setSubmissions] = useState([]);
@@ -198,15 +198,17 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
         {tab === 'requirements' && (
           <div className="flex gap-2 shrink-0 w-full sm:w-auto">
             <Button variant="primary" icon={Plus} onClick={openNew} className="flex-1 sm:flex-none justify-center">Add Template</Button>
-            <div
-              onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
-              onDragLeave={()=>setDragOver(false)}
-              onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
-              className={`flex-1 sm:flex-none ${dragOver ? 'ring-2 ring-sti-blue rounded-xl' : ''}`}
-            >
-              <input type="file" accept=".csv,.xlsx,.xls" id="batch-template-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
-              <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()} className="w-full justify-center">Batch Upload</Button>
-            </div>
+            {!hideBatchUpload && (
+              <div
+                onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
+                onDragLeave={()=>setDragOver(false)}
+                onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
+                className={`flex-1 sm:flex-none ${dragOver ? 'ring-2 ring-sti-blue rounded-xl' : ''}`}
+              >
+                <input type="file" accept=".csv,.xlsx,.xls" id="batch-template-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
+                <Button variant="secondary" onClick={()=>document.getElementById('batch-template-csv').click()} className="w-full justify-center">Batch Upload</Button>
+              </div>
+            )}
           </div>
         )}
       </div>

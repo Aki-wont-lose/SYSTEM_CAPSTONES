@@ -63,10 +63,27 @@ export const sendMessage = async (senderId, senderRole, receiverId, content) => 
     const e = new Error('You can only message Coordinator ↔ Supervisor (ADMIN can message both)');
     e.status = 403; throw e;
   }
-  return prisma.message.create({
+  const sender = await prisma.user.findUnique({
+    where: { id: senderId },
+    select: { email: true, role: true, student: { select: { firstName: true, lastName: true } } }
+  });
+  const senderName = sender?.student
+    ? `${sender.student.firstName} ${sender.student.lastName}`
+    : sender?.email?.split('@')[0] || 'A user';
+  const message = await prisma.message.create({
     data: { senderId, receiverId, content: content.trim() },
     include: { sender: { select: { email: true, role: true } } }
   });
+  try {
+    await prisma.notification.create({
+      data: {
+        userId: receiverId,
+        title: `New message from ${senderName}`,
+        content: content.trim().startsWith('data:image') ? 'Sent a photo.' : content.trim().slice(0, 200)
+      }
+    });
+  } catch (e) { console.error('Failed to create message notification', e.message); }
+  return message;
 };
 
 export const markAsRead = async (userId, otherUserId) => {
