@@ -375,9 +375,13 @@ const AccountManagement = () => {
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Program *</label>
               <select required value={form.coordinatorCourse} onChange={(e) => setForm({ ...form, coordinatorCourse: e.target.value })} className="input-field">
                 <option value="">Select program</option>
-                <option value="BSHM">BSHM</option>
                 <option value="BSIT">BSIT</option>
+                <option value="BSCS">BSCS</option>
+                <option value="BSCPE">BSCPE</option>
+                <option value="BSACT">BSACT</option>
+                <option value="BSHM">BSHM</option>
                 <option value="BSTM">BSTM</option>
+                <option value="BSAIS">BSAIS</option>
               </select>
             </div>
           ) : (

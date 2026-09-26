@@ -11,7 +11,6 @@ const titles = {
   '/admin/requirements': 'Requirements',
   '/admin/templates': 'Templates',
   '/admin/submissions': 'Submissions',
-  '/admin/grading': 'Automated Grading',
   '/admin/companies': 'Partner Companies',
   '/admin/logs': 'Student Logs',
   '/admin/audit-logs': 'Audit Logs',

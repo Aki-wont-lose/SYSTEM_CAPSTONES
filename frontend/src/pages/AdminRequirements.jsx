@@ -16,9 +16,13 @@ import {
 
 const PROGRAMS = [
   { value: 'ALL', label: 'All programs' },
-  { value: 'BSHM', label: 'BSHM' },
   { value: 'BSIT', label: 'BSIT' },
+  { value: 'BSCS', label: 'BSCS' },
+  { value: 'BSCPE', label: 'BSCPE' },
+  { value: 'BSACT', label: 'BSACT' },
+  { value: 'BSHM', label: 'BSHM' },
   { value: 'BSTM', label: 'BSTM' },
+  { value: 'BSAIS', label: 'BSAIS' },
 ];
 
 const emptyForm = {
@@ -284,7 +288,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
           return {
             title: obj['title']||'',
             description: obj['description']||'',
-            program: ['bshm','bsit','bstm'].includes(String(obj['program']||'').toLowerCase()) ? String(obj['program']).toUpperCase() : null,
+            program: ['bsit','bscs','bscpe','bsact','bshm','bstm','bsais'].includes(String(obj['program']||'').toLowerCase()) ? String(obj['program']).toUpperCase() : null,
             category: obj['category']||'',
             cadence: String(obj['cadence']||'').toUpperCase() === 'WEEKLY' ? 'WEEKLY' : 'ONCE',
             dueInDays: obj['duedays'] ? Number(obj['duedays']) : null,
@@ -309,7 +313,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
           return {
             title: obj['title']||'',
             description: obj['description']||'',
-            program: ['bshm','bsit','bstm'].includes(String(obj['program']||'').toLowerCase()) ? String(obj['program']).toUpperCase() : null,
+            program: ['bsit','bscs','bscpe','bsact','bshm','bstm','bsais'].includes(String(obj['program']||'').toLowerCase()) ? String(obj['program']).toUpperCase() : null,
             category: obj['category']||'',
             cadence: String(obj['cadence']||'').toUpperCase() === 'WEEKLY' ? 'WEEKLY' : 'ONCE',
             dueInDays: obj['duedays'] ? Number(obj['duedays']) : null,
@@ -520,9 +524,13 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
               <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} className="input-field pl-9">
                 <option value="">All programs</option>
-                <option value="BSHM">BSHM</option>
                 <option value="BSIT">BSIT</option>
+                <option value="BSCS">BSCS</option>
+                <option value="BSCPE">BSCPE</option>
+                <option value="BSACT">BSACT</option>
+                <option value="BSHM">BSHM</option>
                 <option value="BSTM">BSTM</option>
+                <option value="BSAIS">BSAIS</option>
               </select>
             </div>
 

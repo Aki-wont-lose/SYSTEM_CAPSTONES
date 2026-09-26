@@ -23,7 +23,6 @@ import StudentManagement from './pages/StudentManagement';
 import AdminRequirements from './pages/AdminRequirements';
 import Templates from './pages/Templates';
 import Submissions from './pages/Submissions';
-import Grading from './pages/Grading';
 import Companies from './pages/Companies';
 import AdminLogs from './pages/AdminLogs';
 import AnnouncementManagement from './pages/AnnouncementManagement';
@@ -102,7 +101,7 @@ function App() {
         <Route path="/admin/templates" element={<Templates />} />
         <Route path="/admin/submissions" element={<Submissions />} />
         <Route path="/admin/requirements" element={<AdminRequirements />} />
-        <Route path="/admin/grading" element={<Grading />} />
+        <Route path="/admin/grading" element={<Navigate to="/admin/submissions" replace />} />
         <Route path="/admin/companies" element={<Companies />} />
         <Route path="/admin/logs" element={<AdminLogs />} />
         <Route path="/admin/audit-logs" element={<AuditLogs />} />
@@ -126,7 +125,7 @@ function App() {
         <Route path="/coordinator/templates" element={<Templates />} />
         <Route path="/coordinator/submissions" element={<Submissions />} />
         <Route path="/coordinator/requirements" element={<AdminRequirements />} />
-        <Route path="/coordinator/grading" element={<Grading />} />
+        <Route path="/coordinator/grading" element={<Navigate to="/coordinator/submissions" replace />} />
         <Route path="/coordinator/companies" element={<Companies />} />
         <Route path="/coordinator/logs" element={<AdminLogs />} />
         <Route path="/coordinator/audit-logs" element={<AuditLogs />} />
@@ -147,7 +146,7 @@ function App() {
         <Route path="/supervisor/students" element={<StudentManagement />} />
         <Route path="/supervisor/attendance" element={<AttendanceMonitoring />} />
         <Route path="/supervisor/submissions" element={<Submissions />} />
-        <Route path="/supervisor/grading" element={<Grading />} />
+        <Route path="/supervisor/grading" element={<Navigate to="/supervisor/submissions" replace />} />
         <Route path="/supervisor/logs" element={<AdminLogs />} />
         <Route path="/supervisor/messages" element={<Messages />} />
         <Route path="/supervisor/profile" element={<AdminProfile />} />

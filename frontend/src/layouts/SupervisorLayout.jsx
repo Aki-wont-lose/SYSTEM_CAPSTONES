@@ -8,7 +8,6 @@ const titles = {
   '/supervisor/students': 'Students',
   '/supervisor/attendance': 'Attendance',
   '/supervisor/submissions': 'Submissions',
-  '/supervisor/grading': 'Automated Grading',
   '/supervisor/logs': 'Student Logs',
   '/supervisor/messages': 'Messages',
   '/supervisor/profile': 'My Profile',

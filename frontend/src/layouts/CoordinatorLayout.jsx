@@ -11,7 +11,6 @@ const titles = {
   '/coordinator/requirements': 'Requirements',
   '/coordinator/templates': 'Templates',
   '/coordinator/submissions': 'Submissions',
-  '/coordinator/grading': 'Automated Grading',
   '/coordinator/companies': 'Partner Companies',
   '/coordinator/logs': 'Student Logs',
   '/coordinator/audit-logs': 'Audit Logs',

@@ -2,7 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-const VALID_PROGRAMS = ['BSHM', 'BSIT', 'BSTM'];
+const VALID_PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'];
 
 const normalizePrograms = (value) => {
   if (value == null) return [];

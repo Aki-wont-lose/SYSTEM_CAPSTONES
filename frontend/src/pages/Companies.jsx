@@ -7,7 +7,7 @@ import Modal from '../components/Modal';
 import LocationPicker from '../components/LocationPicker';
 import { getCompanies, createCompany, updateCompany, deleteCompany, batchCreateCompanies } from '../services/companyService';
 
-const PROGRAMS = ['BSHM', 'BSIT', 'BSTM'];
+const PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'];
 
 const emptyForm = { name: '', address: '', latitude: '', longitude: '', contactPerson: '', contactNumber: '', email: '', industryType: '', programs: [], availableSlots: 0, status: 'ACTIVE' };
 

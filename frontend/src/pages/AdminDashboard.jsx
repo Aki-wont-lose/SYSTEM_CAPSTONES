@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Users, UserCheck, CheckCircle2, Clock3, PauseCircle, Building2, GraduationCap } from 'lucide-react';
+import { Users, UserCheck, CheckCircle2, Clock3, PauseCircle, GraduationCap } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
 import WelcomeCarousel from '../components/WelcomeCarousel';
 import { getActiveAnnouncements } from '../services/announcementService';
 
-const PROGRAM_ORDER = ['BSHM', 'BSIT', 'BSTM'];
+const PROGRAM_ORDER = ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'];
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
@@ -78,7 +78,7 @@ const AdminDashboard = () => {
         <StatCard label="Completed" value={stats.completed ?? 0} icon={CheckCircle2} accent="yellow" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
         <Card>
           <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-sti-blue" /> Interns per Program
@@ -100,24 +100,6 @@ const AdminDashboard = () => {
               ))}
             </div>
           )}
-        </Card>
-
-        <Card>
-          <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-sti-blue" /> Industry Sectors
-          </h3>
-          <p className="text-3xl font-bold text-sti-blue mt-3">{stats.partnerCompanies ?? 0}</p>
-          <p className="text-xs text-sti-gray mt-1">active partner companies currently hosting interns</p>
-          <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-black/5 dark:border-white/10">
-            <div>
-              <p className="text-xs text-sti-gray">Not Started</p>
-              <p className="text-lg font-bold text-sti-gray-dark dark:text-white">{stats.pending ?? 0}</p>
-            </div>
-            <div>
-              <p className="text-xs text-sti-gray">Currently Rendering</p>
-              <p className="text-lg font-bold text-sti-gray-dark dark:text-white">{stats.active ?? 0}</p>
-            </div>
-          </div>
         </Card>
       </div>
 

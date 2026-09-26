@@ -6,7 +6,7 @@ import { getCompanies } from '../services/companyService';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentSummary } from '../services/attendanceService';
 
-const PROGRAM_LABELS = { BSHM: 'BSHM', BSIT: 'BSIT', BSTM: 'BSTM' };
+const PROGRAM_LABELS = { BSIT: 'BSIT', BSCS: 'BSCS', BSCPE: 'BSCPE', BSACT: 'BSACT', BSHM: 'BSHM', BSTM: 'BSTM', BSAIS: 'BSAIS' };
 
 const FindCompany = () => {
   const { user } = useAuth();

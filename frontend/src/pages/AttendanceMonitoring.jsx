@@ -124,9 +124,13 @@ const AttendanceMonitoring = () => {
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
               <select value={queueCourse} onChange={e=>setQueueCourse(e.target.value)} className="input-field pl-9 py-2">
                 <option value="">All programs</option>
-                <option value="BSHM">BSHM</option>
                 <option value="BSIT">BSIT</option>
+                <option value="BSCS">BSCS</option>
+                <option value="BSCPE">BSCPE</option>
+                <option value="BSACT">BSACT</option>
+                <option value="BSHM">BSHM</option>
                 <option value="BSTM">BSTM</option>
+                <option value="BSAIS">BSAIS</option>
               </select>
             </div>
           </div>
