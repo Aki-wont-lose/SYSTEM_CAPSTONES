@@ -47,7 +47,9 @@ export const getAllCompanies = async (filters = {}) => {
   }
   if (or.length) where.OR = or;
   if (program && VALID_PROGRAMS.includes(String(program).toUpperCase())) {
-    where.programs = { has: String(program).toUpperCase() };
+    where.AND = [
+      { OR: [{ programs: { has: String(program).toUpperCase() } }, { programs: { equals: [] } }] }
+    ];
   }
   if (status) where.status = status;
   if (hasSlots === 'true') where.availableSlots = { gt: 0 };

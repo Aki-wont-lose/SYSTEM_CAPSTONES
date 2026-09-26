@@ -33,9 +33,29 @@ model User {
   sentMessages     Message[] @relation("SentMessages")
   receivedMessages Message[] @relation("ReceivedMessages")
   notifications Notification[]
+  sentConnections     Connection[] @relation("OutgoingConnections")
+  receivedConnections Connection[] @relation("IncomingConnections")
 
   @@index([email])
   @@index([role])
+}
+
+// Connection model - friend request that must be accepted before chatting
+model Connection {
+  id          String           @id @default(cuid())
+  requesterId String
+  addresseeId String
+  status      ConnectionStatus @default(PENDING)
+  respondedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  requester User @relation("OutgoingConnections", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("IncomingConnections", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId, status])
+  @@index([addresseeId, status])
 }
 
 // Student model - Extended student information
@@ -277,6 +297,12 @@ enum AttendanceStatus {
   ABSENT
   LATE
   EXCUSED
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
 }
 
 enum DtrReviewStatus {

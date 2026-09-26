@@ -34,7 +34,7 @@ const FindCompany = () => {
       .catch(() => setMyProgram(''));
   }, [user]);
 
-  const matchesProgram = (c, target) => !target || (c.programs || []).includes(target);
+  const matchesProgram = (c, target) => !target || (c.programs || []).length === 0 || (c.programs || []).includes(target);
 
   const filtered = useMemo(
     () => companies.filter((c) => {

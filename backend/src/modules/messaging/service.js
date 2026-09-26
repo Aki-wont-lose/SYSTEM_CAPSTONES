@@ -1,13 +1,44 @@
-// modules/messaging/service.js — Coordinator ↔ Supervisor (+ADMIN) contact
+// modules/messaging/service.js — chats are gated by accepted connections for students
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-// All roles can message all (admin/coordinator/supervisor/student)
-const canMessage = (senderRole, receiverRole) => {
-  if (senderRole === receiverRole && senderRole === 'STUDENT') {
-    // Students can message staff and other students now
-  }
-  return true; // allow any authenticated user to message any other active user
+const BLOCKED_EMAILS = [
+  'Cabatu.334507@gmail.com',
+  'mccruz1230@gmail.com',
+  'CABATU.334507@GMAIL.COM',
+  'MCCRUZ1230@GMAIL.COM'
+];
+
+const connectionState = async (userA, userB) => {
+  const [outgoing, incoming] = await Promise.all([
+    prisma.connection.findUnique({ where: { requesterId_addresseeId: { requesterId: userA, addresseeId: userB } } }),
+    prisma.connection.findUnique({ where: { requesterId_addresseeId: { requesterId: userB, addresseeId: userA } } })
+  ]);
+  const connection = outgoing || incoming;
+  if (!connection) return 'NONE';
+  if (connection.status === 'ACCEPTED') return 'ACCEPTED';
+  if (connection.status === 'DECLINED') return 'DECLINED';
+  return connection.requesterId === userA ? 'PENDING_OUT' : 'PENDING_IN';
+};
+
+// Staff keep open access so they can reach interns; a student must be connected
+// (or already have an existing thread) before starting a new conversation
+export const canStartChat = async (senderId, senderRole, receiverId) => {
+  if (senderRole !== 'STUDENT') return { allowed: true };
+  if ((await connectionState(senderId, receiverId)) === 'ACCEPTED') return { allowed: true };
+
+  const existing = await prisma.message.findFirst({
+    where: {
+      OR: [
+        { senderId, receiverId },
+        { senderId: receiverId, receiverId: senderId }
+      ]
+    },
+    select: { id: true }
+  });
+  if (existing) return { allowed: true };
+
+  return { allowed: false, reason: 'pending' };
 };
 
 export const getContactUsers = async (currentUserId) => {
@@ -15,7 +46,7 @@ export const getContactUsers = async (currentUserId) => {
     where: {
       isActive: true,
       id: { not: currentUserId },
-      email: { notIn: ['Cabatu.334507@gmail.com', 'mccruz1230@gmail.com', 'CABATU.334507@GMAIL.COM', 'MCCRUZ1230@GMAIL.COM'] }
+      email: { notIn: BLOCKED_EMAILS }
     },
     select: {
       id: true,
@@ -60,8 +91,22 @@ export const getContactUsers = async (currentUserId) => {
     conversationByUser.set(otherUserId, current);
   }
 
+  const connections = await prisma.connection.findMany({
+    where: { OR: [{ requesterId: currentUserId }, { addresseeId: currentUserId }] },
+    select: { id: true, requesterId: true, addresseeId: true, status: true }
+  });
+  const connectionByUser = new Map(
+    connections.map((c) => {
+      const otherId = c.requesterId === currentUserId ? c.addresseeId : c.requesterId;
+      let status = c.status;
+      if (status === 'PENDING') status = c.requesterId === currentUserId ? 'PENDING_OUT' : 'PENDING_IN';
+      return [otherId, { status, connectionId: c.id }];
+    })
+  );
+
   return users.map(u => {
     const conversation = conversationByUser.get(u.id);
+    const connection = connectionByUser.get(u.id);
     return {
       ...u,
       displayName: u.student ? `${u.student.firstName} ${u.student.lastName}` : u.email.split('@')[0].replace('.', ' '),
@@ -70,7 +115,9 @@ export const getContactUsers = async (currentUserId) => {
       hasConversation: !!conversation,
       unreadCount: conversation?.unreadCount || 0,
       lastMessageAt: conversation?.lastMessageAt || null,
-      lastMessagePreview: conversation?.lastMessagePreview || null
+      lastMessagePreview: conversation?.lastMessagePreview || null,
+      connectionStatus: connection?.status || 'NONE',
+      connectionId: connection?.connectionId || null
     };
   });
 };
@@ -96,12 +143,19 @@ export const sendMessage = async (senderId, senderRole, receiverId, content) => 
   if (!content?.trim()) {
     const e = new Error('Message cannot be empty'); e.status = 400; throw e;
   }
-  const receiver = await prisma.user.findUnique({ where: { id: receiverId }, select: { role: true, isActive: true } });
-  if (!receiver) { const e = new Error('Recipient not found'); e.status = 404; throw e; }
-  if (!canMessage(senderRole, receiver.role)) {
-    const e = new Error('You can only message Coordinator ↔ Supervisor (ADMIN can message both)');
-    e.status = 403; throw e;
+  if (senderId === receiverId) {
+    const e = new Error('You cannot message yourself'); e.status = 400; throw e;
   }
+  const receiver = await prisma.user.findUnique({ where: { id: receiverId }, select: { role: true, isActive: true } });
+  if (!receiver || !receiver.isActive) { const e = new Error('Recipient not found'); e.status = 404; throw e; }
+
+  const gate = await canStartChat(senderId, senderRole, receiverId);
+  if (!gate.allowed) {
+    const e = new Error('Send a connection request first — you can chat once it is accepted.');
+    e.status = 403;
+    throw e;
+  }
+
   const sender = await prisma.user.findUnique({
     where: { id: senderId },
     select: { email: true, role: true, student: { select: { firstName: true, lastName: true } } }
