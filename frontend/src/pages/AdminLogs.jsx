@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { ClipboardList, Check, RotateCcw, Plus, X, Filter } from 'lucide-react';
+import { ClipboardList, Check, RotateCcw, Plus, X, Filter, Trash2 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { getAllLogs, reviewLogEntry, assignTaskToStudent } from '../services/logEntryService';
+import { getAllLogs, reviewLogEntry, assignTaskToStudent, deleteLogEntryStaff } from '../services/logEntryService';
 import { getAllStudents } from '../services/studentService';
 
 const statusStyles = {
@@ -45,6 +45,17 @@ const AdminLogs = () => {
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
+
+  const handleDelete = async (log) => {
+    const name = `${log.student?.firstName ?? ''} ${log.student?.lastName ?? ''}`.trim();
+    if (!window.confirm(`Delete this log entry${name ? ` from ${name}` : ''}? This cannot be undone.`)) return;
+    try {
+      await deleteLogEntryStaff(log.id);
+      loadData();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete log');
+    }
+  };
 
   const handleReview = async (id, status) => {
     try {
@@ -128,16 +139,21 @@ const AdminLogs = () => {
                   )}
                 </div>
 
-                {log.status === 'PENDING' && (
-                  <div className="flex gap-2 shrink-0">
-                    <Button variant="primary" icon={Check} onClick={() => handleReview(log.id, 'APPROVED')}>
-                      Approve
-                    </Button>
-                    <Button variant="secondary" icon={RotateCcw} onClick={() => setReviewingId(log.id)}>
-                      Request Revision
-                    </Button>
-                  </div>
-                )}
+                <div className="flex gap-2 shrink-0">
+                  {log.status === 'PENDING' && (
+                    <>
+                      <Button variant="primary" icon={Check} onClick={() => handleReview(log.id, 'APPROVED')}>
+                        Approve
+                      </Button>
+                      <Button variant="secondary" icon={RotateCcw} onClick={() => setReviewingId(log.id)}>
+                        Request Revision
+                      </Button>
+                    </>
+                  )}
+                  <Button variant="danger" icon={Trash2} onClick={() => handleDelete(log)}>
+                    Delete
+                  </Button>
+                </div>
               </div>
 
               {reviewingId === log.id && (

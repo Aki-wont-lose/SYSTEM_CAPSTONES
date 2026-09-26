@@ -6,7 +6,8 @@ import {
   assignTask,
   updateLog,
   reviewLog,
-  deleteLog
+  deleteLog,
+  deleteLogAsStaff
 } from '../services/logEntryService.js';
 import { getStudentByUserId } from '../services/studentService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
@@ -55,5 +56,10 @@ export const removeLog = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
   if (!student) return res.status(404).json({ success: false, message: 'Student profile not found' });
   await deleteLog(req.params.id, student.id);
+  res.status(200).json({ success: true, message: 'Log deleted' });
+});
+
+export const removeLogAsStaff = asyncHandler(async (req, res) => {
+  await deleteLogAsStaff(req.params.id, req.user);
   res.status(200).json({ success: true, message: 'Log deleted' });
 });

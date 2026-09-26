@@ -34,3 +34,8 @@ export const deleteLogEntry = async (id) => {
   const response = await api.delete(`/logs/${id}`);
   return response.data;
 };
+
+export const deleteLogEntryStaff = async (id) => {
+  const response = await api.delete(`/logs/${id}/staff`);
+  return response.data;
+};

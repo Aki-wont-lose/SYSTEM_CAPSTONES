@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { ScrollText, Search, Filter, ChevronLeft, ChevronRight, LogIn, LogOut, Trash2, Pencil, Plus, CheckCircle2, Send, Link2, Unlink, FileDown, ShieldAlert } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { getAuditLogs } from '../services/auditLogService';
+import { getAuditLogs, deleteAuditLog, clearAuditLogs } from '../services/auditLogService';
+import { useAuth } from '../hooks/useAuth';
 
 const actionMeta = {
   CREATE: { icon: Plus, className: 'bg-emerald-50 text-emerald-600' },
@@ -25,6 +26,8 @@ const formatDateTime = (value) =>
   new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 const AuditLogs = () => {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
   const [logs, setLogs] = useState([]);
   const [facets, setFacets] = useState({ actions: [], entities: [], actors: [] });
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
@@ -61,13 +64,38 @@ const AuditLogs = () => {
   const update = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
   const hasFilters = Object.values(filters).some(Boolean);
 
+  const handleDelete = async (log) => {
+    if (!window.confirm('Delete this audit entry? This cannot be undone.')) return;
+    try {
+      await deleteAuditLog(log.id);
+      load(meta.page);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete the audit entry');
+    }
+  };
+
+  const handleClearAll = async () => {
+    if (!window.confirm('Delete ALL audit log entries? This cannot be undone.')) return;
+    try {
+      await clearAuditLogs();
+      load(1);
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to clear the audit log');
+    }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white flex items-center gap-2">
-          <ScrollText className="w-5 h-5 text-sti-blue" /> Audit Logs
-        </h1>
-        <p className="text-sm text-sti-gray">Every account and academic change recorded in the system, newest first.</p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white flex items-center gap-2">
+            <ScrollText className="w-5 h-5 text-sti-blue" /> Audit Logs
+          </h1>
+          <p className="text-sm text-sti-gray">Every account and academic change recorded in the system, newest first.</p>
+        </div>
+        {isAdmin && (
+          <Button variant="danger" icon={Trash2} onClick={handleClearAll}>Clear all logs</Button>
+        )}
       </div>
 
       <Card className="p-4 sm:p-5">
@@ -144,6 +172,7 @@ const AuditLogs = () => {
                   <th className="px-4 py-3 font-semibold">Action</th>
                   <th className="px-4 py-3 font-semibold">Area</th>
                   <th className="px-4 py-3 font-semibold">Details</th>
+                  {isAdmin && <th className="px-4 py-3 font-semibold text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -171,6 +200,17 @@ const AuditLogs = () => {
                           </p>
                         )}
                       </td>
+                      {isAdmin && (
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => handleDelete(log)}
+                            title="Delete entry"
+                            className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-sti-gray hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

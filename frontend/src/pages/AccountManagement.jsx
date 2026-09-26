@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, Pencil, Trash2, KeyRound, Copy, Check, UserCheck, UserX } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, KeyRound, Copy, Check, UserCheck, UserX, ArrowUpDown, ArrowUp, ArrowDown, Upload } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -9,11 +9,13 @@ import {
   getStaffAccounts,
   getAccountCounts,
   createStaffAccount,
+  batchCreateStaffAccounts,
   updateStaffAccount,
   regenerateAccountPassword,
   deleteStaffAccount
 } from '../services/accountService';
 import { getCompanies } from '../services/companyService';
+import * as XLSX from 'xlsx';
 import StudentManagement from './StudentManagement';
 
 const statusStyles = {
@@ -45,6 +47,10 @@ const AccountManagement = () => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState({ key: 'name', direction: 'asc' });
+  const [batchResult, setBatchResult] = useState(null);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   const [modalMode, setModalMode] = useState(null);
   const [form, setForm] = useState(emptyStaffForm);
@@ -95,10 +101,45 @@ const AccountManagement = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
+  const handleSort = (key) => {
+    setSort((prev) => (prev.key === key ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' }));
+  };
+
+  const sortValue = (member, key) => {
+    if (key === 'name') return `${member.firstName || ''} ${member.lastName || ''}`.trim().toLowerCase();
+    if (key === 'program') return (member.coordinatorCourse || '').toLowerCase();
+    if (key === 'company') return (member.supervisorCompany?.name || '').toLowerCase();
+    if (key === 'status') return member.isActive ? 'active' : 'inactive';
+    return String(member[key] ?? '').toLowerCase();
+  };
+
   const visibleStaff = useMemo(() => {
     if (activeTab === 'STUDENT') return [];
-    return staff.filter((member) => member.role === activeTab);
-  }, [staff, activeTab]);
+    const rows = staff.filter((member) => member.role === activeTab);
+    const direction = sort.direction === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const left = sortValue(a, sort.key);
+      const right = sortValue(b, sort.key);
+      if (left === right) return 0;
+      return left > right ? direction : -direction;
+    });
+  }, [staff, activeTab, sort]);
+
+  const SortHeader = ({ label, sortKey, className = '' }) => {
+    const isActive = sort.key === sortKey;
+    return (
+      <th className={`px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide ${className}`}>
+        <button onClick={() => handleSort(sortKey)} className={`inline-flex items-center gap-1 transition-colors hover:text-sti-blue ${isActive ? 'text-sti-blue' : ''}`}>
+          {label}
+          {isActive ? (
+            sort.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+          ) : (
+            <ArrowUpDown className="w-3 h-3 opacity-50" />
+          )}
+        </button>
+      </th>
+    );
+  };
 
   const openAddModal = () => {
     setForm({ ...emptyStaffForm, role: activeTab === 'COORDINATOR' ? 'COORDINATOR' : 'SUPERVISOR' });
@@ -147,6 +188,8 @@ const AccountManagement = () => {
       } else {
         await updateStaffAccount(selected.id, {
           isActive: form.isActive,
+          email: form.email,
+          role: form.role,
           firstName: form.firstName,
           lastName: form.lastName,
           contactNumber: form.contactNumber,
@@ -206,6 +249,88 @@ const AccountManagement = () => {
     } catch (err) { /* clipboard unavailable */ }
   };
 
+  const copyBatchCredentials = async () => {
+    const text = batchResult.credentials.map((c) => `${c.email} — ${c.temporaryPassword}`).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) { /* clipboard unavailable */ }
+  };
+
+  const handleBatchFile = async (file) => {
+    if (!file) return;
+    const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+    const isCsv = file.name.toLowerCase().endsWith('.csv');
+    if (!isExcel && !isCsv) { setBatchResult({ created: 0, failed: 1, errors: ['Please use CSV or Excel file (.csv, .xlsx)'] }); return; }
+
+    const normalize = (h) => String(h || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    let accounts = [];
+
+    try {
+      if (isExcel) {
+        const data = await file.arrayBuffer();
+        const wb = XLSX.read(data, { raw: false });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        if (!ws) { setBatchResult({ created: 0, failed: 1, errors: ['Empty sheet'] }); return; }
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+        if (!rows.length) { setBatchResult({ created: 0, failed: 1, errors: ['File is empty'] }); return; }
+        const headers = rows[0].map(normalize);
+        accounts = rows.slice(1).map((vals) => {
+          const obj = {};
+          headers.forEach((h, i) => { obj[h] = vals[i] != null ? String(vals[i]).trim() : ''; });
+          if (!Object.values(obj).some((v) => v)) return null;
+          return {
+            firstName: obj['firstname'] || '',
+            lastName: obj['lastname'] || '',
+            email: obj['email'] || '',
+            role: (obj['role'] || obj['accounttype'] || activeTab).toUpperCase(),
+            coordinatorCourse: (obj['coordinatorcourse'] || obj['program'] || obj['course'] || '').toUpperCase(),
+            companyName: obj['company'] || obj['companyname'] || obj['assignedcompany'] || '',
+            contactNumber: obj['contactnumber'] || obj['contact'] || obj['phone'] || obj['mobile'] || ''
+          };
+        }).filter(Boolean);
+      } else {
+        const text = await file.text();
+        const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
+        if (lines.length < 2) { setBatchResult({ created: 0, failed: 1, errors: ['CSV needs header + at least 1 row'] }); return; }
+        const headers = lines[0].split(',').map((h) => normalize(h.replace(/^"|"$/g, '')));
+        accounts = lines.slice(1).map((line) => {
+          const vals = [];
+          let cur = ''; let inQuote = false;
+          for (const ch of line) { if (ch === '"') inQuote = !inQuote; else if (ch === ',' && !inQuote) { vals.push(cur.trim()); cur = ''; } else cur += ch; }
+          vals.push(cur.trim());
+          const cleaned = vals.map((v) => v.replace(/^"|"$/g, '').trim());
+          const obj = {};
+          headers.forEach((h, i) => { obj[h] = cleaned[i] || ''; });
+          if (!Object.values(obj).some((v) => v)) return null;
+          return {
+            firstName: obj['firstname'] || '',
+            lastName: obj['lastname'] || '',
+            email: obj['email'] || '',
+            role: (obj['role'] || obj['accounttype'] || activeTab).toUpperCase(),
+            coordinatorCourse: (obj['coordinatorcourse'] || obj['program'] || obj['course'] || '').toUpperCase(),
+            companyName: obj['company'] || obj['companyname'] || obj['assignedcompany'] || '',
+            contactNumber: obj['contactnumber'] || obj['contact'] || obj['phone'] || obj['mobile'] || ''
+          };
+        }).filter(Boolean);
+      }
+
+      if (!accounts.length) {
+        setBatchResult({ created: 0, failed: 1, errors: ['No valid rows found - check headers: firstName, lastName, email, role are required'] });
+        return;
+      }
+
+      setBatchLoading(true);
+      const res = await batchCreateStaffAccounts(accounts);
+      setBatchResult(res.data);
+      loadStaff();
+      loadCounts();
+    } catch (err) {
+      setBatchResult({ created: 0, failed: accounts.length || 1, errors: [err.response?.data?.message || err.message || 'Batch failed'] });
+    } finally { setBatchLoading(false); }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <Card className="p-0 overflow-hidden">
@@ -249,9 +374,28 @@ const AccountManagement = () => {
               />
             </div>
             {isAdmin && (
-              <Button variant="primary" icon={Plus} onClick={openAddModal}>
-                Add {activeTab === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
-              </Button>
+              <div className="flex items-center gap-3">
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => { e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]); }}
+                  className={dragOver ? 'ring-2 ring-sti-blue rounded-xl p-1' : ''}
+                >
+                  <input
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    id="batch-staff-csv"
+                    className="hidden"
+                    onChange={(e) => { handleBatchFile(e.target.files[0]); e.target.value = ''; }}
+                  />
+                  <Button variant="secondary" icon={Upload} onClick={() => document.getElementById('batch-staff-csv').click()}>
+                    Batch Upload
+                  </Button>
+                </div>
+                <Button variant="primary" icon={Plus} onClick={openAddModal}>
+                  Add {activeTab === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
+                </Button>
+              </div>
             )}
           </Card>
 
@@ -269,12 +413,14 @@ const AccountManagement = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-black/5 dark:border-white/10 text-left">
-                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Name</th>
-                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Email</th>
-                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">
-                        {activeTab === 'COORDINATOR' ? 'Program' : 'Company'}
-                      </th>
-                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Status</th>
+                      <SortHeader label="Name" sortKey="name" />
+                      <SortHeader label="Email" sortKey="email" />
+                      {activeTab === 'COORDINATOR' ? (
+                        <SortHeader label="Program" sortKey="program" />
+                      ) : (
+                        <SortHeader label="Company" sortKey="company" />
+                      )}
+                      <SortHeader label="Status" sortKey="status" />
                       <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-right">Actions</th>
                     </tr>
                   </thead>
@@ -344,12 +490,33 @@ const AccountManagement = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100">{error}</div>}
 
-          {modalMode === 'add' && (
+          {modalMode === 'add' ? (
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Account Type</label>
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, coordinatorCourse: '', companyId: '' })} className="input-field">
                 <option value="SUPERVISOR">Supervisor</option>
                 <option value="COORDINATOR">Coordinator</option>
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Account Type</label>
+              <select
+                value={form.role}
+                onChange={(e) => {
+                  const nextRole = e.target.value;
+                  setForm({
+                    ...form,
+                    role: nextRole,
+                    coordinatorCourse: nextRole === 'COORDINATOR' ? form.coordinatorCourse : '',
+                    companyId: nextRole === 'SUPERVISOR' ? form.companyId : ''
+                  });
+                }}
+                className="input-field"
+              >
+                <option value="SUPERVISOR">Supervisor</option>
+                <option value="COORDINATOR">Coordinator</option>
+                <option value="ADMIN">Admin</option>
               </select>
             </div>
           )}
@@ -367,7 +534,7 @@ const AccountManagement = () => {
 
           <div>
             <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
-            <input required type="email" disabled={modalMode === 'edit'} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field disabled:bg-sti-gray-light" />
+            <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" />
           </div>
 
           {form.role === 'COORDINATOR' ? (
@@ -461,6 +628,58 @@ const AccountManagement = () => {
           <Button variant="danger" onClick={handleDelete} loading={deleting}>Remove</Button>
         </div>
       </Modal>
+
+      <Modal isOpen={!!batchResult} onClose={() => setBatchResult(null)} title="Batch Upload Result" maxWidth="max-w-lg">
+        {batchResult && (
+          <div className="space-y-3">
+            <div className={`p-3 rounded-xl text-sm font-medium ${batchResult.failed ? 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950 dark:text-amber-200' : 'bg-green-50 text-green-800 border border-green-200 dark:bg-green-950 dark:text-green-200'}`}>
+              Batch: {batchResult.created} created, {batchResult.failed} failed
+            </div>
+            {batchResult.errors?.length > 0 && (
+              <div className="max-h-56 overflow-y-auto bg-sti-gray-light dark:bg-slate-900 rounded-xl p-3 space-y-1">
+                {batchResult.errors.map((e, i) => (
+                  <p key={i} className="text-xs text-sti-gray-dark dark:text-slate-300 break-words border-b border-black/5 dark:border-white/10 last:border-0 py-1">{e}</p>
+                ))}
+              </div>
+            )}
+            {batchResult.failed > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-xl">
+                <p className="text-xs font-semibold text-sti-blue">Tip: Required columns</p>
+                <p className="text-xs text-sti-gray mt-1">
+                  Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">role</code> (SUPERVISOR or COORDINATOR). Coordinators also need <code className="bg-white dark:bg-slate-800 px-1 rounded">program</code>, supervisors need <code className="bg-white dark:bg-slate-800 px-1 rounded">company</code> (exact company name). Spaces, underscores and dashes in headers are accepted. A temporary password is generated for every imported account.
+                </p>
+              </div>
+            )}
+            {batchResult.credentials?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-2">Generated temporary passwords</p>
+                <div className="max-h-48 overflow-y-auto bg-sti-gray-light dark:bg-slate-900 rounded-xl p-3 space-y-1">
+                  {batchResult.credentials.map((c) => (
+                    <p key={c.email} className="text-[11px] text-sti-gray-dark dark:text-slate-300 font-mono break-all border-b border-black/5 dark:border-white/10 last:border-0 py-1">{c.email} — {c.temporaryPassword}</p>
+                  ))}
+                </div>
+                <div className="flex justify-end mt-2">
+                  <Button variant="secondary" icon={copied ? Check : Copy} onClick={copyBatchCredentials}>
+                    {copied ? 'Copied' : 'Copy all'}
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button variant="primary" onClick={() => setBatchResult(null)}>OK</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {batchLoading && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-40">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 flex items-center gap-3 shadow-xl">
+            <div className="w-6 h-6 border-3 border-sti-blue border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm font-medium">Uploading batch...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

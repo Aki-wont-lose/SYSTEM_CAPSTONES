@@ -16,6 +16,11 @@ export const createStaffAccount = async (data) => {
   return response.data;
 };
 
+export const batchCreateStaffAccounts = async (accounts) => {
+  const response = await api.post('/accounts/batch', { accounts });
+  return response.data;
+};
+
 export const updateStaffAccount = async (id, data) => {
   const response = await api.put(`/accounts/${id}`, data);
   return response.data;

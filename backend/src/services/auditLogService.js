@@ -83,3 +83,19 @@ export const getAuditLogs = async (filters = {}) => {
     },
   };
 };
+
+export const deleteAuditLog = async (id) => {
+  const existing = await prisma.auditLog.findUnique({ where: { id } });
+  if (!existing) {
+    const error = new Error('Audit log not found');
+    error.status = 404;
+    throw error;
+  }
+  await prisma.auditLog.delete({ where: { id } });
+  return existing;
+};
+
+export const clearAuditLogs = async () => {
+  const { count } = await prisma.auditLog.deleteMany({});
+  return { deleted: count };
+};

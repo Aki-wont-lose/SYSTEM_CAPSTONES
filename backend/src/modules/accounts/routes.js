@@ -8,7 +8,8 @@ import {
   addStaffAccount,
   editStaffAccount,
   regenerateAccountPassword,
-  removeStaffAccount
+  removeStaffAccount,
+  batchAddStaffAccounts
 } from './controller.js';
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.get('/:id', verifyRole(['ADMIN', 'COORDINATOR']), fetchAccount);
 
 // Only ADMIN creates/edits/removes coordinator and supervisor accounts
 router.post('/', verifyRole(['ADMIN']), addStaffAccount);
+router.post('/batch', verifyRole(['ADMIN']), batchAddStaffAccounts);
 router.put('/:id', verifyRole(['ADMIN']), editStaffAccount);
 router.post('/:id/reset-password', verifyRole(['ADMIN']), regenerateAccountPassword);
 router.delete('/:id', verifyRole(['ADMIN']), removeStaffAccount);

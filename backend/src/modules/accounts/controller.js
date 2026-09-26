@@ -7,7 +7,8 @@ import {
   updateStaffAccount,
   resetAccountPassword,
   deleteStaffAccount,
-  getAccountById
+  getAccountById,
+  batchCreateStaffAccounts
 } from './service.js';
 
 export const fetchAccountCounts = asyncHandler(async (req, res) => {
@@ -56,4 +57,14 @@ export const regenerateAccountPassword = asyncHandler(async (req, res) => {
 export const removeStaffAccount = asyncHandler(async (req, res) => {
   const result = await deleteStaffAccount(req.params.id);
   res.status(200).json({ success: true, message: 'Account removed', data: result });
+});
+
+export const batchAddStaffAccounts = asyncHandler(async (req, res) => {
+  const { accounts } = req.body;
+  if (!Array.isArray(accounts) || accounts.length === 0) {
+    res.status(400).json({ success: false, message: 'No accounts provided' });
+    return;
+  }
+  const results = await batchCreateStaffAccounts(accounts);
+  res.status(200).json({ success: true, message: 'Batch upload finished', data: results });
 });

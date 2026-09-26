@@ -107,3 +107,23 @@ export const deleteLog = async (id, studentId) => {
   }
   return prisma.logEntry.delete({ where: { id } });
 };
+
+export const deleteLogAsStaff = async (id, actor) => {
+  const log = await prisma.logEntry.findUnique({ where: { id } });
+  if (!log) {
+    const error = new Error('Log entry not found');
+    error.status = 404;
+    throw error;
+  }
+  await recordAudit({
+    userId: actor?.userId,
+    userEmail: actor?.email,
+    userRole: actor?.role,
+    action: 'DELETE',
+    entity: 'LogEntry',
+    entityId: id,
+    description: `Deleted a student log entry`,
+    metadata: { studentId: log.studentId, previousStatus: log.status }
+  });
+  return prisma.logEntry.delete({ where: { id } });
+};
