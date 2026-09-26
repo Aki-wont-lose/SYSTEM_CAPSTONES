@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, KeyRound, Copy, Check, ArrowUpDown } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, KeyRound, Copy, Check, ArrowUpDown, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -202,6 +202,22 @@ const StudentManagement = () => {
     }
   };
 
+  const downloadBatchTemplate = () => {
+    const sample = [{
+      studentId: '202401234',
+      firstName: 'Juan',
+      lastName: 'Dela Cruz',
+      email: 'juan.delacruz@stamaria.sti.edu.ph',
+      course: 'BSIT',
+      section: 'BSIT-1A',
+      contactNumber: '09171234567'
+    }];
+    const worksheet = XLSX.utils.json_to_sheet(sample, { header: ['studentId', 'firstName', 'lastName', 'email', 'course', 'section', 'contactNumber'] });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+    XLSX.writeFile(workbook, 'student_account_batch_template.xlsx');
+  };
+
   const handleBatchFile = async (file) => {
     if (!file) return;
     const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
@@ -308,17 +324,22 @@ const StudentManagement = () => {
             </Button>
           )}
           {(role === 'ADMIN' || role === 'COORDINATOR') && (
-            <div
-              onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
-              onDragLeave={()=>setDragOver(false)}
-              onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
-              className={`flex items-center gap-2 ${dragOver ? 'ring-2 ring-sti-blue rounded-xl p-1' : ''}`}
-            >
-              <input type="file" accept=".csv,.xlsx,.xls" id="batch-student-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
-              <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-student-csv').click()}>
-                Batch Upload
+            <>
+              <Button variant="secondary" icon={FileSpreadsheet} onClick={downloadBatchTemplate} title="Download the student import template">
+                Template
               </Button>
-            </div>
+              <div
+                onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
+                onDragLeave={()=>setDragOver(false)}
+                onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
+                className={`flex items-center gap-2 ${dragOver ? 'ring-2 ring-sti-blue rounded-xl p-1' : ''}`}
+              >
+                <input type="file" accept=".csv,.xlsx,.xls" id="batch-student-csv" className="hidden" onChange={(e)=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
+                <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-student-csv').click()}>
+                  Batch Upload
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </Card>

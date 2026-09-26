@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, Pencil, Trash2, KeyRound, Copy, Check, UserCheck, UserX, ArrowUpDown, ArrowUp, ArrowDown, Upload } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, KeyRound, Copy, Check, UserCheck, UserX, ArrowUpDown, ArrowUp, ArrowDown, Upload, FileSpreadsheet } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -258,6 +258,36 @@ const AccountManagement = () => {
     } catch (err) { /* clipboard unavailable */ }
   };
 
+  const downloadBatchTemplate = () => {
+    const isCoordinator = activeTab === 'COORDINATOR';
+    const sample = isCoordinator
+      ? [{
+        firstName: 'Juan',
+        lastName: 'Dela Cruz',
+        email: 'juan.delacruz@stamaria.sti.edu.ph',
+        role: 'COORDINATOR',
+        program: 'BSIT',
+        contactNumber: '09171234567'
+      }]
+      : [{
+        firstName: 'Maria',
+        lastName: 'Santos',
+        email: 'maria.santos@partner.com',
+        role: 'SUPERVISOR',
+        company: companies[0]?.name || 'Company name from Partner Companies',
+        contactNumber: '09181234567'
+      }];
+
+    const columns = isCoordinator
+      ? ['firstName', 'lastName', 'email', 'role', 'program', 'contactNumber']
+      : ['firstName', 'lastName', 'email', 'role', 'company', 'contactNumber'];
+
+    const worksheet = XLSX.utils.json_to_sheet(sample, { header: columns });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, isCoordinator ? 'Coordinators' : 'Supervisors');
+    XLSX.writeFile(workbook, `${isCoordinator ? 'coordinator' : 'supervisor'}_account_batch_template.xlsx`);
+  };
+
   const handleBatchFile = async (file) => {
     if (!file) return;
     const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
@@ -374,7 +404,18 @@ const AccountManagement = () => {
               />
             </div>
             {isAdmin && (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Button variant="primary" icon={Plus} onClick={openAddModal}>
+                  Add {activeTab === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  icon={FileSpreadsheet}
+                  onClick={downloadBatchTemplate}
+                  title={`Download the ${activeTab === 'COORDINATOR' ? 'coordinator' : 'supervisor'} import template`}
+                >
+                  Template
+                </Button>
                 <div
                   onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                   onDragLeave={() => setDragOver(false)}
@@ -392,9 +433,6 @@ const AccountManagement = () => {
                     Batch Upload
                   </Button>
                 </div>
-                <Button variant="primary" icon={Plus} onClick={openAddModal}>
-                  Add {activeTab === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
-                </Button>
               </div>
             )}
           </Card>
