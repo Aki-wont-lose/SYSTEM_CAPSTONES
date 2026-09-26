@@ -6,7 +6,6 @@ const linksByRole = {
   ADMIN: [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/admin/accounts', label: 'Account Management', icon: Users },
-    { to: '/admin/students', label: 'Students', icon: UserCircle },
     { to: '/admin/templates', label: 'Templates', icon: FileCheck2 },
     { to: '/admin/submissions', label: 'Submissions', icon: ClipboardList },
     { to: '/admin/grading', label: 'Grading', icon: BarChart3 },
@@ -20,7 +19,6 @@ const linksByRole = {
   COORDINATOR: [
     { to: '/coordinator/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/coordinator/accounts', label: 'Account Management', icon: Users },
-    { to: '/coordinator/students', label: 'Students', icon: UserCircle },
     { to: '/coordinator/attendance', label: 'Attendance', icon: Clock },
     { to: '/coordinator/templates', label: 'Templates', icon: FileCheck2 },
     { to: '/coordinator/submissions', label: 'Submissions', icon: ClipboardList },

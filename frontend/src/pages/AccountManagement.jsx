@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Plus, Pencil, Trash2, KeyRound, Copy, Check, UserCheck, UserX } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -13,6 +14,7 @@ import {
   deleteStaffAccount
 } from '../services/accountService';
 import { getCompanies } from '../services/companyService';
+import StudentManagement from './StudentManagement';
 
 const statusStyles = {
   NOT_STARTED: 'bg-gray-100 text-sti-gray-dark',
@@ -25,6 +27,7 @@ const statusStyles = {
 const TABS = [
   { key: 'SUPERVISOR', label: 'Supervisors' },
   { key: 'COORDINATOR', label: 'Coordinators' },
+  { key: 'STUDENT', label: 'Students' },
 ];
 
 const emptyStaffForm = { firstName: '', lastName: '', email: '', role: 'SUPERVISOR', coordinatorCourse: '', companyId: '', contactNumber: '' };
@@ -33,7 +36,10 @@ const AccountManagement = () => {
   const { user } = useAuth();
   const role = user?.role;
   const isAdmin = role === 'ADMIN';
-  const [activeTab, setActiveTab] = useState('SUPERVISOR');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = searchParams.get('tab');
+  const initialTab = TABS.some((tab) => tab.key === requestedTab) ? requestedTab : 'SUPERVISOR';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [counts, setCounts] = useState({ students: 0, supervisors: 0, coordinators: 0 });
   const [staff, setStaff] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -45,6 +51,15 @@ const AccountManagement = () => {
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const selectTab = (key) => {
+    setActiveTab(key);
+    setSearchParams(key === 'SUPERVISOR' ? {} : { tab: key }, { replace: true });
+  };
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   const [credentials, setCredentials] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -81,6 +96,7 @@ const AccountManagement = () => {
   }, [search]);
 
   const visibleStaff = useMemo(() => {
+    if (activeTab === 'STUDENT') return [];
     return staff.filter((member) => member.role === activeTab);
   }, [staff, activeTab]);
 
@@ -195,12 +211,12 @@ const AccountManagement = () => {
       <Card className="p-0 overflow-hidden">
         <div className="flex overflow-x-auto border-b border-black/5 dark:border-white/10">
           {TABS.map((tab) => {
-            const value = tab.key === 'COORDINATOR' ? counts.coordinators : counts.supervisors;
+            const value = tab.key === 'STUDENT' ? counts.students : tab.key === 'COORDINATOR' ? counts.coordinators : counts.supervisors;
             const isActive = activeTab === tab.key;
             return (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => selectTab(tab.key)}
                 className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
                   isActive
                     ? 'border-sti-blue text-sti-blue'
@@ -217,101 +233,107 @@ const AccountManagement = () => {
         </div>
       </Card>
 
-      <Card className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
-            <input
-              type="text"
-              placeholder={`Search ${activeTab === 'COORDINATOR' ? 'coordinators' : 'supervisors'}...`}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input-field pl-10"
-            />
-          </div>
-          {isAdmin && (
-            <Button variant="primary" icon={Plus} onClick={openAddModal}>
-              Add {activeTab === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
-            </Button>
-          )}
-        </Card>
+      {activeTab === 'STUDENT' ? (
+        <StudentManagement />
+      ) : (
+        <>
+          <Card className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+              <input
+                type="text"
+                placeholder={`Search ${activeTab === 'COORDINATOR' ? 'coordinators' : 'supervisors'}...`}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input-field pl-10"
+              />
+            </div>
+            {isAdmin && (
+              <Button variant="primary" icon={Plus} onClick={openAddModal}>
+                Add {activeTab === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
+              </Button>
+            )}
+          </Card>
 
-        <Card className="p-0 overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center h-48">
-              <div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : visibleStaff.length === 0 ? (
-            <p className="text-sm text-sti-gray py-12 text-center">
-              No {activeTab === 'COORDINATOR' ? 'coordinators' : 'supervisors'} found.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-black/5 dark:border-white/10 text-left">
-                    <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Name</th>
-                    <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Email</th>
-                    <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">
-                      {activeTab === 'COORDINATOR' ? 'Program' : 'Company'}
-                    </th>
-                    <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Status</th>
-                    <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleStaff.map((member) => (
-                    <tr key={member.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
-                      <td className="px-6 py-3.5">
-                        <p className="font-medium text-sti-gray-dark dark:text-white">
-                          {[member.firstName, member.lastName].filter(Boolean).join(' ') || '—'}
-                        </p>
-                        {member.contactNumber && <p className="text-xs text-sti-gray">{member.contactNumber}</p>}
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <p className="font-medium text-sti-gray-dark dark:text-white break-all">{member.email}</p>
-                        <p className="text-xs text-sti-gray">
-                          {member.role === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
-                          {member.assignedStudents != null ? ` • ${member.assignedStudents} assigned` : ''}
-                        </p>
-                      </td>
-                      <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
-                        {member.role === 'COORDINATOR' ? (member.coordinatorCourse || '—') : (member.supervisorCompany?.name || '—')}
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${member.isActive ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-sti-gray-dark'}`}>
-                          {member.isActive ? 'Active' : 'Disabled'}
-                        </span>
-                        {member.mustChangePassword && (
-                          <span className="ml-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Temp password</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-3.5">
-                        <div className="flex items-center justify-end gap-1">
-                          {isAdmin && (
-                            <>
-                              <button onClick={() => handleRegenerate(member)} title="Generate new temporary password" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
-                                <KeyRound className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => handleToggleActive(member)} title={member.isActive ? 'Disable account' : 'Enable account'} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
-                                {member.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                              </button>
-                              <button onClick={() => openEditModal(member)} title="Edit account" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
-                                <Pencil className="w-4 h-4" />
-                              </button>
-                              <button onClick={() => setDeleteTarget(member)} title="Remove account" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
+          <Card className="p-0 overflow-hidden">
+            {loading ? (
+              <div className="flex items-center justify-center h-48">
+                <div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : visibleStaff.length === 0 ? (
+              <p className="text-sm text-sti-gray py-12 text-center">
+                No {activeTab === 'COORDINATOR' ? 'coordinators' : 'supervisors'} found.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-black/5 dark:border-white/10 text-left">
+                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Name</th>
+                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Email</th>
+                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">
+                        {activeTab === 'COORDINATOR' ? 'Program' : 'Company'}
+                      </th>
+                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Status</th>
+                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Card>
+                  </thead>
+                  <tbody>
+                    {visibleStaff.map((member) => (
+                      <tr key={member.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
+                        <td className="px-6 py-3.5">
+                          <p className="font-medium text-sti-gray-dark dark:text-white">
+                            {[member.firstName, member.lastName].filter(Boolean).join(' ') || '—'}
+                          </p>
+                          {member.contactNumber && <p className="text-xs text-sti-gray">{member.contactNumber}</p>}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <p className="font-medium text-sti-gray-dark dark:text-white break-all">{member.email}</p>
+                          <p className="text-xs text-sti-gray">
+                            {member.role === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
+                            {member.assignedStudents != null ? ` • ${member.assignedStudents} assigned` : ''}
+                          </p>
+                        </td>
+                        <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
+                          {member.role === 'COORDINATOR' ? (member.coordinatorCourse || '—') : (member.supervisorCompany?.name || '—')}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${member.isActive ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-sti-gray-dark'}`}>
+                            {member.isActive ? 'Active' : 'Disabled'}
+                          </span>
+                          {member.mustChangePassword && (
+                            <span className="ml-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Temp password</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <div className="flex items-center justify-end gap-1">
+                            {isAdmin && (
+                              <>
+                                <button onClick={() => handleRegenerate(member)} title="Generate new temporary password" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
+                                  <KeyRound className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleToggleActive(member)} title={member.isActive ? 'Disable account' : 'Enable account'} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
+                                  {member.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                                </button>
+                                <button onClick={() => openEditModal(member)} title="Edit account" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => setDeleteTarget(member)} title="Remove account" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </>
+      )}
 
       <Modal
         isOpen={modalMode === 'add' || modalMode === 'edit'}

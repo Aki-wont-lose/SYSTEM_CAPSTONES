@@ -98,7 +98,7 @@ function App() {
       >
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/accounts" element={<AccountManagement />} />
-        <Route path="/admin/students" element={<StudentManagement />} />
+        <Route path="/admin/students" element={<Navigate to="/admin/accounts?tab=students" replace />} />
         <Route path="/admin/templates" element={<Templates />} />
         <Route path="/admin/submissions" element={<Submissions />} />
         <Route path="/admin/requirements" element={<AdminRequirements />} />
@@ -121,7 +121,7 @@ function App() {
       >
         <Route path="/coordinator/dashboard" element={<AdminDashboard />} />
         <Route path="/coordinator/accounts" element={<AccountManagement />} />
-        <Route path="/coordinator/students" element={<StudentManagement />} />
+        <Route path="/coordinator/students" element={<Navigate to="/coordinator/accounts?tab=students" replace />} />
         <Route path="/coordinator/attendance" element={<AttendanceMonitoring />} />
         <Route path="/coordinator/templates" element={<Templates />} />
         <Route path="/coordinator/submissions" element={<Submissions />} />
