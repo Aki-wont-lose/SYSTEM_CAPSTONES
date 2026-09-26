@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Mail, Shield, Camera, Image as ImageIcon } from 'lucide-react';
 import Card from '../components/Card';
+import LinkedAccountsCard from '../components/LinkedAccountsCard';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 
@@ -73,6 +74,8 @@ const AdminProfile = () => {
           </div>
         </div>
       </Card>
+
+      <LinkedAccountsCard />
     </div>
   );
 };

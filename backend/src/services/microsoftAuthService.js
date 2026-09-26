@@ -61,7 +61,9 @@ const verifyMicrosoftIdToken = (idToken) =>
     );
   });
 
-export const loginWithMicrosoft = async (idToken) => {
+// Normalized identity from a Microsoft ID token: "oid" (per-tenant object id)
+// is the stable account identifier, which is what we persist when linking.
+export const getMicrosoftIdentity = async (idToken) => {
   if (!MS_CLIENT_ID) {
     const error = new Error('Microsoft sign-in is not configured on this server yet (MS_CLIENT_ID missing in backend/.env).');
     error.status = 501;
@@ -84,14 +86,34 @@ export const loginWithMicrosoft = async (idToken) => {
     throw error;
   }
 
-  // Match this Microsoft account to an existing local account by email.
-  // We don't auto-create new accounts here — a student record (course,
-  // section, required hours, etc.) needs to exist first, normally added
-  // by the admin via Student Management.
-  const user = await prisma.user.findUnique({
-    where: { email },
-    include: { student: true }
+  return { providerId: decoded.oid || decoded.sub, email, name: decoded.name || null };
+};
+
+export const loginWithMicrosoft = async (idToken) => {
+  const identity = await getMicrosoftIdentity(idToken);
+  const email = identity.email;
+
+  // An explicit link wins: it is the only way in if the Microsoft account's
+  // email later differs from the SIMES email.
+  const linked = await prisma.linkedAccount.findUnique({
+    where: { provider_providerId: { provider: 'MICROSOFT', providerId: identity.providerId } },
+    include: { user: { include: { student: true } } }
   });
+
+  let user = linked?.user || null;
+
+  // No link yet — fall back to matching the verified email, and remember the
+  // match so future sign-ins work even if the Microsoft email changes.
+  if (!user) {
+    user = await prisma.user.findUnique({ where: { email }, include: { student: true } });
+    if (user) {
+      await prisma.linkedAccount.upsert({
+        where: { provider_providerId: { provider: 'MICROSOFT', providerId: identity.providerId } },
+        create: { userId: user.id, provider: 'MICROSOFT', providerId: identity.providerId, email },
+        update: { userId: user.id, email }
+      });
+    }
+  }
 
   if (!user) {
     const error = new Error(`No SIMES account found for ${email}. Ask your OJT coordinator to add you first.`);

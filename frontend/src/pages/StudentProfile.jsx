@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Mail, Phone, BookOpen, Users, Hash, Camera, Image as ImageIcon, Check } from 'lucide-react';
 import Card from '../components/Card';
+import LinkedAccountsCard from '../components/LinkedAccountsCard';
 import { getMyProfile, updateMyProfile } from '../services/studentService';
 
 const statusStyles = {
@@ -159,6 +160,8 @@ const StudentProfile = () => {
         </div>
         <p className="text-[11px] text-sti-gray mt-4 sm:mt-6 text-center sm:text-left">Contact your OJT coordinator to update your profile.</p>
       </Card>
+
+      <LinkedAccountsCard />
     </div>
   );
 };

@@ -33,3 +33,21 @@ export const completeMicrosoftLogin = async (idToken) => {
   const response = await api.post('/auth/microsoft', { idToken });
   return response.data;
 };
+
+// Account linking: lets a user who signed in with email/password attach a
+// Microsoft identity, so "Sign in with Microsoft" reaches the same account.
+export const getLinkedAccounts = async () => {
+  const response = await api.get('/profile/linked-accounts');
+  return response.data;
+};
+
+export const linkMicrosoftAccount = async () => {
+  const idToken = await signInWithMicrosoftPopup();
+  const response = await api.post('/profile/linked-accounts/microsoft', { idToken });
+  return response.data;
+};
+
+export const unlinkMicrosoftAccount = async () => {
+  const response = await api.delete('/profile/linked-accounts/microsoft');
+  return response.data;
+};
