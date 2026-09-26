@@ -319,13 +319,8 @@ const StudentManagement = () => {
             <option value="FAILED">Failed</option>
           </select>
         </div>
-        <div className="flex gap-2 flex-wrap">
-          {role === 'ADMIN' && (
-            <Button variant="primary" icon={Plus} onClick={() => openAddModal('STUDENT')}>
-              Add Student
-            </Button>
-          )}
-          {role === 'COORDINATOR' && (
+        <div className="flex gap-2 flex-wrap items-center">
+          {(role === 'ADMIN' || role === 'COORDINATOR') && (
             <Button variant="primary" icon={Plus} onClick={() => openAddModal('STUDENT')}>
               Add Student
             </Button>
@@ -348,6 +343,18 @@ const StudentManagement = () => {
               </div>
             </>
           )}
+          <label className="flex items-center gap-1.5 text-xs text-sti-gray">
+            Show
+            <select
+              value={pageSize}
+              onChange={(e) => changePageSize(e.target.value)}
+              className="rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-2.5 py-2 text-xs font-medium text-sti-gray-dark dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sti-blue/40"
+            >
+              {PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>{size === 'ALL' ? 'All' : size}</option>
+              ))}
+            </select>
+          </label>
         </div>
       </Card>
 
@@ -408,25 +415,11 @@ const StudentManagement = () => {
               </tbody>
             </table>
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 border-t border-black/5 dark:border-white/10">
-              <div className="flex items-center gap-3">
-                <p className="text-xs text-sti-gray">
-                  {sortedStudents.length === 0
-                    ? 'No students to display'
-                    : `Showing ${(page - 1) * pageLimit + 1}-${Math.min(page * pageLimit, sortedStudents.length)} of ${sortedStudents.length}`}
-                </p>
-                <label className="flex items-center gap-1.5 text-xs text-sti-gray">
-                  Show
-                  <select
-                    value={pageSize}
-                    onChange={(e) => changePageSize(e.target.value)}
-                    className="rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-2 py-1 text-xs text-sti-gray-dark dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sti-blue/40"
-                  >
-                    {PAGE_SIZES.map((size) => (
-                      <option key={size} value={size}>{size === 'ALL' ? 'All' : size}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+              <p className="text-xs text-sti-gray">
+                {sortedStudents.length === 0
+                  ? 'No students to display'
+                  : `Showing ${(page - 1) * pageLimit + 1}-${Math.min(page * pageLimit, sortedStudents.length)} of ${sortedStudents.length}`}
+              </p>
               {pageSize !== 'ALL' && totalPages > 1 && (
                 <div className="flex items-center gap-2">
                   <Button variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>

@@ -420,38 +420,52 @@ const AccountManagement = () => {
                 className="input-field pl-10"
               />
             </div>
-            {isAdmin && (
-              <div className="flex items-center gap-2">
-                <Button variant="primary" icon={Plus} onClick={openAddModal}>
-                  Add {activeTab === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
-                </Button>
-                <Button
-                  variant="secondary"
-                  icon={FileSpreadsheet}
-                  onClick={downloadBatchTemplate}
-                  title={`Download the ${activeTab === 'COORDINATOR' ? 'coordinator' : 'supervisor'} import template`}
-                >
-                  Template
-                </Button>
-                <div
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={(e) => { e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]); }}
-                  className={dragOver ? 'ring-2 ring-sti-blue rounded-xl p-1' : ''}
-                >
-                  <input
-                    type="file"
-                    accept=".csv,.xlsx,.xls"
-                    id="batch-staff-csv"
-                    className="hidden"
-                    onChange={(e) => { handleBatchFile(e.target.files[0]); e.target.value = ''; }}
-                  />
-                  <Button variant="secondary" icon={Upload} onClick={() => document.getElementById('batch-staff-csv').click()}>
-                    Batch Upload
+            <div className="flex flex-wrap items-center gap-2">
+              {isAdmin && (
+                <>
+                  <Button variant="primary" icon={Plus} onClick={openAddModal}>
+                    Add {activeTab === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
                   </Button>
-                </div>
-              </div>
-            )}
+                  <Button
+                    variant="secondary"
+                    icon={FileSpreadsheet}
+                    onClick={downloadBatchTemplate}
+                    title={`Download the ${activeTab === 'COORDINATOR' ? 'coordinator' : 'supervisor'} import template`}
+                  >
+                    Template
+                  </Button>
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => { e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]); }}
+                    className={dragOver ? 'ring-2 ring-sti-blue rounded-xl p-1' : ''}
+                  >
+                    <input
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      id="batch-staff-csv"
+                      className="hidden"
+                      onChange={(e) => { handleBatchFile(e.target.files[0]); e.target.value = ''; }}
+                    />
+                    <Button variant="secondary" icon={Upload} onClick={() => document.getElementById('batch-staff-csv').click()}>
+                      Batch Upload
+                    </Button>
+                  </div>
+                </>
+              )}
+              <label className="flex items-center gap-1.5 text-xs text-sti-gray">
+                Show
+                <select
+                  value={pageSize}
+                  onChange={(e) => changePageSize(e.target.value)}
+                  className="rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-2.5 py-2 text-xs font-medium text-sti-gray-dark dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sti-blue/40"
+                >
+                  {PAGE_SIZES.map((size) => (
+                    <option key={size} value={size}>{size === 'ALL' ? 'All' : size}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
           </Card>
 
           <Card className="p-0 overflow-hidden">
@@ -531,25 +545,11 @@ const AccountManagement = () => {
                   </tbody>
                 </table>
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 border-t border-black/5 dark:border-white/10">
-                  <div className="flex items-center gap-3">
-                    <p className="text-xs text-sti-gray">
-                      {visibleStaff.length === 0
-                        ? 'No accounts to display'
-                        : `Showing ${(page - 1) * pageLimit + 1}-${Math.min(page * pageLimit, visibleStaff.length)} of ${visibleStaff.length}`}
-                    </p>
-                    <label className="flex items-center gap-1.5 text-xs text-sti-gray">
-                      Show
-                      <select
-                        value={pageSize}
-                        onChange={(e) => changePageSize(e.target.value)}
-                        className="rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-2 py-1 text-xs text-sti-gray-dark dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sti-blue/40"
-                      >
-                        {PAGE_SIZES.map((size) => (
-                          <option key={size} value={size}>{size === 'ALL' ? 'All' : size}</option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
+                  <p className="text-xs text-sti-gray">
+                    {visibleStaff.length === 0
+                      ? 'No accounts to display'
+                      : `Showing ${(page - 1) * pageLimit + 1}-${Math.min(page * pageLimit, visibleStaff.length)} of ${visibleStaff.length}`}
+                  </p>
                   {pageSize !== 'ALL' && totalPages > 1 && (
                     <div className="flex items-center gap-2">
                       <Button variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
