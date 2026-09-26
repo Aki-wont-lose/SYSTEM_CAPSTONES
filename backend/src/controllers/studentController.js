@@ -8,6 +8,7 @@ import {
   deleteStudent,
   getStudentStats
 } from '../services/studentService.js';
+import { createStaffAccount } from '../modules/accounts/service.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 export const fetchAllStudents = asyncHandler(async (req, res) => {
@@ -110,60 +111,40 @@ export const addStudent = asyncHandler(async (req, res) => {
     course,
     section,
     email,
-    password,
     contactNumber,
-    assignedCompany,
+    companyId,
     role
   } = req.body;
 
-  // If role is COORDINATOR or SUPERVISOR, only ADMIN can create them
+  // Coordinator/supervisor accounts are managed by the accounts module
   if (role === 'COORDINATOR' || role === 'SUPERVISOR') {
     if (req.user?.role !== 'ADMIN') {
       return res.status(403).json({ success: false, message: 'Only admin can create coordinator/supervisor accounts' });
     }
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password required for staff' });
-    }
-    const { PrismaClient } = await import('@prisma/client');
-    const prisma = new PrismaClient();
-    const { hashPassword } = await import('../services/authService.js');
-    const hashed = await hashPassword(password);
-    // Coordinator must have assigned course (BSHM/BSIT/BSTM), Supervisor must have company
-    const extra = {};
-    if (role === 'COORDINATOR') {
-      if (!course || !['BSHM','BSIT','BSTM'].includes(course)) {
-        await prisma.$disconnect();
-        return res.status(400).json({ success: false, message: 'Assigned course (BSHM/BSIT/BSTM) required for coordinator' });
-      }
-      extra.coordinatorCourse = course;
-    }
-    if (role === 'SUPERVISOR') {
-      if (!req.body.companyId) {
-        await prisma.$disconnect();
-        return res.status(400).json({ success: false, message: 'Assigned company required for supervisor' });
-      }
-      extra.supervisorCompanyId = req.body.companyId;
-    }
-    try {
-      const user = await prisma.user.create({ data: { email, password: hashed, role, isActive: true, ...extra } });
-      await prisma.$disconnect();
-      return res.status(201).json({ success: true, message: `${role} account created`, data: user });
-    } catch (e) {
-      await prisma.$disconnect();
-      if (e.code === 'P2002') return res.status(400).json({ success: false, message: 'email already exists' });
-      throw e;
-    }
+    const result = await createStaffAccount({
+      email,
+      firstName,
+      lastName,
+      role,
+      coordinatorCourse: course,
+      companyId,
+      contactNumber
+    });
+    return res.status(201).json({
+      success: true,
+      message: `${role === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'} account created`,
+      data: { account: result.user, temporaryPassword: result.temporaryPassword }
+    });
   }
 
-  // Default: STUDENT
-  if (!studentId || !firstName || !lastName || !email || !password) {
+  if (!studentId || !firstName || !lastName || !email) {
     return res.status(400).json({
       success: false,
       message: 'Missing required fields'
     });
   }
 
-  const student = await createStudent(
+  const result = await createStudent(
     {
       studentId,
       firstName,
@@ -172,15 +153,15 @@ export const addStudent = asyncHandler(async (req, res) => {
       section,
       email,
       contactNumber,
-      assignedCompany
+      companyId: companyId || undefined
     },
-    { email, password }
+    { email }
   );
 
   res.status(201).json({
     success: true,
     message: 'Student created successfully',
-    data: student
+    data: { student: result.student, temporaryPassword: result.temporaryPassword }
   });
 });
 
@@ -226,17 +207,20 @@ export const batchCreateStudentsHandler = asyncHandler(async (req, res) => {
   if (!Array.isArray(students) || students.length === 0) {
     return res.status(400).json({ success: false, message: 'No students provided' });
   }
-  const results = { created: 0, failed: 0, errors: [] };
+  const results = { created: 0, failed: 0, errors: [], credentials: [] };
   for (const s of students) {
     try {
-      if (!s.studentId || !s.firstName || !s.lastName || !s.email || !s.password) {
+      if (!s.studentId || !s.firstName || !s.lastName || !s.email) {
         results.failed++; results.errors.push(`${s.email || 'unknown'}: missing required fields`); continue;
       }
-      await createStudent(
-        { studentId: s.studentId, firstName: s.firstName, lastName: s.lastName, course: s.course, section: s.section, email: s.email, contactNumber: s.contactNumber, assignedCompany: s.companyId },
-        { email: s.email, password: s.password }
+      const result = await createStudent(
+        { studentId: s.studentId, firstName: s.firstName, lastName: s.lastName, course: s.course, section: s.section, email: s.email, contactNumber: s.contactNumber, companyId: s.companyId || undefined },
+        { email: s.email }
       );
       results.created++;
+      if (result.temporaryPassword) {
+        results.credentials.push({ email: s.email, temporaryPassword: result.temporaryPassword });
+      }
     } catch (e) {
       results.failed++;
       results.errors.push(`${s.email}: ${e.message}`);

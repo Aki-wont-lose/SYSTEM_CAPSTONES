@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect } from 'react';
-import { loginRequest, validateTokenRequest, setThemeRequest } from '../services/authService';
+import { loginRequest, validateTokenRequest, setThemeRequest, changePasswordRequest } from '../services/authService';
 import { signInWithMicrosoftPopup, completeMicrosoftLogin } from '../services/microsoftAuthService';
 import { signInWithGooglePopup, completeGoogleLogin } from '../services/googleAuthService';
 
@@ -108,6 +108,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('simes_user', JSON.stringify(newUser));
   };
 
+  const changePassword = async (currentPassword, newPassword, confirmPassword) => {
+    const response = await changePasswordRequest(currentPassword, newPassword, confirmPassword);
+    updateUser({ mustChangePassword: false });
+    return response;
+  };
+
   const toggleTheme = async () => {
     const nextTheme = theme === 'LIGHT' ? 'DARK' : 'LIGHT';
     setThemeState(nextTheme);
@@ -143,7 +149,9 @@ export const AuthProvider = ({ children }) => {
         loginWithGoogle,
         logout,
         updateUser,
+        changePassword,
         isAuthenticated: !!token,
+        mustChangePassword: !!user?.mustChangePassword,
         isAdmin: user?.role === 'ADMIN',
         isCoordinator: user?.role === 'COORDINATOR',
         isSupervisor: user?.role === 'SUPERVISOR',

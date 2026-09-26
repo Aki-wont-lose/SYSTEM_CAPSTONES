@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, KeyRound, Copy, Check, ArrowUpDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -26,10 +26,12 @@ const statusStyles = {
 const emptyForm = {
   role: 'STUDENT',
   studentId: '', firstName: '', lastName: '', course: '', section: '',
-  email: '', password: '', contactNumber: '', companyId: '',
+  email: '', contactNumber: '', companyId: '',
   supervisorName: '', supervisorEmail: '', supervisorContact: '',
   workingDays: '', workingHours: '', ojt_status: 'NOT_STARTED'
 };
+
+const PAGE_SIZE = 10;
 
 const StudentManagement = () => {
   const { user } = useAuth();
@@ -39,6 +41,8 @@ const StudentManagement = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [sort, setSort] = useState({ key: 'createdAt', direction: 'desc' });
+  const [page, setPage] = useState(1);
 
   const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | 'view' | null
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -54,12 +58,15 @@ const StudentManagement = () => {
   const [dragOver, setDragOver] = useState(false);
   const [batchResult, setBatchResult] = useState(null);
   const [batchLoading, setBatchLoading] = useState(false);
+  const [newCredentials, setNewCredentials] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const loadStudents = async () => {
     setLoading(true);
     try {
       const res = await getAllStudents({ search, status: statusFilter });
       setStudents(res.data);
+      setPage(1);
     } catch (err) {
       console.error(err);
     } finally {
@@ -87,8 +94,7 @@ const StudentManagement = () => {
     setForm({
       ...emptyForm,
       ...student,
-      companyId: student.companyId || '',
-      password: ''
+      companyId: student.companyId || ''
     });
     setSelectedStudent(student);
     setError('');
@@ -122,9 +128,12 @@ const StudentManagement = () => {
     try {
       if (modalMode === 'add') {
         const { companyId, ...rest } = form;
-        await createStudent({ ...rest, companyId: companyId || undefined });
+        const res = await createStudent({ ...rest, companyId: companyId || undefined });
+        if (res.data?.temporaryPassword) {
+          setNewCredentials({ email: form.email, password: res.data.temporaryPassword });
+        }
       } else if (modalMode === 'edit') {
-        const { password, id, userId, user, attendance, company, createdAt, updatedAt, ...updateData } = form;
+        const { id, userId, user, attendance, company, createdAt, updatedAt, ...updateData } = form;
         await updateStudent(selectedStudent.id, { ...updateData, companyId: updateData.companyId || null });
       }
       closeModal();
@@ -135,6 +144,50 @@ const StudentManagement = () => {
       setSaving(false);
     }
   };
+
+  const copyCredentials = async (credentials) => {
+    const list = Array.isArray(credentials) ? credentials : [credentials];
+    const text = list.map((c) => `Email: ${c.email}\nTemporary password: ${c.password || c.temporaryPassword}`).join('\n\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) { /* clipboard unavailable */ }
+  };
+
+  const handleSort = (key) => {
+    setSort((prev) => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
+  };
+
+  const sortedStudents = [...students].sort((a, b) => {
+    const pick = (s) => {
+      switch (sort.key) {
+        case 'name': return `${a.firstName} ${a.lastName}`.toLowerCase();
+        case 'course': return `${a.course} ${a.section}`.toLowerCase();
+        case 'company': return (a.company?.name || '').toLowerCase();
+        case 'hours': return (a.completedHours || 0);
+        case 'status': return a.ojt_status;
+        default: return new Date(a.createdAt || 0).getTime();
+      }
+    };
+    const av = pick(a);
+    const bv = pick(b);
+    if (av < bv) return sort.direction === 'asc' ? -1 : 1;
+    if (av > bv) return sort.direction === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedStudents.length / PAGE_SIZE));
+  const paginatedStudents = sortedStudents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const SortHeader = ({ label, sortKey, className = '' }) => (
+    <th className={`px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide ${className}`}>
+      <button onClick={() => handleSort(sortKey)} className="inline-flex items-center gap-1 hover:text-sti-blue transition-colors">
+        {label}
+        <ArrowUpDown className="w-3 h-3" />
+      </button>
+    </th>
+  );
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -177,7 +230,6 @@ const StudentManagement = () => {
             course: obj['course'] || '',
             section: obj['section'] || '',
             email: obj['email'] || '',
-            password: obj['password'] || 'Student123!',
             contactNumber: obj['contactnumber'] || obj['contact'] || obj['contactno'] || obj['phone'] || obj['mobile'] || '',
           };
         }).filter(Boolean);
@@ -202,7 +254,6 @@ const StudentManagement = () => {
             course: obj['course'] || '',
             section: obj['section'] || '',
             email: obj['email'] || '',
-            password: obj['password'] || 'Student123!',
             contactNumber: obj['contactnumber'] || obj['contact'] || obj['contactno'] || obj['phone'] || obj['mobile'] || '',
           };
         }).filter(Boolean);
@@ -248,7 +299,7 @@ const StudentManagement = () => {
         <div className="flex gap-2 flex-wrap">
           {role === 'ADMIN' && (
             <Button variant="primary" icon={Plus} onClick={() => openAddModal('STUDENT')}>
-              Create Account
+              Add Student
             </Button>
           )}
           {role === 'COORDINATOR' && (
@@ -285,16 +336,16 @@ const StudentManagement = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-black/5 dark:border-white/10 text-left">
-                  <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Student</th>
-                  <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Course / Section</th>
-                  <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Company</th>
-                  <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Hours</th>
-                  <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Status</th>
+                  <SortHeader label="Student" sortKey="name" />
+                  <SortHeader label="Course / Section" sortKey="course" />
+                  <SortHeader label="Company" sortKey="company" />
+                  <SortHeader label="Hours" sortKey="hours" />
+                  <SortHeader label="Status" sortKey="status" />
                   <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {students.map((s) => (
+                {paginatedStudents.map((s) => (
                   <tr key={s.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
                     <td className="px-6 py-3.5">
                       <p className="font-medium text-sti-gray-dark dark:text-white">{s.firstName} {s.lastName}</p>
@@ -328,6 +379,18 @@ const StudentManagement = () => {
                 ))}
               </tbody>
             </table>
+            {sortedStudents.length > PAGE_SIZE && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 border-t border-black/5 dark:border-white/10">
+                <p className="text-xs text-sti-gray">
+                  Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, sortedStudents.length)} of {sortedStudents.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                  <span className="text-xs text-sti-gray px-2">Page {page} of {totalPages}</span>
+                  <Button variant="secondary" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Card>
@@ -336,47 +399,13 @@ const StudentManagement = () => {
       <Modal
         isOpen={modalMode === 'add' || modalMode === 'edit'}
         onClose={closeModal}
-        title={modalMode === 'add' ? 'Create Account' : 'Edit Student'}
+        title={modalMode === 'add' ? 'Add Student' : 'Edit Student'}
         maxWidth="max-w-2xl"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100">
               {error}
-            </div>
-          )}
-          {modalMode === 'add' && role === 'ADMIN' && (
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Account Type</label>
-              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="input-field">
-                <option value="STUDENT">Student</option>
-                <option value="COORDINATOR">Coordinator</option>
-                <option value="SUPERVISOR">Supervisor</option>
-              </select>
-            </div>
-          )}
-          {modalMode === 'add' && form.role === 'COORDINATOR' && role === 'ADMIN' && (
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Course *</label>
-              <select required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field">
-                <option value="">Select course</option>
-                <option value="BSHM">BSHM</option>
-                <option value="BSIT">BSIT</option>
-                <option value="BSTM">BSTM</option>
-              </select>
-              <p className="text-xs text-sti-gray mt-1">This coordinator will lead the selected course</p>
-            </div>
-          )}
-          {modalMode === 'add' && form.role === 'SUPERVISOR' && role === 'ADMIN' && (
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Company *</label>
-              <select required value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field">
-                <option value="">Select company</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <p className="text-xs text-sti-gray mt-1">Supervisor will see students assigned to this company</p>
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -388,65 +417,57 @@ const StudentManagement = () => {
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name</label>
               <input required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
             </div>
-            {form.role === 'STUDENT' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID</label>
-                  <input required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field" placeholder="352467" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">OJT Status</label>
-                  <select value={form.ojt_status} onChange={(e) => setForm({ ...form, ojt_status: e.target.value })} className="input-field">
-                    <option value="NOT_STARTED">Not Started</option>
-                    <option value="ONGOING">Ongoing</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="ON_HOLD">On Hold</option>
-                    <option value="FAILED">Failed</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course</label>
-                  <input required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Section</label>
-                  <input required value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} className="input-field" />
-                </div>
-              </>
-            )}
             <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID</label>
+              <input required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field" placeholder="352467" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">OJT Status</label>
+              <select value={form.ojt_status} onChange={(e) => setForm({ ...form, ojt_status: e.target.value })} className="input-field">
+                <option value="NOT_STARTED">Not Started</option>
+                <option value="ONGOING">Ongoing</option>
+                <option value="COMPLETED">Completed</option>
+                <option value="ON_HOLD">On Hold</option>
+                <option value="FAILED">Failed</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course</label>
+              <input required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Section</label>
+              <input required value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} className="input-field" />
+            </div>
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
               <input required type="email" disabled={modalMode === 'edit'} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field disabled:bg-sti-gray-light" />
             </div>
             {modalMode === 'add' && (
-              <div>
-                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Password</label>
-                <input required type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="input-field" placeholder="Min. 8 characters" />
+              <div className="sm:col-span-2 flex gap-2 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 text-xs rounded-xl px-3 py-2.5 border border-blue-100 dark:border-blue-900">
+                <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>A temporary password is generated automatically and shown once after saving. The student must change it on first login.</span>
               </div>
             )}
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
-              <input required={form.role==='STUDENT'} value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
+              <input required value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
             </div>
-            {form.role === 'STUDENT' && (
-              <div>
-                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Partner Company</label>
-                <select value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field">
-                  <option value="">Not yet assigned</option>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Partner Company</label>
+              <select value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field">
+                <option value="">Not yet assigned</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
-
-
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="secondary" onClick={closeModal}>Cancel</Button>
             <Button type="submit" variant="primary" loading={saving}>
-              {modalMode === 'add' ? (form.role === 'STUDENT' ? 'Create Student' : form.role === 'COORDINATOR' ? 'Create Coordinator' : 'Create Supervisor') : 'Save Changes'}
+              {modalMode === 'add' ? 'Create Student' : 'Save Changes'}
             </Button>
           </div>
         </form>
@@ -539,6 +560,33 @@ const StudentManagement = () => {
         </div>
       </Modal>
 
+      <Modal isOpen={!!newCredentials} onClose={() => setNewCredentials(null)} title="Student Account Created" maxWidth="max-w-md">
+        {newCredentials && (
+          <div className="space-y-4">
+            <div className="flex gap-2 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-xs rounded-xl px-3 py-2.5 border border-amber-200 dark:border-amber-900">
+              <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>Share these credentials securely. The temporary password is shown only once.</span>
+            </div>
+            <div className="space-y-2">
+              <div>
+                <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">Email</p>
+                <p className="text-sm text-sti-gray-dark dark:text-white bg-sti-gray-light dark:bg-slate-900 rounded-lg px-3 py-2 break-all">{newCredentials.email}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">Temporary password</p>
+                <p className="text-sm font-mono text-sti-gray-dark dark:text-white bg-sti-gray-light dark:bg-slate-900 rounded-lg px-3 py-2 break-all">{newCredentials.password}</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button variant="secondary" icon={copied ? Check : Copy} onClick={() => copyCredentials(newCredentials)}>
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+              <Button variant="primary" onClick={() => setNewCredentials(null)}>Done</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Batch Result - in-app modal replaces ugly native alert on mobile */}
       <Modal isOpen={!!batchResult} onClose={() => setBatchResult(null)} title={batchResult?.failed ? 'Batch Upload Result' : 'Batch Upload Complete'} maxWidth="max-w-md">
         {batchResult && (
@@ -556,7 +604,22 @@ const StudentManagement = () => {
             {batchResult.failed > 0 && (
               <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-xl">
                 <p className="text-xs font-semibold text-sti-blue">Tip: Required columns</p>
-                <p className="text-xs text-sti-gray mt-1">Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">studentId</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>. Accepts variants like "Student ID", "First Name" with spaces/underscores. Password defaults to Student123! if empty. Empty rows are ignored.</p>
+                <p className="text-xs text-sti-gray mt-1">Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">studentId</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>. Accepts variants like "Student ID", "First Name" with spaces/underscores. A temporary password is generated automatically for every imported account. Empty rows are ignored.</p>
+              </div>
+            )}
+            {batchResult.credentials?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-2">Generated temporary passwords</p>
+                <div className="max-h-48 overflow-y-auto bg-sti-gray-light dark:bg-slate-900 rounded-xl p-3 space-y-1">
+                  {batchResult.credentials.map((c) => (
+                    <p key={c.email} className="text-[11px] text-sti-gray-dark dark:text-slate-300 font-mono break-all border-b border-black/5 dark:border-white/10 last:border-0 py-1">{c.email} — {c.temporaryPassword}</p>
+                  ))}
+                </div>
+                <div className="flex justify-end mt-2">
+                  <Button variant="secondary" icon={copied ? Check : Copy} onClick={() => copyCredentials(batchResult.credentials)}>
+                    {copied ? 'Copied' : 'Copy all'}
+                  </Button>
+                </div>
               </div>
             )}
             <div className="flex justify-end">

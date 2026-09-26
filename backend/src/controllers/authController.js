@@ -4,7 +4,8 @@ import {
   requestPasswordReset,
   resetPassword,
   updateUserTheme,
-  registerUser
+  registerUser,
+  changePassword
 } from '../services/authService.js';
 import { loginWithMicrosoft } from '../services/microsoftAuthService.js';
 import { loginWithGoogle } from '../services/googleAuthService.js';
@@ -94,4 +95,21 @@ export const register = asyncHandler(async (req, res) => {
 
 export const validateToken = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Token is valid', data: req.user });
+});
+
+export const doChangePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+
+  if (!newPassword || !confirmPassword) {
+    return res.status(400).json({ success: false, message: 'New password and confirmation are required' });
+  }
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ success: false, message: 'Passwords do not match' });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long' });
+  }
+
+  const result = await changePassword(req.user.userId, currentPassword, newPassword);
+  res.status(200).json({ success: true, message: result.message, data: { mustChangePassword: false } });
 });

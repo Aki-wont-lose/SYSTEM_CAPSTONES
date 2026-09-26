@@ -5,7 +5,8 @@ import { LayoutDashboard, ClipboardList, UserCircle, Users, Megaphone, X, FileCh
 const linksByRole = {
   ADMIN: [
     { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/admin/students', label: 'Account Management', icon: Users },
+    { to: '/admin/accounts', label: 'Account Management', icon: Users },
+    { to: '/admin/students', label: 'Students', icon: UserCircle },
     { to: '/admin/templates', label: 'Templates', icon: FileCheck2 },
     { to: '/admin/submissions', label: 'Submissions', icon: ClipboardList },
     { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
@@ -16,7 +17,8 @@ const linksByRole = {
   ],
   COORDINATOR: [
     { to: '/coordinator/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/coordinator/students', label: 'Students', icon: Users },
+    { to: '/coordinator/accounts', label: 'Account Management', icon: Users },
+    { to: '/coordinator/students', label: 'Students', icon: UserCircle },
     { to: '/coordinator/attendance', label: 'Attendance', icon: Clock },
     { to: '/coordinator/templates', label: 'Templates', icon: FileCheck2 },
     { to: '/coordinator/submissions', label: 'Submissions', icon: ClipboardList },

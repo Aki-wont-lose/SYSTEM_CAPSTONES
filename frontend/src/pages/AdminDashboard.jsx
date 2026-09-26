@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Users, UserCheck, CheckCircle2, Clock3 } from 'lucide-react';
+import { Users, UserCheck, CheckCircle2, Clock3, PauseCircle, Building2, GraduationCap } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
 import WelcomeCarousel from '../components/WelcomeCarousel';
 import { getActiveAnnouncements } from '../services/announcementService';
 
+const PROGRAM_ORDER = ['BSHM', 'BSIT', 'BSTM'];
+
 const AdminDashboard = () => {
-  const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +15,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     Promise.all([
       import('../services/studentService').then(m=>m.getDashboardStats().then(r=>r.data)),
-      import('../services/announcementService').then(m=>m.getAllAnnouncements().then(r=>r.data.slice(0,3)).catch(()=>[]))
+      import('../services/announcementService').then(m=>m.getActiveAnnouncements().then(r=>r.data.slice(0,3)).catch(()=>[]))
     ]).then(([statsData, annData])=>{
       setStats(statsData);
       setAnnouncements(annData);
@@ -29,6 +29,15 @@ const AdminDashboard = () => {
       </div>
     );
   }
+
+  const byCourse = stats?.byCourse || {};
+  const programRows = [
+    ...PROGRAM_ORDER.filter((p) => byCourse[p] != null).map((p) => ({ label: p, value: byCourse[p] })),
+    ...Object.entries(byCourse)
+      .filter(([key]) => !PROGRAM_ORDER.includes(key))
+      .map(([label, value]) => ({ label, value }))
+  ];
+  const maxProgram = Math.max(1, ...programRows.map((r) => r.value));
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -61,22 +70,63 @@ const AdminDashboard = () => {
         <div className="hidden lg:block" />
       </div>
 
-      {/* 5 cards aligned to 3 pictures - 3 on first line, 2 on second, like 3 lines */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard label="Total Students" value={stats.total} icon={Users} accent="blue" />
-        <StatCard label="Active Students" value={stats.active} icon={UserCheck} accent="green" />
-        <StatCard label="Completed" value={stats.completed} icon={CheckCircle2} accent="yellow" />
+      {/* Headline status counts */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <StatCard label="Total Interns" value={stats.totalStudents ?? stats.total} icon={Users} accent="blue" />
+        <StatCard label="Interns on Track" value={stats.onTrack ?? 0} icon={UserCheck} accent="green" />
+        <StatCard label="Currently on Hold" value={stats.onHold ?? 0} icon={PauseCircle} accent="red" />
+        <StatCard label="Completed" value={stats.completed ?? 0} icon={CheckCircle2} accent="yellow" />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <StatCard label="Pending" value={stats.pending} icon={Clock3} accent="red" />
-          <Card>
-            <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm">Recent Students</h3>
-            <p className="text-xs text-sti-gray mt-1">Manage via Account Management → Create Account</p>
-          </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <Card>
+          <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-sti-blue" /> Interns per Program
+          </h3>
+          {programRows.length === 0 ? (
+            <p className="text-sm text-sti-gray mt-3">No program data yet.</p>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {programRows.map((row) => (
+                <div key={row.label}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-medium text-sti-gray-dark dark:text-slate-200">{row.label}</span>
+                    <span className="text-sti-gray">{row.value} intern{row.value === 1 ? '' : 's'}</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-sti-gray-light dark:bg-slate-700 overflow-hidden">
+                    <div className="h-full rounded-full bg-sti-blue" style={{ width: `${Math.round((row.value / maxProgram) * 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        <Card>
+          <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm flex items-center gap-2">
+            <Building2 className="w-4 h-4 text-sti-blue" /> Industry Sectors
+          </h3>
+          <p className="text-3xl font-bold text-sti-blue mt-3">{stats.partnerCompanies ?? 0}</p>
+          <p className="text-xs text-sti-gray mt-1">active partner companies currently hosting interns</p>
+          <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-black/5 dark:border-white/10">
+            <div>
+              <p className="text-xs text-sti-gray">Not Started</p>
+              <p className="text-lg font-bold text-sti-gray-dark dark:text-white">{stats.pending ?? 0}</p>
+            </div>
+            <div>
+              <p className="text-xs text-sti-gray">Currently Rendering</p>
+              <p className="text-lg font-bold text-sti-gray-dark dark:text-white">{stats.active ?? 0}</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      <Card className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm text-sti-gray">
+          <Clock3 className="w-4 h-4 text-sti-blue" />
+          <span>Manage interns, accounts, and requirements from their respective pages.</span>
         </div>
-        <div className="hidden lg:block" />
-      </div>
+      </Card>
     </div>
   );
 };

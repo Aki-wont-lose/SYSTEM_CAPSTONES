@@ -159,6 +159,7 @@ export const loginWithGoogle = async (idToken) => {
       email: user.email,
       role: user.role,
       theme: user.theme,
+      mustChangePassword: user.mustChangePassword,
       student: user.student
     }
   };

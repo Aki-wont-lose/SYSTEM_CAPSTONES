@@ -54,25 +54,80 @@ const LoginModalContent = ({ view, setView, onClose }) => {
 const StudentView = ({ onBack }) => {
   const [ssoLoading, setSsoLoading] = useState(null);
   const [error, setError] = useState('');
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const { loginWithMicrosoft, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const handleClick = async (provider) => {
     setError(''); setSsoLoading(provider);
     try {
-      if (provider === 'microsoft') await loginWithMicrosoft(); else await loginWithGoogle();
-      navigate('/dashboard');
+      const userData = provider === 'microsoft' ? await loginWithMicrosoft() : await loginWithGoogle();
+      navigate(userData?.mustChangePassword ? '/change-password' : '/dashboard');
     } catch (err) {
       const cancelled = err?.errorCode === 'user_cancelled' || err?.name === 'BrowserAuthError';
       if (!cancelled) setError(err.response?.data?.message || err.message || 'Sign-in failed.');
     } finally { setSsoLoading(null); }
   };
+
+  if (showPasswordLogin) {
+    return (
+      <StudentPasswordLogin
+        onBack={() => { setShowPasswordLogin(false); setError(''); }}
+        onError={setError}
+        error={error}
+      />
+    );
+  }
+
   return (
     <div className="space-y-2.5">
       {error && <div className="flex gap-2 bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100"><AlertCircle className="w-4 h-4 mt-0.5" /><span>{error}</span></div>}
       {isGoogleLoginEnabled && <button type="button" onClick={() => handleClick('google')} disabled={ssoLoading!==null} className="w-full flex items-center justify-center gap-2.5 border rounded-xl py-3 text-sm font-semibold hover:bg-sti-gray-light disabled:opacity-50">{ssoLoading==='google' ? <span className="w-4 h-4 border-2 border-sti-gray border-t-transparent rounded-full animate-spin" /> : <GoogleIcon />} Sign in with Google</button>}
       {isMicrosoftLoginEnabled && <button type="button" onClick={() => handleClick('microsoft')} disabled={ssoLoading!==null} className="w-full flex items-center justify-center gap-2.5 border rounded-xl py-3 text-sm font-semibold hover:bg-sti-gray-light disabled:opacity-50">{ssoLoading==='microsoft' ? <span className="w-4 h-4 border-2 border-sti-gray border-t-transparent rounded-full animate-spin" /> : <MicrosoftIcon />} Sign in with Microsoft</button>}
+      <button type="button" onClick={() => setShowPasswordLogin(true)} className="w-full flex items-center justify-center gap-1.5 text-xs font-medium text-sti-blue hover:underline pt-1">
+        Sign in with the temporary password given by your coordinator
+      </button>
       <button type="button" onClick={onBack} className="w-full flex items-center justify-center gap-1.5 text-xs text-sti-gray pt-2"><ArrowLeft className="w-3.5 h-3.5" /> Back</button>
     </div>
+  );
+};
+
+const StudentPasswordLogin = ({ onBack, onError }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    onError('');
+    setLoading(true);
+    try {
+      const userData = await login(email, password);
+      navigate(userData?.mustChangePassword ? '/change-password' : '/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Invalid email or password');
+    } finally { setLoading(false); }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <div className="flex gap-2 bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100"><AlertCircle className="w-4 h-4 mt-0.5" /><span>{error}</span></div>}
+      <div className="relative">
+        <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" className="input-field pl-10" />
+      </div>
+      <div className="relative">
+        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+        <input type={showPassword ? 'text' : 'password'} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Temporary password" className="input-field pl-10 pr-10" />
+        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-sti-gray">{showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+      </div>
+      <Button type="submit" variant="primary" className="w-full" loading={loading}>Log in</Button>
+      <button type="button" onClick={onBack} className="w-full flex items-center justify-center gap-1.5 text-xs text-sti-gray pt-1"><ArrowLeft className="w-3.5 h-3.5" /> Back</button>
+    </form>
   );
 };
 
@@ -88,6 +143,7 @@ const AdminView = ({ onBack, onForgot }) => {
     e.preventDefault(); setError(''); setLoading(true);
     try {
       const userData = await login(email, password);
+      if (userData?.mustChangePassword) { navigate('/change-password'); return; }
       const home = userData.role === 'ADMIN' ? '/admin/dashboard' : userData.role === 'COORDINATOR' ? '/coordinator/dashboard' : userData.role === 'SUPERVISOR' ? '/supervisor/dashboard' : '/dashboard';
       navigate(home);
     } catch (err) { setError(err.response?.data?.message || 'Invalid email or password'); } finally { setLoading(false); }

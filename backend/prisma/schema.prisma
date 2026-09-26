@@ -12,9 +12,10 @@ generator client {
 model User {
   id           String     @id @default(cuid())
   email        String     @unique
-  password     String
+  password     String?
   role         Role       @default(STUDENT)
   isActive     Boolean    @default(true)
+  mustChangePassword Boolean @default(false)
   theme        Theme      @default(LIGHT)
   coordinatorCourse String? // BSHM / BSIT / BSTM - for COORDINATOR role
   supervisorCompanyId String? // Company ID for SUPERVISOR to limit to assigned students

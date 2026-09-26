@@ -120,6 +120,9 @@ export const loginWithMicrosoft = async (idToken) => {
       email: user.email,
       role: user.role,
       theme: user.theme,
+      mustChangePassword: user.mustChangePassword,
+      coordinatorCourse: user.coordinatorCourse,
+      supervisorCompanyId: user.supervisorCompanyId,
       student: user.student
     }
   };

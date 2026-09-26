@@ -16,6 +16,11 @@ export const resetPasswordRequest = async (resetToken, newPassword) => {
   return response.data;
 };
 
+export const changePasswordRequest = async (currentPassword, newPassword, confirmPassword) => {
+  const response = await api.post('/auth/change-password', { currentPassword, newPassword, confirmPassword });
+  return response.data;
+};
+
 export const registerRequest = async (userData) => {
   const response = await api.post('/auth/register', userData);
   return response.data;

@@ -8,6 +8,7 @@ import CoordinatorLayout from './layouts/CoordinatorLayout';
 import SupervisorLayout from './layouts/SupervisorLayout';
 
 import Login from './pages/Login';
+import ChangePassword from './pages/ChangePassword';
 import Unauthorized from './pages/Unauthorized';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentProfile from './pages/StudentProfile';
@@ -17,6 +18,7 @@ import Requirements from './pages/Requirements';
 import FindCompany from './pages/FindCompany';
 import Schedule from './pages/Schedule';
 import AdminDashboard from './pages/AdminDashboard';
+import AccountManagement from './pages/AccountManagement';
 import StudentManagement from './pages/StudentManagement';
 import AdminRequirements from './pages/AdminRequirements';
 import Templates from './pages/Templates';
@@ -36,7 +38,7 @@ const ROLE_HOME = {
 };
 
 function App() {
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, user, loading, mustChangePassword } = useAuth();
 
   if (loading) {
     return (
@@ -46,13 +48,21 @@ function App() {
     );
   }
 
-  const defaultRoute = isAuthenticated ? (ROLE_HOME[user?.role] || '/dashboard') : '/login';
+  const defaultRoute = mustChangePassword ? '/change-password' : isAuthenticated ? (ROLE_HOME[user?.role] || '/dashboard') : '/login';
 
   return (
     <Routes>
       <Route
         path="/login"
         element={isAuthenticated ? <Navigate to={defaultRoute} replace /> : <Login />}
+      />
+      <Route
+        path="/change-password"
+        element={
+          <ProtectedRoute>
+            <ChangePassword />
+          </ProtectedRoute>
+        }
       />
       <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -85,6 +95,7 @@ function App() {
         }
       >
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/accounts" element={<AccountManagement />} />
         <Route path="/admin/students" element={<StudentManagement />} />
         <Route path="/admin/templates" element={<Templates />} />
         <Route path="/admin/submissions" element={<Submissions />} />
@@ -105,6 +116,7 @@ function App() {
         }
       >
         <Route path="/coordinator/dashboard" element={<AdminDashboard />} />
+        <Route path="/coordinator/accounts" element={<AccountManagement />} />
         <Route path="/coordinator/students" element={<StudentManagement />} />
         <Route path="/coordinator/attendance" element={<AttendanceMonitoring />} />
         <Route path="/coordinator/templates" element={<Templates />} />

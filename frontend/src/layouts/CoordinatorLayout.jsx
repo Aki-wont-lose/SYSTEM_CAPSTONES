@@ -5,6 +5,7 @@ import TopNav from '../components/TopNav';
 
 const titles = {
   '/coordinator/dashboard': 'Coordinator Dashboard',
+  '/coordinator/accounts': 'Account Management',
   '/coordinator/students': 'Students',
   '/coordinator/attendance': 'Attendance',
   '/coordinator/requirements': 'Requirements',

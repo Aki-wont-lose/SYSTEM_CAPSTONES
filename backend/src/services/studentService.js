@@ -1,6 +1,6 @@
 // src/services/studentService.js
 import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './authService.js';
+import { hashPassword, generateTemporaryPassword } from './authService.js';
 
 const prisma = new PrismaClient();
 
@@ -84,15 +84,18 @@ export const getStudentByUserId = async (userId) => {
 };
 
 export const createStudent = async (studentData, userData) => {
+  const generatedPassword = !userData?.password;
+  const plainPassword = userData?.password || generateTemporaryPassword();
   try {
-    const hashedPassword = await hashPassword(userData.password);
+    const hashedPassword = await hashPassword(plainPassword);
 
     // Create user first
     const user = await prisma.user.create({
       data: {
         email: userData.email,
         password: hashedPassword,
-        role: 'STUDENT'
+        role: 'STUDENT',
+        mustChangePassword: true
       }
     });
 
@@ -113,9 +116,11 @@ export const createStudent = async (studentData, userData) => {
       }
     });
 
-    return student;
+    return {
+      student,
+      temporaryPassword: generatedPassword ? plainPassword : null
+    };
   } catch (error) {
-    // Clean up user if student creation fails
     if (error.code === 'P2002') {
       const field = error.meta?.target?.[0];
       const err = new Error(`${field} already exists`);
@@ -181,22 +186,45 @@ export const deleteStudent = async (studentId) => {
 };
 
 export const getStudentStats = async () => {
-  const total = await prisma.student.count();
-  const active = await prisma.student.count({
-    where: { ojt_status: 'ONGOING' }
-  });
-  const completed = await prisma.student.count({
-    where: { ojt_status: 'COMPLETED' }
-  });
-  const pending = await prisma.student.count({
-    where: { ojt_status: 'NOT_STARTED' }
-  });
+  const [total, active, completed, pending, onHold, byCourse, activeCompanies] = await Promise.all([
+    prisma.student.count(),
+    prisma.student.count({
+      where: { ojt_status: 'ONGOING' }
+    }),
+    prisma.student.count({
+      where: { ojt_status: 'COMPLETED' }
+    }),
+    prisma.student.count({
+      where: { ojt_status: 'NOT_STARTED' }
+    }),
+    prisma.student.count({
+      where: { ojt_status: 'ON_HOLD' }
+    }),
+    prisma.student.groupBy({
+      by: ['course'],
+      _count: { _all: true },
+      orderBy: { course: 'asc' }
+    }),
+    prisma.company.count({
+      where: { status: 'ACTIVE', students: { some: {} } }
+    })
+  ]);
+
+  const courses = {};
+  for (const row of byCourse) {
+    courses[row.course || 'Unassigned'] = row._count._all;
+  }
 
   return {
     total,
     active,
     completed,
-    pending
+    pending,
+    onHold,
+    onTrack: total - completed,
+    byCourse: courses,
+    partnerCompanies: activeCompanies,
+    totalStudents: total
   };
 };
 

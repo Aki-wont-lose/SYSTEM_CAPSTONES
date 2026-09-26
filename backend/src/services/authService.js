@@ -12,9 +12,23 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 export const hashPassword = async (password) => bcrypt.hash(password, BCRYPT_ROUNDS);
 
-// Direct email + password login — ADMIN / COORDINATOR / SUPERVISOR.
-// STUDENT must use Google/Microsoft OAuth. Same UI, role limits sidebar + API.
-const PASSWORD_ROLES = ['ADMIN', 'COORDINATOR', 'SUPERVISOR'];
+const TEMP_UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+const TEMP_LOWER = 'abcdefghijkmnopqrstuvwxyz';
+const TEMP_DIGITS = '23456789';
+const TEMP_SYMBOLS = '!@#$%&*?';
+
+const pickFrom = (set) => set[crypto.randomInt(0, set.length)];
+
+export const generateTemporaryPassword = () => {
+  const required = [pickFrom(TEMP_UPPER), pickFrom(TEMP_LOWER), pickFrom(TEMP_DIGITS), pickFrom(TEMP_SYMBOLS)];
+  const all = TEMP_UPPER + TEMP_LOWER + TEMP_DIGITS;
+  while (required.length < 10) required.push(pickFrom(all));
+  for (let i = required.length - 1; i > 0; i--) {
+    const j = crypto.randomInt(0, i + 1);
+    [required[i], required[j]] = [required[j], required[i]];
+  }
+  return required.join('');
+};
 
 export const loginUser = async (email, password) => {
   const user = await prisma.user.findUnique({
@@ -34,16 +48,16 @@ export const loginUser = async (email, password) => {
     throw error;
   }
 
+  if (!user.password) {
+    const error = new Error('This account has no password yet. Sign in with Microsoft or Google instead.');
+    error.status = 403;
+    throw error;
+  }
+
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
     const error = new Error('Invalid email or password');
     error.status = 401;
-    throw error;
-  }
-
-  if (!PASSWORD_ROLES.includes(user.role)) {
-    const error = new Error('Students sign in with Microsoft/Google, not a password. Use the "Log in with Student Account" option.');
-    error.status = 403;
     throw error;
   }
 
@@ -56,9 +70,56 @@ export const loginUser = async (email, password) => {
       email: user.email,
       role: user.role,
       theme: user.theme,
+      mustChangePassword: user.mustChangePassword,
+      coordinatorCourse: user.coordinatorCourse,
+      supervisorCompanyId: user.supervisorCompanyId,
       student: user.student
     }
   };
+};
+
+export const changePassword = async (userId, currentPassword, newPassword) => {
+  if (!newPassword || newPassword.length < 8) {
+    const error = new Error('New password must be at least 8 characters');
+    error.status = 400;
+    throw error;
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    const error = new Error('Account not found');
+    error.status = 404;
+    throw error;
+  }
+
+  if (user.password) {
+    const matches = await bcrypt.compare(currentPassword || '', user.password);
+    if (!matches) {
+      const error = new Error('Current password is incorrect');
+      error.status = 400;
+      throw error;
+    }
+  }
+
+  if (user.password && currentPassword === newPassword) {
+    const error = new Error('New password must be different from the current password');
+    error.status = 400;
+    throw error;
+  }
+
+  const hashedPassword = await hashPassword(newPassword);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      password: hashedPassword,
+      mustChangePassword: false,
+      resetToken: null,
+      resetTokenExpiresAt: null
+    }
+  });
+
+  return { success: true, message: 'Password updated successfully' };
 };
 
 export const requestPasswordReset = async (email) => {
@@ -99,6 +160,7 @@ export const resetPassword = async (resetToken, newPassword) => {
     where: { id: user.id },
     data: {
       password: hashedPassword,
+      mustChangePassword: false,
       resetToken: null,
       resetTokenExpiresAt: null
     }

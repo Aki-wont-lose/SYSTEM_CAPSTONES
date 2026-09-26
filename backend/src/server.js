@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 // Feature-organised modules (see src/modules/* — dashboard, students, requirements, companies, logs, announcements, profile)
 // Legacy routes kept for backward compat; modules are the canonical source now.
 import authRoutes from './modules/auth/routes.js';
+import accountRoutes from './modules/accounts/routes.js';
 import studentRoutes from './modules/students/routes.js';
 import attendanceRoutes from './routes/attendanceRoutes.js';
 import announcementRoutes from './modules/announcements/routes.js';
@@ -52,6 +53,7 @@ app.get('/api/health', (req, res) => {
 
 // Public routes
 app.use('/api/auth', authRoutes);
+app.use('/api/accounts', verifyToken, accountRoutes);
 
 // Protected routes — organised by feature (same UI, role-limited via verifyRole inside each module)
 app.use('/api/announcements', announcementRoutes);
