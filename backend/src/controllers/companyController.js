@@ -2,6 +2,7 @@
 import {
   getAllCompanies,
   getCompanyById,
+  getCompanyPrograms,
   createCompany,
   updateCompany,
   deleteCompany,
@@ -10,9 +11,13 @@ import {
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 export const fetchCompanies = asyncHandler(async (req, res) => {
-  const { search } = req.query;
-  const companies = await getAllCompanies(search);
+  const { search, program, status, hasSlots } = req.query;
+  const companies = await getAllCompanies({ search, program, status, hasSlots });
   res.status(200).json({ success: true, data: companies });
+});
+
+export const fetchProgramOptions = asyncHandler(async (req, res) => {
+  res.status(200).json({ success: true, data: getCompanyPrograms() });
 });
 
 export const fetchCompanyById = asyncHandler(async (req, res) => {

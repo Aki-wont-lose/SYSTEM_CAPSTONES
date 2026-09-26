@@ -1,7 +1,13 @@
 import api from './api';
 
-export const getCompanies = async (search) => {
-  const response = await api.get('/companies', { params: { search } });
+export const getCompanies = async (filters = {}) => {
+  const params = typeof filters === 'string' ? { search: filters } : filters;
+  const response = await api.get('/companies', { params });
+  return response.data;
+};
+
+export const getCompanyPrograms = async () => {
+  const response = await api.get('/companies/programs');
   return response.data;
 };
 

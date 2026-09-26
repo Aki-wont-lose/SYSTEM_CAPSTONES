@@ -1,30 +1,50 @@
-import { useEffect, useState } from 'react';
-import { Building2, MapPin, Phone, Mail, Users, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Building2, MapPin, Phone, Mail, Users, Search, Filter, GraduationCap } from 'lucide-react';
 import Card from '../components/Card';
 import MapEmbed from '../components/MapEmbed';
 import { getCompanies } from '../services/companyService';
+import { useAuth } from '../hooks/useAuth';
+import { getStudentSummary } from '../services/attendanceService';
+
+const PROGRAM_LABELS = { BSHM: 'BSHM', BSIT: 'BSIT', BSTM: 'BSTM' };
 
 const FindCompany = () => {
+  const { user } = useAuth();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
+  const [program, setProgram] = useState('');
+  const [myProgram, setMyProgram] = useState('');
 
   useEffect(() => {
-    getCompanies()
+    getCompanies({ status: 'ACTIVE', hasSlots: 'true' })
       .then((res) => {
-        // Only show active partner companies that still have open slots
-        const available = res.data.filter((c) => c.status === 'ACTIVE' && c.availableSlots > 0);
-        setCompanies(available);
-        setSelected(available[0] || null);
+        setCompanies(res.data);
+        setSelected(res.data[0] || null);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
 
-  const filtered = companies.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    (c.industryType || '').toLowerCase().includes(search.toLowerCase())
+  useEffect(() => {
+    if (user?.role !== 'STUDENT') return;
+    getStudentSummary()
+      .then((res) => setMyProgram(res.data?.student?.course || ''))
+      .catch(() => setMyProgram(''));
+  }, [user]);
+
+  const matchesProgram = (c, target) => !target || (c.programs || []).includes(target);
+
+  const filtered = useMemo(
+    () => companies.filter((c) => {
+      const term = search.toLowerCase();
+      const textMatch = !term
+        || c.name.toLowerCase().includes(term)
+        || (c.industryType || '').toLowerCase().includes(term);
+      return textMatch && matchesProgram(c, program);
+    }),
+    [companies, search, program]
   );
 
   if (loading) {
@@ -62,6 +82,30 @@ const FindCompany = () => {
               />
             </div>
 
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+                <select value={program} onChange={(e) => setProgram(e.target.value)} className="input-field pl-9 text-sm py-2.5">
+                  <option value="">All programs</option>
+                  {Object.entries(PROGRAM_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
+              {myProgram && (
+                <button
+                  onClick={() => setProgram(program === myProgram ? '' : myProgram)}
+                  className={`shrink-0 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-colors ${
+                    program === myProgram
+                      ? 'bg-sti-blue text-white border-sti-blue'
+                      : 'bg-white dark:bg-slate-800 border-black/5 dark:border-white/10 text-sti-gray hover:border-sti-blue/40'
+                  }`}
+                >
+                  <GraduationCap className="w-3.5 h-3.5 inline mr-1" /> My program ({myProgram})
+                </button>
+              )}
+            </div>
+
             <div className="space-y-2 max-h-[40vh] sm:max-h-[520px] overflow-y-auto pr-1 -mr-1">
               {filtered.map((c) => (
                 <button
@@ -82,6 +126,15 @@ const FindCompany = () => {
                       <Users className="w-3 h-3" /> {c.availableSlots}
                     </span>
                   </div>
+                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                    {(c.programs || []).length > 0 ? (
+                      c.programs.map((p) => (
+                        <span key={p} className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sti-blue-50 text-sti-blue">{PROGRAM_LABELS[p] || p}</span>
+                      ))
+                    ) : (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sti-gray-light text-sti-gray">All programs</span>
+                    )}
+                  </div>
                   {c.address && (
                     <p className="flex items-start gap-1 text-xs text-sti-gray mt-1.5 line-clamp-2">
                       <MapPin className="w-3 h-3 mt-0.5 shrink-0" /> {c.address}
@@ -90,7 +143,7 @@ const FindCompany = () => {
                 </button>
               ))}
               {filtered.length === 0 && (
-                <p className="text-sm text-sti-gray text-center py-8">No matches for "{search}".</p>
+                <p className="text-sm text-sti-gray text-center py-8">No companies match this filter.</p>
               )}
             </div>
           </div>
@@ -109,6 +162,12 @@ const FindCompany = () => {
                   <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm sm:text-base">{selected.name}</h3>
                   {selected.industryType && <p className="text-xs text-sti-gray mb-2 sm:mb-3">{selected.industryType}</p>}
                   <div className="space-y-2 text-xs sm:text-sm">
+                    <p className="flex items-center gap-2 text-sti-gray-dark dark:text-slate-300">
+                      <GraduationCap className="w-4 h-4 text-sti-blue shrink-0" />
+                      {(selected.programs || []).length > 0
+                        ? `Accepts ${selected.programs.map((p) => PROGRAM_LABELS[p] || p).join(', ')}`
+                        : 'Open to all programs'}
+                    </p>
                     {selected.address && (
                       <p className="flex items-center gap-2 text-sti-gray-dark dark:text-slate-300 break-words">
                         <MapPin className="w-4 h-4 text-sti-blue shrink-0" /> {selected.address}

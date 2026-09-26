@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Building2, Users, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Building2, Users, Upload, Filter, GraduationCap } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -7,7 +7,9 @@ import Modal from '../components/Modal';
 import LocationPicker from '../components/LocationPicker';
 import { getCompanies, createCompany, updateCompany, deleteCompany, batchCreateCompanies } from '../services/companyService';
 
-const emptyForm = { name: '', address: '', latitude: '', longitude: '', contactPerson: '', contactNumber: '', email: '', industryType: '', availableSlots: 0, status: 'ACTIVE' };
+const PROGRAMS = ['BSHM', 'BSIT', 'BSTM'];
+
+const emptyForm = { name: '', address: '', latitude: '', longitude: '', contactPerson: '', contactNumber: '', email: '', industryType: '', programs: [], availableSlots: 0, status: 'ACTIVE' };
 
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
@@ -19,6 +21,7 @@ const Companies = () => {
   const [dragOver, setDragOver] = useState(false);
   const [batchResult, setBatchResult] = useState(null);
   const [batchLoading, setBatchLoading] = useState(false);
+  const [programFilter, setProgramFilter] = useState('');
   const handleBatchFile = async (file) => {
     if (!file) return;
     const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
@@ -45,7 +48,8 @@ const Companies = () => {
             contactNumber: obj['contactnumber'] || obj['contactno'] || obj['phone'] || '',
             email: obj['email'] || '',
             industryType: obj['industrytype'] || obj['industry'] || '',
-            availableSlots: parseInt(obj['availableslots'] || obj['slots'] || obj['slot'] || '0') || 0
+            availableSlots: parseInt(obj['availableslots'] || obj['slots'] || obj['slot'] || '0') || 0,
+            programs: String(obj['programs'] || obj['program'] || '').split(/[|;,/]+/).map(p=>p.trim().toUpperCase()).filter(p=>PROGRAMS.includes(p))
           };
         }).filter(Boolean);
       } else {
@@ -67,7 +71,8 @@ const Companies = () => {
             contactNumber: obj['contactnumber'] || obj['contactno'] || obj['phone'] || '',
             email: obj['email'] || '',
             industryType: obj['industrytype'] || obj['industry'] || '',
-            availableSlots: parseInt(obj['availableslots'] || obj['slots'] || obj['slot'] || '0') || 0
+            availableSlots: parseInt(obj['availableslots'] || obj['slots'] || obj['slot'] || '0') || 0,
+            programs: String(obj['programs'] || obj['program'] || '').split(/[|;,/]+/).map(p=>p.trim().toUpperCase()).filter(p=>PROGRAMS.includes(p))
           };
         }).filter(Boolean);
       }
@@ -83,7 +88,7 @@ const Companies = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await getCompanies();
+      const res = await getCompanies({ program: programFilter || undefined });
       setCompanies(res.data);
     } catch (err) {
       console.error(err);
@@ -92,7 +97,7 @@ const Companies = () => {
     }
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, [programFilter]);
 
   const openNew = () => {
     setEditing(null);
@@ -112,6 +117,7 @@ const Companies = () => {
       email: company.email || '',
       industryType: company.industryType || '',
       availableSlots: company.availableSlots || 0,
+      programs: company.programs || [],
       status: company.status
     });
     setShowModal(true);
@@ -182,36 +188,58 @@ const Companies = () => {
           <p className="text-sti-gray text-sm">No partner companies yet. Add the first one.</p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {companies.map((c) => (
-            <Card key={c.id}>
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="w-10 h-10 rounded-xl bg-sti-blue-50 dark:bg-sti-blue/20 flex items-center justify-center shrink-0">
-                  <Building2 className="w-5 h-5 text-sti-blue" />
+        <>
+          <div className="relative w-full sm:w-56">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+            <select value={programFilter} onChange={(e) => setProgramFilter(e.target.value)} className="input-field pl-9 text-sm py-2.5">
+              <option value="">All programs</option>
+              {PROGRAMS.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {companies.map((c) => (
+              <Card key={c.id}>
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-sti-blue-50 dark:bg-sti-blue/20 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-sti-blue" />
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(c.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDelete(c.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                <h3 className="font-bold text-sti-gray-dark dark:text-white">{c.name}</h3>
+                {c.industryType && <p className="text-xs text-sti-gray mb-2">{c.industryType}</p>}
+                {c.address && <p className="text-xs text-sti-gray mb-3">{c.address}</p>}
+                <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                  <GraduationCap className="w-3.5 h-3.5 text-sti-gray" />
+                  {(c.programs || []).length > 0 ? (
+                    c.programs.map((p) => (
+                      <span key={p} className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sti-blue-50 text-sti-blue">{p}</span>
+                    ))
+                  ) : (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sti-gray-light text-sti-gray">All programs</span>
+                  )}
                 </div>
-              </div>
-              <h3 className="font-bold text-sti-gray-dark dark:text-white">{c.name}</h3>
-              {c.industryType && <p className="text-xs text-sti-gray mb-2">{c.industryType}</p>}
-              {c.address && <p className="text-xs text-sti-gray mb-3">{c.address}</p>}
-              <div className="flex items-center justify-between text-xs pt-3 border-t border-black/5 dark:border-white/10">
-                <span className="flex items-center gap-1 text-sti-gray">
-                  <Users className="w-3.5 h-3.5" /> {c._count?.students ?? 0} interns · {c.availableSlots} slots open
-                </span>
-                <span className={`font-semibold px-2 py-0.5 rounded-full ${c.status === 'ACTIVE' ? 'bg-sti-blue-50 text-sti-blue' : 'bg-sti-gray-light text-sti-gray'}`}>
-                  {c.status}
-                </span>
-              </div>
-            </Card>
-          ))}
-        </div>
+                <div className="flex items-center justify-between text-xs pt-3 border-t border-black/5 dark:border-white/10">
+                  <span className="flex items-center gap-1 text-sti-gray">
+                    <Users className="w-3.5 h-3.5" /> {c._count?.students ?? 0} interns · {c.availableSlots} slots open
+                  </span>
+                  <span className={`font-semibold px-2 py-0.5 rounded-full ${c.status === 'ACTIVE' ? 'bg-sti-blue-50 text-sti-blue' : 'bg-sti-gray-light text-sti-gray'}`}>
+                    {c.status}
+                  </span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
       {showModal && (
@@ -246,6 +274,34 @@ const Companies = () => {
                   <option value="ACTIVE">Active</option>
                   <option value="INACTIVE">Inactive</option>
                 </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1.5">
+                  Programs this company accepts
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {PROGRAMS.map((p) => {
+                    const active = form.programs.includes(p);
+                    return (
+                      <button
+                        type="button"
+                        key={p}
+                        onClick={() => setForm({
+                          ...form,
+                          programs: active ? form.programs.filter((x) => x !== p) : [...form.programs, p]
+                        })}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                          active
+                            ? 'bg-sti-blue text-white border-sti-blue'
+                            : 'bg-white dark:bg-slate-700 border-black/10 dark:border-white/10 text-sti-gray hover:border-sti-blue/40'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-sti-gray mt-1.5">Leave all unselected to open this company to every program.</p>
               </div>
               <Button type="submit" variant="primary" className="w-full py-3" loading={saving}>
                 {editing ? 'Save Changes' : 'Add Company'}

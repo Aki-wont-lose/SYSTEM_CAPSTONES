@@ -143,6 +143,7 @@ model Company {
   contactNumber   String?
   email           String?
   industryType    String?
+  programs        String[]  @default([]) // BSHM / BSIT / BSTM - empty = open to all programs
   availableSlots  Int       @default(0)
   status          CompanyStatus @default(ACTIVE)
   createdAt       DateTime  @default(now())
