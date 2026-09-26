@@ -93,6 +93,12 @@ model Attendance {
   renderedHours   Float     @default(0)
   status          AttendanceStatus @default(PRESENT)
   notes           String?
+  reviewStatus    DtrReviewStatus  @default(DRAFT) // DRAFT -> SUBMITTED -> APPROVED | REJECTED
+  reviewRemarks   String?   @db.Text
+  reviewedById    String?
+  reviewedByName  String?
+  submittedAt     DateTime?
+  reviewedAt      DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -103,6 +109,8 @@ model Attendance {
   @@index([studentId])
   @@index([date])
   @@index([status])
+  @@index([reviewStatus])
+  @@index([date, reviewStatus])
 }
 
 // Announcement model
@@ -268,6 +276,13 @@ enum AttendanceStatus {
   ABSENT
   LATE
   EXCUSED
+}
+
+enum DtrReviewStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
 }
 
 enum Priority {

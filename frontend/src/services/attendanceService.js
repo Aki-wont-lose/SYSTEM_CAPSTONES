@@ -34,3 +34,18 @@ export const getStudentSummaryForStaff = async (studentId) => {
   const response = await api.get(`/attendance/student/${studentId}/summary`);
   return response.data;
 };
+
+export const submitDtrForReview = async (attendanceId) => {
+  const response = await api.post(`/attendance/${attendanceId}/submit`);
+  return response.data;
+};
+
+export const getDtrReviewQueue = async (filters = {}) => {
+  const response = await api.get('/attendance/review-queue', { params: filters });
+  return response.data;
+};
+
+export const reviewDtr = async (attendanceId, status, remarks) => {
+  const response = await api.put(`/attendance/review/${attendanceId}`, { status, remarks });
+  return response.data;
+};

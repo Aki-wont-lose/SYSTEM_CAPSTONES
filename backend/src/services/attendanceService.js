@@ -182,6 +182,16 @@ export const updateAttendanceRecord = async (attendanceId, updateData) => {
       updatePayload.renderedHours = renderedHours;
     }
 
+    // Changing the times invalidates a previous decision, so send it back to draft
+    if (updatePayload.timeIn !== undefined || updatePayload.timeOut !== undefined) {
+      updatePayload.reviewStatus = 'DRAFT';
+      updatePayload.submittedAt = null;
+      updatePayload.reviewedAt = null;
+      updatePayload.reviewedById = null;
+      updatePayload.reviewedByName = null;
+      updatePayload.reviewRemarks = null;
+    }
+
     const updated = await prisma.attendance.update({
       where: { id: attendanceId },
       data: updatePayload
@@ -244,7 +254,175 @@ export const getStudentSummary = async (studentId) => {
       presentDays,
       absentDays,
       lateDays,
-      remainingHours: Math.max(0, student.requiredHours - Math.round(totalHours))
+      remainingHours: Math.max(0, student.requiredHours - Math.round(totalHours)),
+      review: {
+        draft: attendance.filter((rec) => rec.reviewStatus === 'DRAFT').length,
+        submitted: attendance.filter((rec) => rec.reviewStatus === 'SUBMITTED').length,
+        approved: attendance.filter((rec) => rec.reviewStatus === 'APPROVED').length,
+        rejected: attendance.filter((rec) => rec.reviewStatus === 'REJECTED').length
+      }
     }
   };
 };
+
+const REVIEW_TRANSITIONS = {
+  DRAFT: ['SUBMITTED'],
+  SUBMITTED: ['APPROVED', 'REJECTED', 'DRAFT'],
+  REJECTED: ['DRAFT'],
+  APPROVED: ['DRAFT']
+};
+
+export const canTransitionReview = (from, to) => (REVIEW_TRANSITIONS[from] || []).includes(to);
+
+// Student locks a finished day and sends it to the supervisor for approval
+export const submitDtrForReview = async (attendanceId, studentId) => {
+  const record = await prisma.attendance.findUnique({ where: { id: attendanceId } });
+  if (!record || record.studentId !== studentId) {
+    const error = new Error('DTR record not found');
+    error.status = 404;
+    throw error;
+  }
+
+  if (!record.timeIn || !record.timeOut) {
+    const error = new Error('Time in and time out are both required before submitting');
+    error.status = 400;
+    throw error;
+  }
+
+  if (record.reviewStatus === 'APPROVED') {
+    const error = new Error('This DTR is already approved');
+    error.status = 400;
+    throw error;
+  }
+
+  if (record.reviewStatus === 'SUBMITTED') {
+    const error = new Error('This DTR is already awaiting review');
+    error.status = 400;
+    throw error;
+  }
+
+  return prisma.attendance.update({
+    where: { id: attendanceId },
+    data: {
+      reviewStatus: 'SUBMITTED',
+      submittedAt: new Date(),
+      reviewedAt: null,
+      reviewedById: null,
+      reviewedByName: null,
+      reviewRemarks: null
+    }
+  });
+};
+
+// Supervisor / Coordinator / Admin approves or rejects a submitted DTR
+export const reviewDtr = async (attendanceId, reviewer, status, remarks) => {
+  if (!['APPROVED', 'REJECTED'].includes(status)) {
+    const error = new Error('Status must be APPROVED or REJECTED');
+    error.status = 400;
+    throw error;
+  }
+
+  if (status === 'REJECTED' && !remarks) {
+    const error = new Error('A reason is required when rejecting a DTR');
+    error.status = 400;
+    throw error;
+  }
+
+  const record = await prisma.attendance.findUnique({ where: { id: attendanceId } });
+  if (!record) {
+    const error = new Error('DTR record not found');
+    error.status = 404;
+    throw error;
+  }
+
+  if (!canTransitionReview(record.reviewStatus, status)) {
+    const error = new Error(
+      record.reviewStatus === 'SUBMITTED'
+        ? 'This DTR was already reviewed'
+        : 'Only a submitted DTR can be reviewed'
+    );
+    error.status = 400;
+    throw error;
+  }
+
+  return prisma.attendance.update({
+    where: { id: attendanceId },
+    data: {
+      reviewStatus: status,
+      reviewRemarks: remarks ? String(remarks) : null,
+      reviewedById: reviewer?.userId || null,
+      reviewedByName: reviewer ? `${reviewer.firstName || ''} ${reviewer.lastName || ''}`.trim() || reviewer.email || 'Staff' : null,
+      reviewedAt: new Date()
+    }
+  });
+};
+
+// Staff review queue: submitted DTRs awaiting a decision, newest first
+export const getDtrReviewQueue = async (filters = {}) => {
+  const where = {};
+  if (filters.status) where.reviewStatus = filters.status;
+  else where.reviewStatus = 'SUBMITTED';
+  if (filters.studentId) where.studentId = filters.studentId;
+  if (filters.course) where.student = { course: filters.course };
+  if (filters.from || filters.to) {
+    where.date = {};
+    if (filters.from) where.date.gte = new Date(filters.from);
+    if (filters.to) where.date.lte = new Date(filters.to);
+  }
+
+  const records = await prisma.attendance.findMany({
+    where,
+    include: {
+      student: { select: { id: true, studentId: true, firstName: true, lastName: true, course: true, section: true } }
+    },
+    orderBy: [{ date: 'desc' }],
+    take: Math.min(parseInt(filters.limit) || 100, 500)
+  });
+
+  const grouped = records.reduce((acc, record) => {
+    const key = record.studentId;
+    if (!acc[key]) {
+      acc[key] = {
+        studentId: record.student.id,
+        studentNumber: record.student.studentId,
+        name: `${record.student.firstName} ${record.student.lastName}`,
+        course: record.student.course,
+        section: record.student.section,
+        submitted: 0,
+        approved: 0,
+        rejected: 0,
+        draft: 0,
+        hours: 0,
+        oldest: null
+      };
+    }
+    const entry = acc[key];
+    if (record.reviewStatus === 'SUBMITTED') entry.submitted += 1;
+    if (record.reviewStatus === 'APPROVED') entry.approved += 1;
+    if (record.reviewStatus === 'REJECTED') entry.rejected += 1;
+    if (record.reviewStatus === 'DRAFT') entry.draft += 1;
+    entry.hours += record.renderedHours;
+    if (!entry.oldest || record.date < new Date(entry.oldest)) entry.oldest = record.date;
+    return acc;
+  }, {});
+
+  return {
+    total: records.length,
+    records,
+    byStudent: Object.values(grouped)
+  };
+};
+
+// Editing a DTR after review sends it back to draft so it can be resubmitted
+export const reopenDtr = async (attendanceId) =>
+  prisma.attendance.update({
+    where: { id: attendanceId },
+    data: {
+      reviewStatus: 'DRAFT',
+      submittedAt: null,
+      reviewedAt: null,
+      reviewedById: null,
+      reviewedByName: null,
+      reviewRemarks: null
+    }
+  });

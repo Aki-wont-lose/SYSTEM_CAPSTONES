@@ -5,7 +5,10 @@ import {
   recordTimeOut,
   updateAttendanceRecord,
   getMonthlyAttendance,
-  getStudentSummary
+  getStudentSummary,
+  submitDtrForReview,
+  reviewDtr,
+  getDtrReviewQueue
 } from '../services/attendanceService.js';
 import { getStudentByUserId } from '../services/studentService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
@@ -141,4 +144,30 @@ export const fetchStudentSummaryForStaff = asyncHandler(async (req, res) => {
   const { studentId } = req.params;
   const summary = await getStudentSummary(studentId);
   res.status(200).json({ success: true, data: summary });
+});
+
+export const submitForReview = asyncHandler(async (req, res) => {
+  const student = await getStudentByUserId(req.user.userId);
+  if (!student) {
+    return res.status(404).json({ success: false, message: 'Student profile not found' });
+  }
+
+  const record = await submitDtrForReview(req.params.id, student.id);
+  res.status(200).json({ success: true, message: 'DTR submitted for approval', data: record });
+});
+
+export const reviewDtrRecord = asyncHandler(async (req, res) => {
+  const { status, remarks } = req.body;
+  const record = await reviewDtr(req.params.id, req.user, status, remarks);
+  res.status(200).json({
+    success: true,
+    message: status === 'APPROVED' ? 'DTR approved' : 'DTR rejected',
+    data: record
+  });
+});
+
+export const fetchReviewQueue = asyncHandler(async (req, res) => {
+  const { status, course, studentId, from, to, limit } = req.query;
+  const data = await getDtrReviewQueue({ status, course, studentId, from, to, limit });
+  res.status(200).json({ success: true, data });
 });
