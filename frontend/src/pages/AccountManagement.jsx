@@ -32,6 +32,8 @@ const TABS = [
   { key: 'STUDENT', label: 'Students' },
 ];
 
+const PAGE_SIZES = [10, 50, 100, 'ALL'];
+
 const emptyStaffForm = { firstName: '', lastName: '', email: '', role: 'SUPERVISOR', coordinatorCourse: '', companyId: '', contactNumber: '' };
 
 const AccountManagement = () => {
@@ -48,6 +50,8 @@ const AccountManagement = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState({ key: 'name', direction: 'asc' });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [batchResult, setBatchResult] = useState(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -124,6 +128,19 @@ const AccountManagement = () => {
       return left > right ? direction : -direction;
     });
   }, [staff, activeTab, sort]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, search, sort, pageSize]);
+
+  const changePageSize = (value) => {
+    setPageSize(value === 'ALL' ? 'ALL' : Number(value));
+    setPage(1);
+  };
+
+  const pageLimit = pageSize === 'ALL' ? visibleStaff.length || 1 : pageSize;
+  const totalPages = Math.max(1, Math.ceil(visibleStaff.length / pageLimit));
+  const paginatedStaff = visibleStaff.slice((page - 1) * pageLimit, page * pageLimit);
 
   const SortHeader = ({ label, sortKey, className = '' }) => {
     const isActive = sort.key === sortKey;
@@ -463,7 +480,7 @@ const AccountManagement = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {visibleStaff.map((member) => (
+                    {paginatedStaff.map((member) => (
                       <tr key={member.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
                         <td className="px-6 py-3.5">
                           <p className="font-medium text-sti-gray-dark dark:text-white">
@@ -513,6 +530,34 @@ const AccountManagement = () => {
                     ))}
                   </tbody>
                 </table>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 border-t border-black/5 dark:border-white/10">
+                  <div className="flex items-center gap-3">
+                    <p className="text-xs text-sti-gray">
+                      {visibleStaff.length === 0
+                        ? 'No accounts to display'
+                        : `Showing ${(page - 1) * pageLimit + 1}-${Math.min(page * pageLimit, visibleStaff.length)} of ${visibleStaff.length}`}
+                    </p>
+                    <label className="flex items-center gap-1.5 text-xs text-sti-gray">
+                      Show
+                      <select
+                        value={pageSize}
+                        onChange={(e) => changePageSize(e.target.value)}
+                        className="rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-2 py-1 text-xs text-sti-gray-dark dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sti-blue/40"
+                      >
+                        {PAGE_SIZES.map((size) => (
+                          <option key={size} value={size}>{size === 'ALL' ? 'All' : size}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  {pageSize !== 'ALL' && totalPages > 1 && (
+                    <div className="flex items-center gap-2">
+                      <Button variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                      <span className="text-xs text-sti-gray px-2">Page {page} of {totalPages}</span>
+                      <Button variant="secondary" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </Card>

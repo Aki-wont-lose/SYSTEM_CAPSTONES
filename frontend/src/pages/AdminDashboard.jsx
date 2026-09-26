@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, UserCheck, CheckCircle2, Clock3, PauseCircle, GraduationCap } from 'lucide-react';
+import { Users, UserCheck, CheckCircle2, Clock3, GraduationCap } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
 import WelcomeCarousel from '../components/WelcomeCarousel';
@@ -72,9 +72,9 @@ const AdminDashboard = () => {
 
       {/* Headline status counts */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="Total Interns" value={stats.totalStudents ?? stats.total} icon={Users} accent="blue" />
-        <StatCard label="Interns on Track" value={stats.onTrack ?? 0} icon={UserCheck} accent="green" />
-        <StatCard label="Currently on Hold" value={stats.onHold ?? 0} icon={PauseCircle} accent="red" />
+        <StatCard label="Total OJT Enrolled Student" value={stats.totalStudents ?? stats.total} icon={Users} accent="blue" />
+        <StatCard label="On Going OJT Students" value={stats.active ?? 0} icon={UserCheck} accent="green" />
+        <StatCard label="Pending" value={stats.pending ?? 0} icon={Clock3} accent="red" />
         <StatCard label="Completed" value={stats.completed ?? 0} icon={CheckCircle2} accent="yellow" />
       </div>
 

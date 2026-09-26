@@ -31,7 +31,7 @@ const emptyForm = {
   workingDays: '', workingHours: '', ojt_status: 'NOT_STARTED'
 };
 
-const PAGE_SIZE = 10;
+const PAGE_SIZES = [10, 50, 100, 'ALL'];
 
 const StudentManagement = () => {
   const { user } = useAuth();
@@ -41,8 +41,9 @@ const StudentManagement = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [sort, setSort] = useState({ key: 'createdAt', direction: 'desc' });
+  const [sort, setSort] = useState({ key: 'name', direction: 'asc' });
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | 'view' | null
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -177,8 +178,14 @@ const StudentManagement = () => {
     return 0;
   });
 
-  const totalPages = Math.max(1, Math.ceil(sortedStudents.length / PAGE_SIZE));
-  const paginatedStudents = sortedStudents.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageLimit = pageSize === 'ALL' ? sortedStudents.length || 1 : pageSize;
+  const totalPages = Math.max(1, Math.ceil(sortedStudents.length / pageLimit));
+  const paginatedStudents = sortedStudents.slice((page - 1) * pageLimit, page * pageLimit);
+
+  const changePageSize = (value) => {
+    setPageSize(value === 'ALL' ? 'ALL' : Number(value));
+    setPage(1);
+  };
 
   const SortHeader = ({ label, sortKey, className = '' }) => (
     <th className={`px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide ${className}`}>
@@ -400,18 +407,34 @@ const StudentManagement = () => {
                 ))}
               </tbody>
             </table>
-            {sortedStudents.length > PAGE_SIZE && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 border-t border-black/5 dark:border-white/10">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 border-t border-black/5 dark:border-white/10">
+              <div className="flex items-center gap-3">
                 <p className="text-xs text-sti-gray">
-                  Showing {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, sortedStudents.length)} of {sortedStudents.length}
+                  {sortedStudents.length === 0
+                    ? 'No students to display'
+                    : `Showing ${(page - 1) * pageLimit + 1}-${Math.min(page * pageLimit, sortedStudents.length)} of ${sortedStudents.length}`}
                 </p>
+                <label className="flex items-center gap-1.5 text-xs text-sti-gray">
+                  Show
+                  <select
+                    value={pageSize}
+                    onChange={(e) => changePageSize(e.target.value)}
+                    className="rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-2 py-1 text-xs text-sti-gray-dark dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sti-blue/40"
+                  >
+                    {PAGE_SIZES.map((size) => (
+                      <option key={size} value={size}>{size === 'ALL' ? 'All' : size}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              {pageSize !== 'ALL' && totalPages > 1 && (
                 <div className="flex items-center gap-2">
                   <Button variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
                   <span className="text-xs text-sti-gray px-2">Page {page} of {totalPages}</span>
                   <Button variant="secondary" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
       </Card>
