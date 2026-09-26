@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, UserCircle, Users, Megaphone, X, FileCheck2, CalendarDays, Building2, Clock, MapPinned, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, UserCircle, Users, Megaphone, X, FileCheck2, CalendarDays, Building2, Clock, MapPinned, MessageCircle, BarChart3 } from 'lucide-react';
 
 // Single UI for all 4 roles — each role sees a limited subset (same components, filtered links)
 const linksByRole = {
@@ -9,6 +9,7 @@ const linksByRole = {
     { to: '/admin/students', label: 'Students', icon: UserCircle },
     { to: '/admin/templates', label: 'Templates', icon: FileCheck2 },
     { to: '/admin/submissions', label: 'Submissions', icon: ClipboardList },
+    { to: '/admin/grading', label: 'Grading', icon: BarChart3 },
     { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
     { to: '/admin/logs', label: 'Student Logs', icon: ClipboardList },
     { to: '/admin/announcements', label: 'Announcements', icon: Megaphone },
@@ -22,6 +23,7 @@ const linksByRole = {
     { to: '/coordinator/attendance', label: 'Attendance', icon: Clock },
     { to: '/coordinator/templates', label: 'Templates', icon: FileCheck2 },
     { to: '/coordinator/submissions', label: 'Submissions', icon: ClipboardList },
+    { to: '/coordinator/grading', label: 'Grading', icon: BarChart3 },
     { to: '/coordinator/companies', label: 'Partner Companies', icon: Building2 },
     { to: '/coordinator/logs', label: 'Student Logs', icon: ClipboardList },
     { to: '/coordinator/announcements', label: 'Announcements', icon: Megaphone },
@@ -32,6 +34,8 @@ const linksByRole = {
     { to: '/supervisor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/supervisor/students', label: 'Students', icon: Users },
     { to: '/supervisor/attendance', label: 'Attendance', icon: Clock },
+    { to: '/supervisor/submissions', label: 'Submissions', icon: ClipboardList },
+    { to: '/supervisor/grading', label: 'Grading', icon: BarChart3 },
     { to: '/supervisor/logs', label: 'Student Logs', icon: ClipboardList },
     { to: '/supervisor/messages', label: 'Messages', icon: MessageCircle },
     { to: '/supervisor/profile', label: 'Profile', icon: UserCircle },

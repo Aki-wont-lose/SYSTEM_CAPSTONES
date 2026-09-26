@@ -73,6 +73,7 @@ model Student {
   attendance          Attendance[]
   submissions         Submission[]
   logEntries          LogEntry[]
+  weeklyTasks         WeeklyTask[]
 
   @@index([studentId])
   @@index([userId])
@@ -153,6 +154,14 @@ model Requirement {
   title           String
   description     String?   @db.Text
   isRequired      Boolean   @default(true)
+  program         String?   // BSHM / BSIT / BSTM / null = all programs
+  category        String?   // e.g. "Weekly Report", "Narrative", "Internship Plan"
+  cadence         String?   @default("ONCE") // ONCE | WEEKLY — WEEKLY rolls into the next to-do on submit
+  dueInDays       Int?      // days after posting before it counts as missing
+  dueDate         DateTime? // absolute deadline; drives automated missing detection
+  maxScore        Int       @default(0) // 0 = not graded
+  autoGradeOnSubmit Boolean @default(false) // a submitted file earns maxScore automatically
+  sortOrder       Int       @default(0)
   templateFile    String?   @db.Text // base64 PDF template (Coordinator/Admin) â€” student downloads
   templateFileName String?  // original filename e.g. Endorsement_Template.pdf
   createdAt       DateTime  @default(now())
@@ -160,8 +169,34 @@ model Requirement {
 
   // Relations
   submissions     Submission[]
+  weeklyTasks     WeeklyTask[]
 
   @@index([isRequired])
+  @@index([program])
+  @@index([dueDate])
+}
+
+// Weekly to-do generated when a student submits a WEEKLY requirement
+model WeeklyTask {
+  id            String    @id @default(cuid())
+  studentId     String
+  requirementId String?
+  title         String
+  description   String?   @db.Text
+  weekOf        DateTime
+  dueDate       DateTime
+  status        String    @default("PENDING") // PENDING | COMPLETED | MISSING
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  student       Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  requirement   Requirement? @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, requirementId, weekOf])
+  @@index([studentId])
+  @@index([weekOf])
+  @@index([status])
 }
 
 // Submission model - a student's uploaded file for a Requirement
@@ -173,6 +208,8 @@ model Submission {
   fileData        String    @db.Text  // base64 file content
   status          SubmissionStatus @default(PENDING)
   remarks         String?   @db.Text
+  score           Int?      // points awarded (auto or manual)
+  isAutoGraded    Boolean   @default(false)
   submittedAt     DateTime  @default(now())
   reviewedAt      DateTime?
 
