@@ -13,6 +13,7 @@ import {
   deleteStaffAccount
 } from '../services/accountService';
 import { getCompanies } from '../services/companyService';
+import StudentManagement from './StudentManagement';
 
 const statusStyles = {
   NOT_STARTED: 'bg-gray-100 text-sti-gray-dark',
@@ -220,19 +221,7 @@ const AccountManagement = () => {
       </Card>
 
       {activeTab === 'STUDENT' ? (
-        <Card className="p-6">
-          <div className="flex items-start gap-4">
-            <div className="w-11 h-11 rounded-xl bg-sti-blue/10 flex items-center justify-center shrink-0">
-              <UserCheck className="w-5 h-5 text-sti-blue" />
-            </div>
-            <div>
-              <h3 className="font-bold text-sti-gray-dark dark:text-white">Student accounts</h3>
-              <p className="text-sm text-sti-gray mt-1">
-                There are <strong>{counts.students}</strong> student {counts.students === 1 ? 'account' : 'accounts'}. Add, edit, and import students from the Students page.
-              </p>
-            </div>
-          </div>
-        </Card>
+        <StudentManagement />
       ) : (
         <>
           <Card className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
