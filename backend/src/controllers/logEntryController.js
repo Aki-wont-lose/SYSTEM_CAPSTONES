@@ -47,7 +47,7 @@ export const editLog = asyncHandler(async (req, res) => {
 
 export const reviewLogEntry = asyncHandler(async (req, res) => {
   const { status, comment } = req.body;
-  const log = await reviewLog(req.params.id, status, comment);
+  const log = await reviewLog(req.params.id, status, comment, req.user);
   res.status(200).json({ success: true, message: 'Log reviewed', data: log });
 });
 

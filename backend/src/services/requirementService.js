@@ -1,5 +1,6 @@
 // src/services/requirementService.js
 import { PrismaClient } from '@prisma/client';
+import { recordAudit } from './auditLogService.js';
 const prisma = new PrismaClient();
 
 const startOfDay = (d) => new Date(new Date(d).setHours(0, 0, 0, 0));
@@ -262,7 +263,7 @@ export const createNextWeeklyTask = async (requirement, studentId) => {
   });
 };
 
-export const reviewSubmission = async (submissionId, status, remarks, score) => {
+export const reviewSubmission = async (submissionId, status, remarks, score, reviewer = null) => {
   if (!['APPROVED', 'REJECTED'].includes(status)) {
     const error = new Error('Status must be APPROVED or REJECTED');
     error.status = 400;
@@ -298,7 +299,20 @@ export const reviewSubmission = async (submissionId, status, remarks, score) => 
     data.isAutoGraded = false;
   }
 
-  return prisma.submission.update({ where: { id: submissionId }, data });
+  const updated = await prisma.submission.update({ where: { id: submissionId }, data });
+
+  await recordAudit({
+    userId: reviewer?.userId || null,
+    userEmail: reviewer?.email || null,
+    userRole: reviewer?.role || null,
+    action: 'REVIEW',
+    entity: 'Submission',
+    entityId: submissionId,
+    description: `${status === 'APPROVED' ? 'Approved' : 'Rejected'} a submission${data.score != null ? ` with a score of ${data.score}` : ''}${remarks ? ` — ${String(remarks).slice(0, 160)}` : ''}`,
+    metadata: { status, score: data.score ?? null, requirementId: submission.requirementId ?? null },
+  });
+
+  return updated;
 };
 
 // Automated grading summary: per-student completion, missing deadlines, and score totals

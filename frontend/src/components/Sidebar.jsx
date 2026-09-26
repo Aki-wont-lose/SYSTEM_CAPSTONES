@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, UserCircle, Users, Megaphone, X, FileCheck2, CalendarDays, Building2, Clock, MapPinned, MessageCircle, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, UserCircle, Users, Megaphone, X, FileCheck2, CalendarDays, Building2, Clock, MapPinned, MessageCircle, BarChart3, ScrollText } from 'lucide-react';
 
 // Single UI for all 4 roles — each role sees a limited subset (same components, filtered links)
 const linksByRole = {
@@ -12,6 +12,7 @@ const linksByRole = {
     { to: '/admin/grading', label: 'Grading', icon: BarChart3 },
     { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
     { to: '/admin/logs', label: 'Student Logs', icon: ClipboardList },
+    { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
     { to: '/admin/announcements', label: 'Announcements', icon: Megaphone },
     { to: '/admin/messages', label: 'Messages', icon: MessageCircle },
     { to: '/admin/profile', label: 'Profile', icon: UserCircle },
@@ -26,6 +27,7 @@ const linksByRole = {
     { to: '/coordinator/grading', label: 'Grading', icon: BarChart3 },
     { to: '/coordinator/companies', label: 'Partner Companies', icon: Building2 },
     { to: '/coordinator/logs', label: 'Student Logs', icon: ClipboardList },
+    { to: '/coordinator/audit-logs', label: 'Audit Logs', icon: ScrollText },
     { to: '/coordinator/announcements', label: 'Announcements', icon: Megaphone },
     { to: '/coordinator/messages', label: 'Messages', icon: MessageCircle },
     { to: '/coordinator/profile', label: 'Profile', icon: UserCircle },

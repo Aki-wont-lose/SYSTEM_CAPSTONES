@@ -1,5 +1,6 @@
 // src/services/logEntryService.js
 import { PrismaClient } from '@prisma/client';
+import { recordAudit } from './auditLogService.js';
 const prisma = new PrismaClient();
 
 export const getStudentLogs = async (studentId) => {
@@ -62,16 +63,29 @@ export const updateLog = async (id, studentId, taskDescription) => {
   });
 };
 
-export const reviewLog = async (id, status, comment) => {
+export const reviewLog = async (id, status, comment, reviewer = null) => {
   if (!['APPROVED', 'REVISION_REQUESTED'].includes(status)) {
     const error = new Error('Status must be APPROVED or REVISION_REQUESTED');
     error.status = 400;
     throw error;
   }
-  return prisma.logEntry.update({
+  const updated = await prisma.logEntry.update({
     where: { id },
     data: { status, comment }
   });
+
+  await recordAudit({
+    userId: reviewer?.userId || null,
+    userEmail: reviewer?.email || null,
+    userRole: reviewer?.role || null,
+    action: 'REVIEW',
+    entity: 'LogEntry',
+    entityId: id,
+    description: `${status === 'APPROVED' ? 'Approved' : 'Requested a revision on'} a student log${comment ? ` — ${String(comment).slice(0, 160)}` : ''}`,
+    metadata: { status },
+  });
+
+  return updated;
 };
 
 export const deleteLog = async (id, studentId) => {

@@ -14,6 +14,7 @@ const titles = {
   '/admin/grading': 'Automated Grading',
   '/admin/companies': 'Partner Companies',
   '/admin/logs': 'Student Logs',
+  '/admin/audit-logs': 'Audit Logs',
   '/admin/announcements': 'Announcements',
   '/admin/messages': 'Messages',
   '/admin/profile': 'My Profile',

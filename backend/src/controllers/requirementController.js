@@ -87,6 +87,6 @@ export const upload = asyncHandler(async (req, res) => {
 
 export const review = asyncHandler(async (req, res) => {
   const { status, remarks, score } = req.body;
-  const submission = await reviewSubmission(req.params.submissionId, status, remarks, score);
+  const submission = await reviewSubmission(req.params.submissionId, status, remarks, score, req.user);
   res.status(200).json({ success: true, message: `Submission ${String(status).toLowerCase()}`, data: submission });
 });

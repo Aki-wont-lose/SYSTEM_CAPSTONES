@@ -75,6 +75,26 @@ model LinkedAccount {
   @@index([userId])
 }
 
+// AuditLog - immutable trail of account and academic actions
+model AuditLog {
+  id          String      @id @default(cuid())
+  userId      String?
+  userEmail   String?
+  userRole    String?
+  action      AuditAction
+  entity      String
+  entityId    String?
+  description String      @db.Text
+  metadata    Json?
+  ipAddress   String?
+  createdAt   DateTime    @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+}
+
 
 // Student model - Extended student information
 model Student {
@@ -358,6 +378,21 @@ enum LogStatus {
 enum LinkedAccountProvider {
   MICROSOFT
   GOOGLE
+}
+
+// Audit trail - who changed what, kept even if the user record is deleted
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  REVIEW
+  SUBMIT
+  EXPORT
+  LINK
+  UNLINK
 }
 
 

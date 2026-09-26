@@ -1,5 +1,6 @@
 // src/services/attendanceService.js
 import { PrismaClient } from '@prisma/client';
+import { recordAudit } from './auditLogService.js';
 
 const prisma = new PrismaClient();
 
@@ -345,7 +346,7 @@ export const reviewDtr = async (attendanceId, reviewer, status, remarks) => {
     throw error;
   }
 
-  return prisma.attendance.update({
+  const updated = await prisma.attendance.update({
     where: { id: attendanceId },
     data: {
       reviewStatus: status,
@@ -355,6 +356,19 @@ export const reviewDtr = async (attendanceId, reviewer, status, remarks) => {
       reviewedAt: new Date()
     }
   });
+
+  await recordAudit({
+    userId: reviewer?.userId || null,
+    userEmail: reviewer?.email || null,
+    userRole: reviewer?.role || null,
+    action: 'REVIEW',
+    entity: 'Attendance',
+    entityId: attendanceId,
+    description: `${status === 'APPROVED' ? 'Approved' : 'Rejected'} the DTR for ${record.date}${remarks ? ` — ${String(remarks).slice(0, 160)}` : ''}`,
+    metadata: { status, date: record.date, studentId: record.studentId },
+  });
+
+  return updated;
 };
 
 // Staff review queue: submitted DTRs awaiting a decision, newest first

@@ -18,10 +18,12 @@ import profileRoutes from './modules/profile/routes.js';
 import messagingRoutes from './modules/messaging/routes.js';
 import notificationRoutes from './modules/notifications/routes.js';
 import connectionRoutes from './modules/connections/routes.js';
+import auditLogRoutes from './modules/auditLogs/routes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler.js';
 import { verifyToken } from './middleware/auth.js';
+import { auditTrail } from './middleware/audit.js';
 
 dotenv.config();
 
@@ -47,6 +49,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// Every mutating call is written to the audit trail
+app.use(auditTrail);
+
 // Health check route
 app.get('/api/health', (req, res) => {
   res.json({ status: 'Server is running', timestamp: new Date() });
@@ -68,6 +73,7 @@ app.use('/api/profile', profileRoutes); // any role: GET /api/profile , PUT /api
 app.use('/api/messages', verifyToken, messagingRoutes); // Coordinator ↔ Supervisor (+ADMIN)
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/connections', verifyToken, connectionRoutes); // friend requests that gate new student chats
+app.use('/api/audit-logs', verifyToken, auditLogRoutes); // ADMIN/COORDINATOR read-only trail of every change
 
 // 404 handler
 app.use((req, res) => {

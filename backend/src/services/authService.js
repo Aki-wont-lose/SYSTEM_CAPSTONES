@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { generateToken } from '../middleware/auth.js';
+import { recordAudit } from './auditLogService.js';
 
 const prisma = new PrismaClient();
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 10;
@@ -37,12 +38,14 @@ export const loginUser = async (email, password) => {
   });
 
   if (!user) {
+    await recordAudit({ userEmail: email, action: 'LOGIN_FAILED', entity: 'Account', description: `Failed sign-in attempt for ${email}` });
     const error = new Error('Invalid email or password');
     error.status = 401;
     throw error;
   }
 
   if (!user.isActive) {
+    await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN_FAILED', entity: 'Account', description: `Sign-in blocked for a disabled account (${user.email})` });
     const error = new Error('Account is disabled. Contact the OJT coordinator.');
     error.status = 403;
     throw error;
@@ -56,10 +59,13 @@ export const loginUser = async (email, password) => {
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
   if (!isPasswordValid) {
+    await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN_FAILED', entity: 'Account', description: `Wrong password for ${user.email}` });
     const error = new Error('Invalid email or password');
     error.status = 401;
     throw error;
   }
+
+  await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN', entity: 'Account', description: `Signed in with email and password (${user.email})` });
 
   const token = generateToken(user.id, user.email, user.role, { coordinatorCourse: user.coordinatorCourse, supervisorCompanyId: user.supervisorCompanyId });
 

@@ -19,6 +19,7 @@ import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
 import { PrismaClient } from '@prisma/client';
 import { generateToken } from '../middleware/auth.js';
+import { recordAudit } from './auditLogService.js';
 
 const prisma = new PrismaClient();
 
@@ -151,6 +152,8 @@ export const loginWithGoogle = async (idToken) => {
   }
 
   const token = generateToken(user.id, user.email, user.role);
+
+  await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN', entity: 'Account', description: `Signed in with Google (${email})` });
 
   return {
     token,
