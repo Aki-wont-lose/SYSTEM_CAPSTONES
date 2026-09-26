@@ -12,13 +12,17 @@ const BLOCKED_EMAILS = [
 const USER_SELECT = {
   id: true,
   email: true,
+  firstName: true,
+  lastName: true,
   role: true,
   isActive: true,
   student: { select: { firstName: true, lastName: true, studentId: true, course: true, profilePicture: true } }
 };
 
 const displayName = (user) =>
-  user.student ? `${user.student.firstName} ${user.student.lastName}` : String(user.email || '').split('@')[0].replace(/\./g, ' ');
+  user.student
+    ? `${user.student.firstName} ${user.student.lastName}`
+    : [user.firstName, user.lastName].filter(Boolean).join(' ') || String(user.email || '').split('@')[0].replace(/\./g, ' ');
 
 // Direction-agnostic lookup so a request in either direction counts
 const findConnection = async (userA, userB) => {
@@ -86,6 +90,8 @@ export const searchUsers = async (currentUserId, search) => {
         ? {
             OR: [
               { email: { contains: term, mode: 'insensitive' } },
+              { firstName: { contains: term, mode: 'insensitive' } },
+              { lastName: { contains: term, mode: 'insensitive' } },
               { student: { firstName: { contains: term, mode: 'insensitive' } } },
               { student: { lastName: { contains: term, mode: 'insensitive' } } },
               { student: { studentId: { contains: term, mode: 'insensitive' } } }
@@ -147,7 +153,7 @@ export const sendRequest = async (currentUserId, targetUserId) => {
 
   const sender = await prisma.user.findUnique({
     where: { id: currentUserId },
-    select: { email: true, student: { select: { firstName: true, lastName: true } } }
+    select: { email: true, firstName: true, lastName: true, student: { select: { firstName: true, lastName: true } } }
   });
   const senderName = displayName(sender || { email: 'A user' });
 

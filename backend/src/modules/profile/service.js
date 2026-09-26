@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 
 export const getMyProfile = async (userId) => {
   // profilePicture column may not exist yet until db push, so don't select it to avoid crash
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, role: true, theme: true, isActive: true, createdAt: true } });
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, firstName: true, lastName: true, contactNumber: true, role: true, theme: true, isActive: true, createdAt: true } });
   const student = await getStudentByUserId(userId);
   return { user, student };
 };
@@ -22,6 +22,19 @@ export const updateMyProfile = async (userId, data) => {
     if (data.profilePicture !== undefined) updateData.profilePicture = data.profilePicture;
     if (Object.keys(updateData).length) return updateStudent(student.id, updateData);
     return student;
+  }
+  // Staff self-service fields (name and contact number live on User)
+  const STAFF_EDITABLE = ['firstName', 'lastName', 'contactNumber'];
+  const staffUpdate = {};
+  for (const field of STAFF_EDITABLE) {
+    if (data[field] !== undefined) staffUpdate[field] = String(data[field] || '').trim() || null;
+  }
+  if (Object.keys(staffUpdate).length) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: staffUpdate,
+      select: { id: true, email: true, firstName: true, lastName: true, contactNumber: true, role: true }
+    });
   }
   // For staff (ADMIN/COORDINATOR/SUPERVISOR) - profilePicture for User not in schema yet, just skip
   if (data.profilePicture !== undefined) {

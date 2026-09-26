@@ -10,6 +10,9 @@ const MANAGER_ROLES = ['ADMIN', 'COORDINATOR'];
 const staffSelect = {
   id: true,
   email: true,
+  firstName: true,
+  lastName: true,
+  contactNumber: true,
   role: true,
   isActive: true,
   mustChangePassword: true,
@@ -40,6 +43,9 @@ export const listStaff = async ({ role, search, includeInactive = true } = {}) =
   if (search) {
     where.OR = [
       { email: { contains: search, mode: 'insensitive' } },
+      { firstName: { contains: search, mode: 'insensitive' } },
+      { lastName: { contains: search, mode: 'insensitive' } },
+      { contactNumber: { contains: search } },
       { coordinatorCourse: { contains: search, mode: 'insensitive' } },
       { supervisorCompany: { name: { contains: search, mode: 'insensitive' } } }
     ];
@@ -78,6 +84,15 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     throw error;
   }
 
+  const normalizedFirstName = String(firstName || '').trim();
+  const normalizedLastName = String(lastName || '').trim();
+  if (!normalizedFirstName || !normalizedLastName) {
+    const error = new Error('First name and last name are required');
+    error.status = 400;
+    throw error;
+  }
+  const normalizedContact = String(contactNumber || '').trim() || null;
+
   if (normalizedRole === 'COORDINATOR' && !coordinatorCourse) {
     const error = new Error('Assigned course is required for a coordinator');
     error.status = 400;
@@ -105,6 +120,9 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
       password: hashedPassword,
       role: normalizedRole,
       isActive: true,
+      firstName: normalizedFirstName,
+      lastName: normalizedLastName,
+      contactNumber: normalizedContact,
       mustChangePassword: true,
       coordinatorCourse: normalizedRole === 'COORDINATOR' ? coordinatorCourse : null,
       supervisorCompanyId: normalizedRole === 'SUPERVISOR' ? companyId : null
@@ -112,7 +130,7 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     select: staffSelect
   });
 
-  return { user, temporaryPassword, fullName: [firstName, lastName].filter(Boolean).join(' ').trim(), contactNumber: contactNumber || null };
+  return { user, temporaryPassword, fullName: `${normalizedFirstName} ${normalizedLastName}`, contactNumber: normalizedContact };
 };
 
 export const updateStaffAccount = async (userId, updateData) => {
@@ -130,6 +148,9 @@ export const updateStaffAccount = async (userId, updateData) => {
 
   const data = {};
   if (updateData.isActive !== undefined) data.isActive = Boolean(updateData.isActive);
+  if (updateData.firstName !== undefined) data.firstName = String(updateData.firstName || '').trim() || null;
+  if (updateData.lastName !== undefined) data.lastName = String(updateData.lastName || '').trim() || null;
+  if (updateData.contactNumber !== undefined) data.contactNumber = String(updateData.contactNumber || '').trim() || null;
   if (updateData.coordinatorCourse !== undefined) {
     data.coordinatorCourse = updateData.coordinatorCourse || null;
   }

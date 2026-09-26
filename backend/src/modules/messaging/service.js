@@ -51,6 +51,8 @@ export const getContactUsers = async (currentUserId) => {
     select: {
       id: true,
       email: true,
+      firstName: true,
+      lastName: true,
       role: true,
       isActive: true,
       student: { select: { firstName: true, lastName: true, studentId: true } }
@@ -107,9 +109,12 @@ export const getContactUsers = async (currentUserId) => {
   return users.map(u => {
     const conversation = conversationByUser.get(u.id);
     const connection = connectionByUser.get(u.id);
+    const name = u.student
+      ? `${u.student.firstName} ${u.student.lastName}`
+      : [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email.split('@')[0].replace('.', ' ');
     return {
       ...u,
-      displayName: u.student ? `${u.student.firstName} ${u.student.lastName}` : u.email.split('@')[0].replace('.', ' '),
+      displayName: name,
       studentId: u.student?.studentId || null,
       roleLabel: u.role.charAt(0) + u.role.slice(1).toLowerCase(),
       hasConversation: !!conversation,
@@ -158,11 +163,11 @@ export const sendMessage = async (senderId, senderRole, receiverId, content) => 
 
   const sender = await prisma.user.findUnique({
     where: { id: senderId },
-    select: { email: true, role: true, student: { select: { firstName: true, lastName: true } } }
+    select: { email: true, firstName: true, lastName: true, role: true, student: { select: { firstName: true, lastName: true } } }
   });
   const senderName = sender?.student
     ? `${sender.student.firstName} ${sender.student.lastName}`
-    : sender?.email?.split('@')[0] || 'A user';
+    : [sender?.firstName, sender?.lastName].filter(Boolean).join(' ') || sender?.email?.split('@')[0] || 'A user';
   const message = await prisma.message.create({
     data: { senderId, receiverId, content: content.trim() },
     include: { sender: { select: { email: true, role: true } } }

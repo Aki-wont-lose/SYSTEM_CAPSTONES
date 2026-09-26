@@ -97,6 +97,9 @@ const AccountManagement = () => {
       ...emptyStaffForm,
       id: account.id,
       email: account.email,
+      firstName: account.firstName || '',
+      lastName: account.lastName || '',
+      contactNumber: account.contactNumber || '',
       role: account.role,
       coordinatorCourse: account.coordinatorCourse || '',
       companyId: account.supervisorCompanyId || '',
@@ -130,6 +133,9 @@ const AccountManagement = () => {
       } else {
         await updateStaffAccount(selected.id, {
           isActive: form.isActive,
+          firstName: form.firstName,
+          lastName: form.lastName,
+          contactNumber: form.contactNumber,
           coordinatorCourse: form.role === 'COORDINATOR' ? form.coordinatorCourse || null : null,
           supervisorCompanyId: form.role === 'SUPERVISOR' ? form.companyId || null : null
         });
@@ -261,6 +267,7 @@ const AccountManagement = () => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-black/5 dark:border-white/10 text-left">
+                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Name</th>
                       <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Email</th>
                       <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">
                         {activeTab === 'COORDINATOR' ? 'Program' : 'Company'}
@@ -273,7 +280,13 @@ const AccountManagement = () => {
                     {visibleStaff.map((member) => (
                       <tr key={member.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
                         <td className="px-6 py-3.5">
-                          <p className="font-medium text-sti-gray-dark dark:text-white">{member.email}</p>
+                          <p className="font-medium text-sti-gray-dark dark:text-white">
+                            {[member.firstName, member.lastName].filter(Boolean).join(' ') || '—'}
+                          </p>
+                          {member.contactNumber && <p className="text-xs text-sti-gray">{member.contactNumber}</p>}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <p className="font-medium text-sti-gray-dark dark:text-white break-all">{member.email}</p>
                           <p className="text-xs text-sti-gray">
                             {member.role === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
                             {member.assignedStudents != null ? ` • ${member.assignedStudents} assigned` : ''}
@@ -339,18 +352,16 @@ const AccountManagement = () => {
             </div>
           )}
 
-          {modalMode === 'add' && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">First Name</label>
-                <input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input-field" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name</label>
-                <input required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
-              </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">First Name</label>
+              <input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input-field" />
             </div>
-          )}
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name</label>
+              <input required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
+            </div>
+          </div>
 
           <div>
             <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
@@ -379,12 +390,10 @@ const AccountManagement = () => {
             </div>
           )}
 
-          {modalMode === 'add' && (
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
-              <input value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
+            <input value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
+          </div>
 
           {modalMode === 'add' && (
             <div className="flex gap-2 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 text-xs rounded-xl px-3 py-2.5 border border-blue-100 dark:border-blue-900">
