@@ -10,7 +10,20 @@ import {
   deleteAnnouncement
 } from '../services/announcementService';
 
-const emptyForm = { title: '', content: '', image: null, isActive: true };
+const emptyForm = { title: '', content: '', image: null, images: null, isActive: true };
+
+// Photos are stored as a JSON array in `images` (up to 3) with `image` holding the first one
+const parsePhotos = (form) => {
+  if (form.images) {
+    try {
+      const parsed = JSON.parse(form.images);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return form.image ? [form.image] : [];
+};
 
 const AnnouncementManagement = () => {
   const [announcements, setAnnouncements] = useState([]);
@@ -22,6 +35,8 @@ const AnnouncementManagement = () => {
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
+
+  const photos = parsePhotos(form);
 
   const loadAnnouncements = async () => {
     setLoading(true);
@@ -51,11 +66,32 @@ const AnnouncementManagement = () => {
       title: announcement.title,
       content: announcement.content,
       image: announcement.image || null,
+      images: announcement.images || null,
       isActive: announcement.isActive
     });
     setEditTarget(announcement);
     setError('');
     setModalOpen(true);
+  };
+
+  const handlePhotoPick = async (e) => {
+    const picked = Array.from(e.target.files || []);
+    // Clear the input straight away, otherwise re-picking the same file fires no change event
+    e.target.value = '';
+    if (!picked.length) return;
+
+    const accepted = [];
+    for (const file of picked.slice(0, 3)) {
+      if (file.size > 4 * 1024 * 1024) { alert(`${file.name} is larger than 4MB`); continue; }
+      accepted.push(await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); }));
+    }
+    if (!accepted.length) return;
+
+    setForm(prev => ({
+      ...prev,
+      image: accepted[0],
+      images: accepted.length > 1 ? JSON.stringify(accepted) : null
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -158,25 +194,16 @@ const AnnouncementManagement = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-sti-gray-dark dark:text-white mb-1.5">Photos (optional, up to 3 for sliding carousel)</label>
-            <input type="file" accept="image/*" multiple onChange={async (e)=>{
-              const files=Array.from(e.target.files || []).slice(0,3); if(!files.length) return;
-              const results=[];
-              for(const file of files){
-                if(file.size>4*1024*1024){alert(file.name + ' too large (max 4MB)'); continue;}
-                const b64 = await new Promise(res=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(file); });
-                results.push(b64);
-              }
-              if(results.length===1) setForm(prev=>({...prev, image: results[0], images: null}));
-              else if(results.length>1) setForm(prev=>({...prev, image: results[0], images: JSON.stringify(results)}));
-            }} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white" />
-            {(form.image || form.images) && (
+            <input type="file" accept="image/*" multiple onChange={handlePhotoPick} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white" />
+            {photos.length > 0 ? (
               <div className="mt-2">
-                {form.images ? JSON.parse(form.images).map((img,i)=> <img key={i} src={img} alt={`preview ${i}`} className="w-full h-24 object-cover rounded-lg border mb-2" />) : <img src={form.image} alt="preview" className="w-full h-32 object-cover rounded-lg border" />}
-                <button type="button" onClick={()=>setForm(prev=>({...prev, image: null, images: null}))} className="mt-1 text-xs text-red-600 hover:underline">Remove all</button>
-                <p className="text-xs text-green-600 mt-1">✓ {form.images ? JSON.parse(form.images).length : 1} photo(s) ready</p>
+                {photos.map((img, i) => <img key={i} src={img} alt={`preview ${i + 1}`} className="w-full h-24 object-cover rounded-lg border mb-2" />)}
+                <button type="button" onClick={() => setForm(prev => ({ ...prev, image: null, images: null }))} className="mt-1 text-xs text-red-600 hover:underline">Remove all</button>
+                <p className="text-xs text-green-600 mt-1">✓ {photos.length} photo(s) ready</p>
               </div>
+            ) : (
+              <p className="text-xs text-sti-gray mt-1">No photos selected - choose 1 or 3 for sliding</p>
             )}
-            {!form.image && !form.images && <p className="text-xs text-sti-gray mt-1">No photos selected - choose 1 or 3 for sliding</p>}
           </div>
           <label className="flex items-center gap-2 text-sm text-sti-gray-dark dark:text-white">
             <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded accent-sti-blue" />
