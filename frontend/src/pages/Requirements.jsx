@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
-import { FileCheck2, Upload, CheckCircle2, XCircle, Clock3, X, Download, AlertTriangle, ListChecks, CalendarClock, Award } from 'lucide-react';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { FileCheck2, Upload, CheckCircle2, XCircle, Clock3, X, Download, AlertTriangle, ListChecks, CalendarClock, Search } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { getMySubmissions, submitRequirementFile, getMyWeeklyTasks, completeWeeklyTask } from '../services/requirementService';
@@ -30,6 +30,8 @@ const fileToBase64 = (file) =>
 
 const formatDate = (value) => (value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null);
 
+const PAGE_SIZES = [10, 25, 50, 100, 'ALL'];
+
 const Requirements = ({ mode = 'all' }) => {
   const [items, setItems] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -39,6 +41,9 @@ const Requirements = ({ mode = 'all' }) => {
   const [notice, setNotice] = useState('');
   const fileInputRef = useRef(null);
   const activeRequirementId = useRef(null);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const loadData = async () => {
     try {
@@ -95,6 +100,31 @@ const Requirements = ({ mode = 'all' }) => {
       setError(err.response?.data?.message || 'Could not update the to-do');
     }
   };
+
+  const downloadTemplate = (req) => {
+    const a = document.createElement('a');
+    a.href = req.templateFile;
+    a.download = req.templateFileName || `${req.title}_template.pdf`;
+    a.click();
+  };
+
+  useEffect(() => { setPage(1); }, [search, pageSize]);
+
+  const filteredItems = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((r) =>
+      [r.title, r.description, r.category, r.program, r.submission?.fileName]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [items, search]);
+
+  const pageLimit = pageSize === 'ALL' ? filteredItems.length || 1 : pageSize;
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageLimit));
+  const paginatedItems = filteredItems.slice((page - 1) * pageLimit, page * pageLimit);
 
   if (loading) {
     return (
@@ -182,98 +212,155 @@ const Requirements = ({ mode = 'all' }) => {
           <p className="text-sti-gray text-sm">No requirements have been posted yet.</p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {items.map((req) => {
-            const submission = req.submission;
-            const config = submission ? statusConfig[submission.status] : derivedConfig[req.derivedStatus];
-            const derived = derivedConfig[req.derivedStatus] || null;
-            const dueDate = formatDate(req.dueDate);
+        <>
+          <Card className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+              <input
+                type="text"
+                placeholder="Search requirements..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input-field pl-10"
+              />
+            </div>
+            <label className="flex items-center gap-1.5 text-xs text-sti-gray">
+              Show
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value))}
+                className="rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-2.5 py-2 text-xs font-medium text-sti-gray-dark dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sti-blue/40"
+              >
+                {PAGE_SIZES.map((size) => (
+                  <option key={size} value={size}>{size === 'ALL' ? 'All' : size}</option>
+                ))}
+              </select>
+            </label>
+          </Card>
 
-            return (
-              <Card key={req.id}>
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-sti-gray-dark dark:text-white">{req.title}</h3>
-                      {req.isRequired && (
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Required</span>
-                      )}
-                    </div>
-                    {req.description && <p className="text-xs text-sti-gray mt-1">{req.description}</p>}
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      {req.cadence === 'WEEKLY' && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">Weekly</span>
-                      )}
-                      {req.maxScore > 0 && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-600">
-                          {req.autoGradeOnSubmit ? 'Auto-graded' : 'Graded'} • {req.maxScore} pts
-                        </span>
-                      )}
-                      {dueDate && (
-                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${req.derivedStatus === 'MISSING' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-700'}`}>
-                          Due {dueDate}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {config && (
-                    <span className={`shrink-0 flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${config.style}`}>
-                      <config.Icon className="w-3.5 h-3.5" /> {config.label}
-                    </span>
+          <Card className="p-0 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-black/5 dark:border-white/10 text-left">
+                    <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Requirement</th>
+                    <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Due</th>
+                    <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Status</th>
+                    <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">File</th>
+                    <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedItems.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-12 text-center text-sm text-sti-gray">No requirements found.</td>
+                    </tr>
+                  ) : (
+                    paginatedItems.map((req) => {
+                      const submission = req.submission;
+                      const config = submission ? statusConfig[submission.status] : derivedConfig[req.derivedStatus];
+                      const dueDate = formatDate(req.dueDate);
+                      const showSubmissionInfo = isSubmissions || mode === 'all';
+                      const showTemplateInfo = isTemplates || mode === 'all';
+
+                      return (
+                        <tr key={req.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
+                          <td className="px-6 py-3.5 align-top">
+                            <p className="font-medium text-sti-gray-dark dark:text-white">{req.title}</p>
+                            {req.description && <p className="text-xs text-sti-gray mt-0.5">{req.description}</p>}
+                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                              {req.cadence === 'WEEKLY' && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">Weekly</span>
+                              )}
+                              {req.maxScore > 0 && (
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-600">{req.maxScore} pts</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-3.5 align-top text-xs text-sti-gray-dark dark:text-slate-200">
+                            {dueDate || '-'}
+                            {req.derivedStatus === 'MISSING' && (
+                              <p className="text-[11px] text-red-600 font-medium mt-0.5">Counts as missing</p>
+                            )}
+                            {req.derivedStatus === 'LATE' && (
+                              <p className="text-[11px] text-orange-600 font-medium mt-0.5">Submitted late</p>
+                            )}
+                          </td>
+                          <td className="px-6 py-3.5 align-top">
+                            {config && (
+                              <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${config.style}`}>
+                                <config.Icon className="w-3.5 h-3.5" /> {config.label}
+                              </span>
+                            )}
+                            {submission?.status === 'REJECTED' && submission.remarks && (
+                              <p className="text-[11px] text-red-600 mt-1">Reason: {submission.remarks}</p>
+                            )}
+                            {showSubmissionInfo && req.maxScore > 0 && (
+                              <p className="text-[11px] text-sti-gray mt-1">
+                                Score:{' '}
+                                {submission?.score != null ? (
+                                  <span className="font-semibold">{submission.score}/{req.maxScore}</span>
+                                ) : (
+                                  'not graded yet'
+                                )}
+                              </p>
+                            )}
+                          </td>
+                          <td className="px-6 py-3.5 align-top text-xs text-sti-gray">
+                            {showSubmissionInfo && submission ? (
+                              <span className="break-all">{submission.fileName}</span>
+                            ) : showTemplateInfo && req.templateFileName ? (
+                              <span className="flex items-center gap-1.5 break-all">
+                                <FileCheck2 className="w-3.5 h-3.5 text-sti-blue shrink-0" /> {req.templateFileName}
+                              </span>
+                            ) : '-'}
+                          </td>
+                          <td className="px-6 py-3.5 align-top">
+                            <div className="flex items-center justify-end gap-1">
+                              {showTemplateInfo && req.templateFile && (
+                                <button
+                                  onClick={() => downloadTemplate(req)}
+                                  title="Download template"
+                                  className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors"
+                                >
+                                  <Download className="w-4 h-4" />
+                                </button>
+                              )}
+                              {showSubmissionInfo && (
+                                <Button
+                                  variant={submission?.status === 'APPROVED' ? 'secondary' : 'primary'}
+                                  icon={Upload}
+                                  loading={uploadingId === req.id}
+                                  onClick={() => triggerUpload(req.id)}
+                                >
+                                  {!submission ? 'Upload' : submission.status === 'REJECTED' ? 'Re-upload' : 'Replace'}
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
-                </div>
-
-                {derived && derived.label !== config?.label && (
-                  <p className={`text-xs font-medium mb-3 ${req.derivedStatus === 'MISSING' ? 'text-red-600' : 'text-sti-gray'}`}>
-                    {req.derivedStatus === 'MISSING'
-                      ? `Deadline passed on ${dueDate} — this counts as a missing requirement.`
-                      : req.derivedStatus === 'LATE'
-                        ? `Submitted after the ${dueDate} deadline.`
-                        : ''}
-                  </p>
+                </tbody>
+              </table>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 border-t border-black/5 dark:border-white/10">
+                <p className="text-xs text-sti-gray">
+                  {filteredItems.length === 0
+                    ? 'No requirements to display'
+                    : `Showing ${(page - 1) * pageLimit + 1}-${Math.min(page * pageLimit, filteredItems.length)} of ${filteredItems.length}`}
+                </p>
+                {pageSize !== 'ALL' && totalPages > 1 && (
+                  <div className="flex items-center gap-2">
+                    <Button variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                    <span className="text-xs text-sti-gray px-2">Page {page} of {totalPages}</span>
+                    <Button variant="secondary" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
+                  </div>
                 )}
-
-                {(isTemplates || mode === 'all') && req.templateFile && (
-                  <button
-                    onClick={() => { const a = document.createElement('a'); a.href = req.templateFile; a.download = req.templateFileName || `${req.title}_template.pdf`; a.click(); }}
-                    className="mb-3 flex items-center gap-1.5 text-xs font-semibold text-sti-blue hover:text-sti-blue-dark border border-sti-blue/20 px-3 py-2 rounded-lg hover:bg-sti-blue-50 w-full justify-center"
-                  >
-                    <Download className="w-4 h-4" /> Download template: {req.templateFileName || 'template.pdf'} — edit your name then upload
-                  </button>
-                )}
-                {(isSubmissions || mode === 'all') && submission && (
-                  <p className="text-xs text-sti-gray mb-3 truncate">📎 {submission.fileName}</p>
-                )}
-                {(isSubmissions || mode === 'all') && submission?.status === 'REJECTED' && submission.remarks && (
-                  <p className="text-xs text-red-600 mb-3">Reason: {submission.remarks}</p>
-                )}
-                {(isSubmissions || mode === 'all') && req.maxScore > 0 && (
-                  <p className="text-xs text-sti-gray-dark dark:text-slate-200 mb-3 flex items-center gap-1.5">
-                    <Award className="w-3.5 h-3.5 text-sti-blue" /> Score:{' '}
-                    {submission?.score != null ? (
-                      <span className="font-bold">{submission.score}/{req.maxScore}</span>
-                    ) : (
-                      <span className="text-sti-gray">not graded yet</span>
-                    )}
-                    {submission?.isAutoGraded && <span className="text-[10px] text-green-600 font-semibold">awarded automatically on upload</span>}
-                  </p>
-                )}
-
-                {(isSubmissions || mode === 'all') && (
-                  <Button
-                    variant={submission?.status === 'APPROVED' ? 'secondary' : 'primary'}
-                    icon={Upload}
-                    className="w-full"
-                    loading={uploadingId === req.id}
-                    onClick={() => triggerUpload(req.id)}
-                  >
-                    {!submission ? 'Upload File' : submission.status === 'REJECTED' ? 'Re-upload' : 'Replace File'}
-                  </Button>
-                )}
-              </Card>
-            );
-          })}
-        </div>
+              </div>
+            </div>
+          </Card>
+        </>
       )}
     </div>
   );
