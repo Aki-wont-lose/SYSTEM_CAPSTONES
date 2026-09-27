@@ -63,7 +63,7 @@ const StudentDashboard = () => {
         </div>
         <div className="lg:col-span-1 space-y-4 sm:space-y-6">
           <CalendarWidget />
-          <WeeklyToDo emptyMessage="Nothing due this week. New tasks show up here each week." />
+          <WeeklyToDo emptyMessage="Nothing due this week." />
         </div>
       </div>
 
