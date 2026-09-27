@@ -1,6 +1,5 @@
 // src/services/studentService.js
 import { PrismaClient } from '@prisma/client';
-import { hashPassword, generateTemporaryPassword } from './authService.js';
 
 const prisma = new PrismaClient();
 
@@ -84,18 +83,14 @@ export const getStudentByUserId = async (userId) => {
 };
 
 export const createStudent = async (studentData, userData) => {
-  const generatedPassword = !userData?.password;
-  const plainPassword = userData?.password || generateTemporaryPassword();
   try {
-    const hashedPassword = await hashPassword(plainPassword);
-
-    // Create user first
+    // Students sign in with Microsoft only, so no password is stored for them.
     const user = await prisma.user.create({
       data: {
         email: userData.email,
-        password: hashedPassword,
+        password: null,
         role: 'STUDENT',
-        mustChangePassword: true
+        mustChangePassword: false
       }
     });
 
@@ -118,7 +113,7 @@ export const createStudent = async (studentData, userData) => {
 
     return {
       student,
-      temporaryPassword: generatedPassword ? plainPassword : null
+      temporaryPassword: null
     };
   } catch (error) {
     if (error.code === 'P2002') {

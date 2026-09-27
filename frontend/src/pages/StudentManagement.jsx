@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, KeyRound, Copy, Check, ArrowUpDown, FileSpreadsheet } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, KeyRound, ArrowUpDown, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -14,6 +14,7 @@ import {
 } from '../services/studentService';
 import { getCompanies } from '../services/companyService';
 import { getStudentAttendanceForStaff, getStudentSummaryForStaff } from '../services/attendanceService';
+import { PROGRAM_OPTIONS } from '../constants/programs';
 
 const statusStyles = {
   NOT_STARTED: 'bg-gray-100 text-sti-gray-dark',
@@ -60,8 +61,7 @@ const StudentManagement = () => {
   const [batchResult, setBatchResult] = useState(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [newCredentials, setNewCredentials] = useState(null);
-  const [copied, setCopied] = useState(false);
-
+  
   const loadStudents = async () => {
     setLoading(true);
     try {
@@ -129,10 +129,8 @@ const StudentManagement = () => {
     try {
       if (modalMode === 'add') {
         const { companyId, ...rest } = form;
-        const res = await createStudent({ ...rest, companyId: companyId || undefined });
-        if (res.data?.temporaryPassword) {
-          setNewCredentials({ email: form.email, password: res.data.temporaryPassword });
-        }
+        await createStudent({ ...rest, companyId: companyId || undefined });
+        setNewCredentials({ email: form.email });
       } else if (modalMode === 'edit') {
         const { id, userId, user, attendance, company, createdAt, updatedAt, ...updateData } = form;
         await updateStudent(selectedStudent.id, { ...updateData, companyId: updateData.companyId || null });
@@ -144,16 +142,6 @@ const StudentManagement = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const copyCredentials = async (credentials) => {
-    const list = Array.isArray(credentials) ? credentials : [credentials];
-    const text = list.map((c) => `Email: ${c.email}\nTemporary password: ${c.password || c.temporaryPassword}`).join('\n\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) { /* clipboard unavailable */ }
   };
 
   const handleSort = (key) => {
@@ -220,8 +208,10 @@ const StudentManagement = () => {
       contactNumber: '09171234567'
     }];
     const worksheet = XLSX.utils.json_to_sheet(sample, { header: ['studentId', 'firstName', 'lastName', 'email', 'course', 'section', 'contactNumber'] });
+    const programsSheet = XLSX.utils.json_to_sheet(PROGRAM_OPTIONS.map((program) => ({ course: program.value })), { header: ['course'] });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+    XLSX.utils.book_append_sheet(workbook, programsSheet, 'Courses');
     XLSX.writeFile(workbook, 'student_account_batch_template.xlsx');
   };
 
@@ -470,7 +460,12 @@ const StudentManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course</label>
-              <input required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field" />
+              <select required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field">
+                <option value="">Select a course</option>
+                {PROGRAM_OPTIONS.map((program) => (
+                  <option key={program.value} value={program.value}>{program.label}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Section</label>
@@ -483,7 +478,7 @@ const StudentManagement = () => {
             {modalMode === 'add' && (
               <div className="sm:col-span-2 flex gap-2 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 text-xs rounded-xl px-3 py-2.5 border border-blue-100 dark:border-blue-900">
                 <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>A temporary password is generated automatically and shown once after saving. The student must change it on first login.</span>
+                <span>No password is created. The student signs in with their school Microsoft account, which must match this email address.</span>
               </div>
             )}
             <div>
@@ -600,24 +595,17 @@ const StudentManagement = () => {
       <Modal isOpen={!!newCredentials} onClose={() => setNewCredentials(null)} title="Student Account Created" maxWidth="max-w-md">
         {newCredentials && (
           <div className="space-y-4">
-            <div className="flex gap-2 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-xs rounded-xl px-3 py-2.5 border border-amber-200 dark:border-amber-900">
+            <div className="flex gap-2 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 text-xs rounded-xl px-3 py-2.5 border border-blue-100 dark:border-blue-900">
               <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>Share these credentials securely. The temporary password is shown only once.</span>
+              <span>No password was generated. Share this email with the student — it must match their school Microsoft account.</span>
             </div>
             <div className="space-y-2">
               <div>
                 <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">Email</p>
                 <p className="text-sm text-sti-gray-dark dark:text-white bg-sti-gray-light dark:bg-slate-900 rounded-lg px-3 py-2 break-all">{newCredentials.email}</p>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">Temporary password</p>
-                <p className="text-sm font-mono text-sti-gray-dark dark:text-white bg-sti-gray-light dark:bg-slate-900 rounded-lg px-3 py-2 break-all">{newCredentials.password}</p>
-              </div>
             </div>
             <div className="flex justify-end gap-3">
-              <Button variant="secondary" icon={copied ? Check : Copy} onClick={() => copyCredentials(newCredentials)}>
-                {copied ? 'Copied' : 'Copy'}
-              </Button>
               <Button variant="primary" onClick={() => setNewCredentials(null)}>Done</Button>
             </div>
           </div>
@@ -641,22 +629,7 @@ const StudentManagement = () => {
             {batchResult.failed > 0 && (
               <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-xl">
                 <p className="text-xs font-semibold text-sti-blue">Tip: Required columns</p>
-                <p className="text-xs text-sti-gray mt-1">Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">studentId</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>. Accepts variants like "Student ID", "First Name" with spaces/underscores. A temporary password is generated automatically for every imported account. Empty rows are ignored.</p>
-              </div>
-            )}
-            {batchResult.credentials?.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-2">Generated temporary passwords</p>
-                <div className="max-h-48 overflow-y-auto bg-sti-gray-light dark:bg-slate-900 rounded-xl p-3 space-y-1">
-                  {batchResult.credentials.map((c) => (
-                    <p key={c.email} className="text-[11px] text-sti-gray-dark dark:text-slate-300 font-mono break-all border-b border-black/5 dark:border-white/10 last:border-0 py-1">{c.email} — {c.temporaryPassword}</p>
-                  ))}
-                </div>
-                <div className="flex justify-end mt-2">
-                  <Button variant="secondary" icon={copied ? Check : Copy} onClick={() => copyCredentials(batchResult.credentials)}>
-                    {copied ? 'Copied' : 'Copy all'}
-                  </Button>
-                </div>
+                <p className="text-xs text-sti-gray mt-1">Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">studentId</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>. Accepts variants like "Student ID", "First Name" with spaces/underscores. Every imported account signs in with its school Microsoft account, so each email must be a real Microsoft address. Empty rows are ignored.</p>
               </div>
             )}
             <div className="flex justify-end">
