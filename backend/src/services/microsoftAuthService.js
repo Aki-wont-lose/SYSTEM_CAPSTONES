@@ -155,7 +155,9 @@ export const loginWithMicrosoft = async (idToken) => {
       email: user.email,
       role: user.role,
       theme: user.theme,
-      mustChangePassword: user.mustChangePassword,
+      // Students authenticate with Microsoft only, so a stored "change password"
+      // flag would trap them on a page they can never use.
+      mustChangePassword: false,
       coordinatorCourse: user.coordinatorCourse,
       supervisorCompanyId: user.supervisorCompanyId,
       student: user.student
