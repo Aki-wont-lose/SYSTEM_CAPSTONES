@@ -1,9 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { Send, MessageCircle, Users, Search, Trash2, Image as ImageIcon, X, CheckCheck, ArrowLeft, UserPlus, UserCheck, Clock3, UserX, Inbox } from 'lucide-react';
+import { Send, MessageCircle, Users, Search, Trash2, Image as ImageIcon, X, CheckCheck, ArrowLeft } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { getContacts, getConversation, sendMessage, deleteMessage } from '../services/messageService';
-import { getConnections, sendConnectionRequest, respondToConnection, removeConnection } from '../services/connectionService';
 import { useAuth } from '../hooks/useAuth';
 
 const readList = (key) => {
@@ -18,9 +17,7 @@ const readList = (key) => {
 const Messages = () => {
   const { user } = useAuth();
   const currentUserId = user?.id || user?.userId;
-  const isStudent = user?.role === 'STUDENT';
   const [contacts, setContacts] = useState([]);
-  const [connections, setConnections] = useState({ accepted: [], incoming: [], outgoing: [] });
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -29,21 +26,12 @@ const Messages = () => {
   const [sending, setSending] = useState(false);
   const [previewImg, setPreviewImg] = useState(null);
   const [toast, setToast] = useState('');
-  const [busyId, setBusyId] = useState(null);
-  const [tab, setTab] = useState('chats');
   const [recentIds, setRecentIds] = useState(() => readList('recentChats'));
   const [hiddenIds, setHiddenIds] = useState(() => readList('hiddenChats'));
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
 
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(''), 3000); };
-
-  const loadConnections = async () => {
-    try {
-      const res = await getConnections();
-      setConnections({ accepted: res.data?.accepted || [], incoming: res.data?.incoming || [], outgoing: res.data?.outgoing || [] });
-    } catch (e) { console.error(e); }
-  };
 
   const loadContacts = async () => {
     try {
@@ -65,8 +53,7 @@ const Messages = () => {
 
   useEffect(() => {
     loadContacts();
-    loadConnections();
-    const interval = setInterval(() => { loadContacts(); loadConnections(); }, 5000);
+    const interval = setInterval(() => { loadContacts(); }, 5000);
     return () => clearInterval(interval);
   }, []);
   useEffect(() => {
@@ -126,48 +113,6 @@ const Messages = () => {
     showToast('Contact removed from your chat list');
   };
 
-  const handleRequest = async (contact) => {
-    setBusyId(contact.id);
-    try {
-      const res = await sendConnectionRequest(contact.id);
-      showToast(res.message || 'Connection request sent');
-      await Promise.all([loadConnections(), loadContacts()]);
-      setSelected(current => (current?.id === contact.id ? { ...current, connectionStatus: 'PENDING_OUT', connectionId: res.data?.id } : current));
-    } catch (err) { showToast(err.response?.data?.message || 'Could not send the request'); } finally { setBusyId(null); }
-  };
-
-  const handleRespond = async (connectionId, action) => {
-    setBusyId(connectionId);
-    try {
-      const res = await respondToConnection(connectionId, action);
-      showToast(res.message || 'Done');
-      await Promise.all([loadConnections(), loadContacts()]);
-    } catch (err) { showToast(err.response?.data?.message || 'Could not update the request'); } finally { setBusyId(null); }
-  };
-
-  const handleDisconnect = async (connectionId) => {
-    if (!confirm('Remove this connection?')) return;
-    setBusyId(connectionId);
-    try {
-      await removeConnection(connectionId);
-      showToast('Connection removed');
-      if (selected?.connectionId === connectionId) setSelected(null);
-      await Promise.all([loadConnections(), loadContacts()]);
-    } catch (err) { showToast(err.response?.data?.message || 'Could not remove the connection'); } finally { setBusyId(null); }
-  };
-
-  const connectionBadge = (contact) => {
-    if (!isStudent) return null;
-    if (contact.hasConversation || contact.connectionStatus === 'ACCEPTED') return null;
-    if (contact.connectionStatus === 'PENDING_OUT') {
-      return <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-yellow-50 text-sti-yellow-dark"><Clock3 className="w-3 h-3" /> Pending</span>;
-    }
-    if (contact.connectionStatus === 'PENDING_IN') {
-      return <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sti-blue-50 text-sti-blue"><Inbox className="w-3 h-3" /> Wants to connect</span>;
-    }
-    return <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sti-gray-light text-sti-gray">Not connected</span>;
-  };
-
   const renderContact = (contact) => {
     const isSelected = selected?.id === contact.id;
     return (
@@ -175,53 +120,9 @@ const Messages = () => {
         <button onClick={() => openContact(contact)} className="flex-1 min-w-0 text-left px-4 py-3 hover:bg-sti-gray-light dark:hover:bg-white/5">
           <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{contact.displayName || contact.email.split('@')[0]} <span className="text-xs font-normal text-sti-gray">• {contact.roleLabel || formatRole(contact.role)}</span></p>
           {contact.hasConversation && <p className="text-xs text-sti-gray truncate mt-1">{contact.lastMessagePreview || 'No messages yet'}</p>}
-          <div className="mt-1">{connectionBadge(contact)}</div>
         </button>
-        {isStudent && !contact.hasConversation && contact.connectionStatus === 'NONE' && (
-          <button
-            onClick={() => handleRequest(contact)}
-            disabled={busyId === contact.id}
-            className="p-2 mr-1 rounded-lg text-sti-blue hover:bg-sti-blue-50 disabled:opacity-50 shrink-0"
-            title="Send connection request"
-            aria-label={`Send connection request to ${contact.displayName || contact.email}`}
-          >
-            <UserPlus className="w-4 h-4" />
-          </button>
-        )}
         {contact.unreadCount > 0 && <span className="mr-2 min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{contact.unreadCount > 99 ? '99+' : contact.unreadCount}</span>}
         <button onClick={() => removeContact(contact)} className="p-2 mr-1 rounded-lg text-sti-gray hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0" title="Remove from chat list" aria-label={`Remove ${contact.displayName || contact.email} from chat list`}><Trash2 className="w-4 h-4" /></button>
-      </div>
-    );
-  };
-
-  const renderConnectionRow = (entry, kind) => {
-    const person = entry.user;
-    return (
-      <div key={entry.id} className="flex items-center gap-2 border-b border-black/5 dark:border-white/10 px-4 py-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{person.displayName}</p>
-          <p className="text-xs text-sti-gray truncate">{person.studentId || person.email} • {person.role.charAt(0) + person.role.slice(1).toLowerCase()}</p>
-        </div>
-        {kind === 'incoming' && (
-          <div className="flex gap-1 shrink-0">
-            <Button variant="primary" icon={UserCheck} loading={busyId === entry.id} onClick={() => handleRespond(entry.id, 'ACCEPT')} className="text-xs px-2.5 py-1.5">Accept</Button>
-            <button onClick={() => handleRespond(entry.id, 'DECLINE')} disabled={busyId === entry.id} className="p-2 rounded-lg text-sti-gray hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50" title="Decline" aria-label="Decline request"><UserX className="w-4 h-4" /></button>
-          </div>
-        )}
-        {kind === 'outgoing' && (
-          <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-yellow-50 text-sti-yellow-dark shrink-0">Awaiting reply</span>
-        )}
-        {kind === 'accepted' && (
-          <div className="flex gap-1 shrink-0">
-            <button
-              onClick={() => openContact(contacts.find(c => c.id === person.id) || { ...person, displayName: person.displayName, roleLabel: formatRole(person.role), hasConversation: false, connectionStatus: 'ACCEPTED', connectionId: entry.id })}
-              className="p-2 rounded-lg text-sti-blue hover:bg-sti-blue-50" title="Open chat" aria-label={`Open chat with ${person.displayName}`}
-            >
-              <MessageCircle className="w-4 h-4" />
-            </button>
-            <button onClick={() => handleDisconnect(entry.id)} disabled={busyId === entry.id} className="p-2 rounded-lg text-sti-gray hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-50" title="Remove connection" aria-label={`Remove connection with ${person.displayName}`}><Trash2 className="w-4 h-4" /></button>
-          </div>
-        )}
       </div>
     );
   };
@@ -256,89 +157,34 @@ const Messages = () => {
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" /></div>;
 
-  const connectionCount = connections.incoming.length + connections.outgoing.length + connections.accepted.length;
-  const chatBlocked = isStudent && selected && !selected.hasConversation && selected.connectionStatus !== 'ACCEPTED';
-
   return (
     <div className="space-y-4 animate-fade-in">
       <div>
         <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white flex items-center gap-2"><MessageCircle className="w-5 h-5 text-sti-blue" /> Messages</h1>
-        <p className="text-sm text-sti-gray">Chat with your coordinator, supervisor, and fellow interns.</p>
+        <p className="text-sm text-sti-gray">Chat with anyone in the system.</p>
       </div>
       {/* Mobile: toggle between contacts and chat; Desktop: side-by-side */}
       <div className="flex flex-col lg:grid lg:grid-cols-3 gap-4 lg:h-[65vh] h-[calc(100dvh-160px)] min-h-[480px]">
         <Card className={`p-0 overflow-hidden flex flex-col ${selected ? 'hidden lg:flex' : 'flex'} lg:h-auto h-full`}>
           <div className="px-4 py-3 border-b border-black/5 dark:border-white/10 shrink-0">
-            <div className="flex gap-1 mb-2">
-              <button
-                onClick={() => setTab('chats')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${tab === 'chats' ? 'bg-sti-blue text-white' : 'text-sti-gray hover:bg-sti-gray-light dark:hover:bg-white/10'}`}
-              >
-                <Users className="w-3.5 h-3.5 inline mr-1" /> Chats
-              </button>
-              <button
-                onClick={() => setTab('connections')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${tab === 'connections' ? 'bg-sti-blue text-white' : 'text-sti-gray hover:bg-sti-gray-light dark:hover:bg-white/10'}`}
-              >
-                <UserCheck className="w-3.5 h-3.5 inline mr-1" /> Connections
-                {connections.incoming.length > 0 && (
-                  <span className="ml-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold inline-flex items-center justify-center">{connections.incoming.length}</span>
-                )}
-              </button>
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="w-4 h-4 text-sti-gray" /> <span className="text-sm font-semibold text-sti-gray-dark dark:text-white">Contacts</span>
+              <span className="text-xs text-sti-gray ml-auto">{search ? filteredContacts.length : displayContacts.length}</span>
             </div>
-            {tab === 'chats' ? (
-              <>
-                <div className="flex items-center gap-2 mb-2">
-                  <Users className="w-4 h-4 text-sti-gray" /> <span className="text-sm font-semibold text-sti-gray-dark dark:text-white">Contacts</span>
-                  <span className="text-xs text-sti-gray ml-auto">{search ? filteredContacts.length : displayContacts.length}</span>
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sti-gray" />
-                  <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search name..." className="input-field pl-8 py-2.5 text-sm" />
-                </div>
-              </>
-            ) : (
-              <div className="flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-sti-gray" />
-                <span className="text-sm font-semibold text-sti-gray-dark dark:text-white">Connections</span>
-                <span className="text-xs text-sti-gray ml-auto">{connectionCount}</span>
-              </div>
-            )}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-sti-gray" />
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search anyone..." className="input-field pl-8 py-2.5 text-sm" />
+            </div>
           </div>
           <div className="flex-1 overflow-y-auto min-h-0">
-            {tab === 'connections' ? (
-              connections.incoming.length + connections.outgoing.length + connections.accepted.length === 0 ? (
-                <p className="text-sm text-sti-gray p-4 text-center">No connections yet<br/><span className="text-xs">Search a user in Chats and send a request</span></p>
-              ) : (
-                <>
-                  {connections.incoming.length > 0 && (
-                    <>
-                      <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-sti-gray">Requests ({connections.incoming.length})</p>
-                      {connections.incoming.map(e => renderConnectionRow(e, 'incoming'))}
-                    </>
-                  )}
-                  {connections.outgoing.length > 0 && (
-                    <>
-                      <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-sti-gray">Sent</p>
-                      {connections.outgoing.map(e => renderConnectionRow(e, 'outgoing'))}
-                    </>
-                  )}
-                  {connections.accepted.length > 0 && (
-                    <>
-                      <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-sti-gray">Connected ({connections.accepted.length})</p>
-                      {connections.accepted.map(e => renderConnectionRow(e, 'accepted'))}
-                    </>
-                  )}
-                </>
-              )
-            ) : search ? (
+            {search ? (
                displayContacts.length === 0 ? (
                  <p className="text-sm text-sti-gray p-4">No matches for "{search}"</p>
                ) : displayContacts.map(renderContact)
              ) : displayContacts.length > 0 ? (
                displayContacts.map(renderContact)
              ) : (
-               <p className="text-sm text-sti-gray p-4 text-center">No conversations yet<br/><span className="text-xs">Search for a user to start a chat</span></p>
+               <p className="text-sm text-sti-gray p-4 text-center">No conversations yet<br/><span className="text-xs">Search for anyone to start a chat</span></p>
              )}
           </div>
         </Card>
@@ -355,32 +201,9 @@ const Messages = () => {
                   <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{selected.displayName || selected.email}</p>
                   <p className="text-xs text-sti-gray truncate">{selected.email} • {formatRole(selected.role)}</p>
                 </div>
-                {isStudent && !selected.hasConversation && selected.connectionStatus === 'NONE' && (
-                  <Button variant="primary" icon={UserPlus} loading={busyId === selected.id} onClick={() => handleRequest(selected)} className="text-xs px-2.5 py-1.5 shrink-0">
-                    <span className="hidden sm:inline">Connect</span>
-                  </Button>
-                )}
                 <button onClick={() => removeContact(selected)} className="p-2 rounded-lg text-sti-gray hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0" title="Remove from chat list" aria-label="Remove contact from chat list"><Trash2 className="w-4 h-4" /></button>
               </div>
-              {chatBlocked ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
-                  <UserCheck className="w-10 h-10 text-sti-gray" />
-                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white">You are not connected yet</p>
-                  <p className="text-xs text-sti-gray max-w-xs">
-                    {selected.connectionStatus === 'PENDING_OUT'
-                      ? 'Your request is waiting for a reply. You can chat as soon as it is accepted.'
-                      : selected.connectionStatus === 'PENDING_IN'
-                        ? `${selected.displayName} sent you a request. Accept it from the Connections tab to start chatting.`
-                        : 'Send a connection request first. Once it is accepted, you can start chatting.'}
-                  </p>
-                  {selected.connectionStatus === 'NONE' && (
-                    <Button variant="primary" icon={UserPlus} loading={busyId === selected.id} onClick={() => handleRequest(selected)}>
-                      Send connection request
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <>
+              <>
                   <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 bg-sti-gray-light/30 dark:bg-slate-900/50 min-h-0">
                     {messages.map(m => {
                       const isMine = m.senderId === currentUserId;

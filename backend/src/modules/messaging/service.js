@@ -1,4 +1,4 @@
-// modules/messaging/service.js — chats are gated by accepted connections for students
+// modules/messaging/service.js — open messaging: any user can chat with anyone
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
@@ -21,25 +21,8 @@ const connectionState = async (userA, userB) => {
   return connection.requesterId === userA ? 'PENDING_OUT' : 'PENDING_IN';
 };
 
-// Staff keep open access so they can reach interns; a student must be connected
-// (or already have an existing thread) before starting a new conversation
-export const canStartChat = async (senderId, senderRole, receiverId) => {
-  if (senderRole !== 'STUDENT') return { allowed: true };
-  if ((await connectionState(senderId, receiverId)) === 'ACCEPTED') return { allowed: true };
-
-  const existing = await prisma.message.findFirst({
-    where: {
-      OR: [
-        { senderId, receiverId },
-        { senderId: receiverId, receiverId: senderId }
-      ]
-    },
-    select: { id: true }
-  });
-  if (existing) return { allowed: true };
-
-  return { allowed: false, reason: 'pending' };
-};
+// Anyone can start a chat with anyone - no connection request needed
+export const canStartChat = async () => ({ allowed: true });
 
 export const getContactUsers = async (currentUserId) => {
   const users = await prisma.user.findMany({
@@ -153,13 +136,6 @@ export const sendMessage = async (senderId, senderRole, receiverId, content) => 
   }
   const receiver = await prisma.user.findUnique({ where: { id: receiverId }, select: { role: true, isActive: true } });
   if (!receiver || !receiver.isActive) { const e = new Error('Recipient not found'); e.status = 404; throw e; }
-
-  const gate = await canStartChat(senderId, senderRole, receiverId);
-  if (!gate.allowed) {
-    const e = new Error('Send a connection request first — you can chat once it is accepted.');
-    e.status = 403;
-    throw e;
-  }
 
   const sender = await prisma.user.findUnique({
     where: { id: senderId },
