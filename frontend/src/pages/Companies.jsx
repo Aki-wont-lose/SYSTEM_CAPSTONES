@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Building2, Users, Upload, Filter, GraduationCap } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, Building2, Users, Upload, Filter, GraduationCap, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -22,6 +22,26 @@ const Companies = () => {
   const [batchResult, setBatchResult] = useState(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [programFilter, setProgramFilter] = useState('');
+  const downloadTemplate = () => {
+    const columns = ['name', 'address', 'contactPerson', 'contactNumber', 'email', 'industryType', 'availableSlots', 'programs'];
+    const sample = [{
+      name: 'Company Name',
+      address: 'Full address',
+      contactPerson: 'Juan Dela Cruz',
+      contactNumber: '09171234567',
+      email: 'hr@company.com',
+      industryType: 'Information Technology',
+      availableSlots: 5,
+      programs: 'BSIT|BSCS'
+    }];
+    const worksheet = XLSX.utils.json_to_sheet(sample, { header: columns });
+    const programsSheet = XLSX.utils.json_to_sheet(PROGRAMS.map((program) => ({ program })), { header: ['program'] });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Companies');
+    XLSX.utils.book_append_sheet(workbook, programsSheet, 'Programs');
+    XLSX.writeFile(workbook, 'Partner_Company_Templates.xlsx');
+  };
+
   const handleBatchFile = async (file) => {
     if (!file) return;
     const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
@@ -166,7 +186,15 @@ const Companies = () => {
         </div>
         <div className="flex gap-2 shrink-0 w-full sm:w-auto">
           <Button variant="primary" icon={Plus} onClick={openNew} className="flex-1 sm:flex-none justify-center">Add Company</Button>
-          <div
+          <Button
+          variant="secondary"
+          icon={FileSpreadsheet}
+          onClick={downloadTemplate}
+          title="Download the partner company import template"
+          aria-label="Download the partner company import template"
+          className="!px-3"
+        />
+        <div
             onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
             onDragLeave={()=>setDragOver(false)}
             onDrop={e=>{e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]);}}
