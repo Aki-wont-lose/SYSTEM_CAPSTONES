@@ -431,9 +431,9 @@ const AccountManagement = () => {
                     icon={FileSpreadsheet}
                     onClick={downloadBatchTemplate}
                     title={`Download the ${activeTab === 'COORDINATOR' ? 'coordinator' : 'supervisor'} import template`}
-                  >
-                    Template
-                  </Button>
+                    aria-label={`Download the ${activeTab === 'COORDINATOR' ? 'coordinator' : 'supervisor'} import template`}
+                    className="!px-3"
+                  />
                   <div
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={() => setDragOver(false)}
@@ -451,10 +451,9 @@ const AccountManagement = () => {
                       variant="secondary"
                       icon={Upload}
                       onClick={() => document.getElementById('batch-staff-csv').click()}
-                      title="Batch upload accounts from a spreadsheet"
-                      aria-label="Batch upload accounts from a spreadsheet"
-                      className="!px-3"
-                    />
+                    >
+                      Batch Upload
+                    </Button>
                   </div>
                 </>
               )}
