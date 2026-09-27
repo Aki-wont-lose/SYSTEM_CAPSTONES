@@ -302,7 +302,7 @@ const AccountManagement = () => {
     const worksheet = XLSX.utils.json_to_sheet(sample, { header: columns });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, isCoordinator ? 'Coordinators' : 'Supervisors');
-    XLSX.writeFile(workbook, `${isCoordinator ? 'coordinator' : 'supervisor'}_account_batch_template.xlsx`);
+    XLSX.writeFile(workbook, `${isCoordinator ? 'Coordinator' : 'Supervisor'}_Template.xlsx`);
   };
 
   const handleBatchFile = async (file) => {

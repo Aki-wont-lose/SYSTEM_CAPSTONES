@@ -212,7 +212,7 @@ const StudentManagement = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
     XLSX.utils.book_append_sheet(workbook, programsSheet, 'Courses');
-    XLSX.writeFile(workbook, 'student_account_batch_template.xlsx');
+    XLSX.writeFile(workbook, 'Student_Template.xlsx');
   };
 
   const handleBatchFile = async (file) => {
