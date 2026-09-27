@@ -74,7 +74,7 @@ const StudentDashboard = () => {
             <Card className="text-center py-6"><p className="text-sm text-sti-gray">No announcements yet</p></Card>
           ) : (
             announcements.slice(0,2).map((a) => (
-              <Card key={a.id} className="p-0 overflow-hidden">
+              <Card key={a.id} className="!p-0 overflow-hidden">
                 {a.image && <img src={a.image} alt={a.title} className="w-full max-h-80 object-contain bg-sti-gray-light dark:bg-slate-900" />}
                 <div className="p-3">
                   <h4 className="font-semibold text-sm text-sti-gray-dark dark:text-white">{a.title}</h4>

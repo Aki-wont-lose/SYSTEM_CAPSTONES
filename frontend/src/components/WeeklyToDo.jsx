@@ -49,7 +49,7 @@ const WeeklyToDo = ({ emptyMessage, onChanged }) => {
   if (!loading && pending.length === 0 && !emptyMessage) return null;
 
   return (
-    <Card>
+    <Card className="!p-4 sm:!p-6">
       <div className="flex items-center gap-2 mb-3">
         <ListChecks className="w-5 h-5 text-sti-blue shrink-0" />
         <h2 className="font-bold text-sti-gray-dark dark:text-white">Weekly To-Do</h2>
@@ -76,18 +76,18 @@ const WeeklyToDo = ({ emptyMessage, onChanged }) => {
                 <button
                   onClick={() => handleComplete(task.id)}
                   disabled={busyId === task.id}
-                  className="mt-0.5 p-1 rounded-lg hover:bg-sti-blue-50 text-sti-blue shrink-0 disabled:opacity-50"
+                  className="mt-0.5 p-1 rounded-lg hover:bg-sti-blue-50 text-sti-blue shrink-0 disabled:opacity-50 flex items-center justify-center min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
                   title="Mark as done"
                   aria-label={`Mark ${task.title} as done`}
                 >
                   <CheckCircle2 className="w-5 h-5" />
                 </button>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white">{task.title}</p>
-                  {task.description && <p className="text-xs text-sti-gray mt-0.5">{task.description}</p>}
+                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white break-words">{task.title}</p>
+                  {task.description && <p className="text-xs text-sti-gray mt-0.5 break-words">{task.description}</p>}
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <span className="text-[11px] font-medium text-sti-gray flex items-center gap-1">
-                      <CalendarClock className="w-3.5 h-3.5" /> Week of {formatDate(task.weekOf)}
+                      <CalendarClock className="w-3.5 h-3.5 shrink-0" /> <span className="break-words">Week of {formatDate(task.weekOf)}</span>
                     </span>
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${missed ? 'bg-red-100 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
                       {missed ? 'Overdue' : `Due ${formatDate(task.dueDate)}`}
@@ -102,7 +102,7 @@ const WeeklyToDo = ({ emptyMessage, onChanged }) => {
                       a.download = task.requirement.templateFileName || 'template.pdf';
                       a.click();
                     }}
-                    className="p-2 rounded-lg hover:bg-sti-blue-50 text-sti-blue shrink-0"
+                    className="p-2 rounded-lg hover:bg-sti-blue-50 text-sti-blue shrink-0 flex items-center justify-center min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
                     title="Download template"
                     aria-label="Download template"
                   >

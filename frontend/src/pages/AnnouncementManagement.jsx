@@ -209,9 +209,9 @@ const AnnouncementManagement = () => {
             <input type="checkbox" checked={form.isActive} onChange={(e) => setForm({ ...form, isActive: e.target.checked })} className="w-4 h-4 rounded accent-sti-blue" />
             Publish immediately
           </label>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button type="submit" variant="primary" loading={saving}>
+          <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
+            <Button type="button" variant="secondary" onClick={() => setModalOpen(false)} className="w-full sm:w-auto">Cancel</Button>
+            <Button type="submit" variant="primary" loading={saving} className="w-full sm:w-auto">
               {editTarget ? 'Save Changes' : 'Create Announcement'}
             </Button>
           </div>
@@ -223,9 +223,9 @@ const AnnouncementManagement = () => {
         <p className="text-sm text-sti-gray-dark dark:text-white">
           Are you sure you want to delete <strong>{deleteTarget?.title}</strong>? This action cannot be undone.
         </p>
-        <div className="flex justify-end gap-3 mt-6">
-          <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button variant="danger" onClick={handleDelete} loading={deleting}>Delete</Button>
+        <div className="flex flex-col-reverse gap-2 mt-6 sm:flex-row sm:justify-end sm:gap-3">
+          <Button variant="secondary" onClick={() => setDeleteTarget(null)} className="w-full sm:w-auto">Cancel</Button>
+          <Button variant="danger" onClick={handleDelete} loading={deleting} className="w-full sm:w-auto">Delete</Button>
         </div>
       </Modal>
     </div>

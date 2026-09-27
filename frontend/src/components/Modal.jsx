@@ -15,7 +15,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full ${maxWidth} max-h-[90vh] overflow-y-auto animate-slide-up`}>
-        <div className="sticky top-0 bg-white dark:bg-slate-800 flex items-center justify-between px-6 py-4 border-b border-black/5 dark:border-white/10 z-10">
+        <div className="sticky top-0 bg-white dark:bg-slate-800 flex items-center justify-between px-4 sm:px-6 py-4 border-b border-black/5 dark:border-white/10 z-10">
           <h3 className="text-lg font-bold text-sti-gray-dark dark:text-white">{title}</h3>
           <button
             onClick={onClose}
@@ -24,7 +24,7 @@ const Modal = ({ isOpen, onClose, title, children, maxWidth = 'max-w-lg' }) => {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {children}
         </div>
       </div>
