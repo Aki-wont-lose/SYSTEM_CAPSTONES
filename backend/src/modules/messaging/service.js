@@ -2,24 +2,13 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
+// Duplicate gmail accounts left over from testing, hidden from the people directory
 const BLOCKED_EMAILS = [
   'Cabatu.334507@gmail.com',
   'mccruz1230@gmail.com',
   'CABATU.334507@GMAIL.COM',
   'MCCRUZ1230@GMAIL.COM'
 ];
-
-const connectionState = async (userA, userB) => {
-  const [outgoing, incoming] = await Promise.all([
-    prisma.connection.findUnique({ where: { requesterId_addresseeId: { requesterId: userA, addresseeId: userB } } }),
-    prisma.connection.findUnique({ where: { requesterId_addresseeId: { requesterId: userB, addresseeId: userA } } })
-  ]);
-  const connection = outgoing || incoming;
-  if (!connection) return 'NONE';
-  if (connection.status === 'ACCEPTED') return 'ACCEPTED';
-  if (connection.status === 'DECLINED') return 'DECLINED';
-  return connection.requesterId === userA ? 'PENDING_OUT' : 'PENDING_IN';
-};
 
 // Anyone can start a chat with anyone - no connection request needed
 export const canStartChat = async () => ({ allowed: true });
@@ -76,22 +65,8 @@ export const getContactUsers = async (currentUserId) => {
     conversationByUser.set(otherUserId, current);
   }
 
-  const connections = await prisma.connection.findMany({
-    where: { OR: [{ requesterId: currentUserId }, { addresseeId: currentUserId }] },
-    select: { id: true, requesterId: true, addresseeId: true, status: true }
-  });
-  const connectionByUser = new Map(
-    connections.map((c) => {
-      const otherId = c.requesterId === currentUserId ? c.addresseeId : c.requesterId;
-      let status = c.status;
-      if (status === 'PENDING') status = c.requesterId === currentUserId ? 'PENDING_OUT' : 'PENDING_IN';
-      return [otherId, { status, connectionId: c.id }];
-    })
-  );
-
   return users.map(u => {
     const conversation = conversationByUser.get(u.id);
-    const connection = connectionByUser.get(u.id);
     const name = u.student
       ? `${u.student.firstName} ${u.student.lastName}`
       : [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email.split('@')[0].replace('.', ' ');
@@ -103,9 +78,7 @@ export const getContactUsers = async (currentUserId) => {
       hasConversation: !!conversation,
       unreadCount: conversation?.unreadCount || 0,
       lastMessageAt: conversation?.lastMessageAt || null,
-      lastMessagePreview: conversation?.lastMessagePreview || null,
-      connectionStatus: connection?.status || 'NONE',
-      connectionId: connection?.connectionId || null
+      lastMessagePreview: conversation?.lastMessagePreview || null
     };
   });
 };

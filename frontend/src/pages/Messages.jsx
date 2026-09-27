@@ -73,7 +73,11 @@ const Messages = () => {
     .filter(c => c.hasConversation || recentIds.includes(c.id))
     .filter(c => !hiddenIds.includes(c.id))
     .sort((a, b) => new Date(b.lastMessageAt || 0) - new Date(a.lastMessageAt || 0));
-  const displayContacts = search ? filteredContacts.filter(c => !hiddenIds.includes(c.id)) : visibleContacts;
+  const everyoneElse = contacts
+    .filter(c => !visibleContacts.some(v => v.id === c.id) && !hiddenIds.includes(c.id))
+    .sort((a, b) => (a.displayName || a.email).localeCompare(b.displayName || b.email));
+  // Show every user by default so anyone can be messaged without searching first
+  const displayContacts = search ? filteredContacts : [...visibleContacts, ...everyoneElse];
 
   const isImage = (content) => content && content.startsWith('data:image');
 
@@ -182,9 +186,14 @@ const Messages = () => {
                  <p className="text-sm text-sti-gray p-4">No matches for "{search}"</p>
                ) : displayContacts.map(renderContact)
              ) : displayContacts.length > 0 ? (
-               displayContacts.map(renderContact)
+               <>
+                 {visibleContacts.length > 0 && everyoneElse.length > 0 && (
+                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-sti-gray">Everyone else</p>
+                 )}
+                 {displayContacts.map(renderContact)}
+               </>
              ) : (
-               <p className="text-sm text-sti-gray p-4 text-center">No conversations yet<br/><span className="text-xs">Search for anyone to start a chat</span></p>
+               <p className="text-sm text-sti-gray p-4 text-center">No one else is on the system yet</p>
              )}
           </div>
         </Card>
