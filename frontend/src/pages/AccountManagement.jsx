@@ -651,13 +651,6 @@ const AccountManagement = () => {
             <input value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
           </div>
 
-          {modalMode === 'add' && (
-            <div className="flex gap-2 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 text-xs rounded-xl px-3 py-2.5 border border-blue-100 dark:border-blue-900">
-              <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>A temporary password is generated automatically and shown once after saving. The account must change it on first login.</span>
-            </div>
-          )}
-
           {modalMode === 'edit' && (
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Account Status</label>

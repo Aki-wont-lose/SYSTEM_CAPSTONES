@@ -475,12 +475,6 @@ const StudentManagement = () => {
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
               <input required type="email" disabled={modalMode === 'edit'} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field disabled:bg-sti-gray-light" />
             </div>
-            {modalMode === 'add' && (
-              <div className="sm:col-span-2 flex gap-2 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 text-xs rounded-xl px-3 py-2.5 border border-blue-100 dark:border-blue-900">
-                <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>No password is created. The student signs in with their school Microsoft account, which must match this email address.</span>
-              </div>
-            )}
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
               <input required value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
