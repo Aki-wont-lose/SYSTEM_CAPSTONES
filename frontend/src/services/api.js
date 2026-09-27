@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// On Vercel the API is a serverless function on the same domain, so requests stay
+// same-origin under /api. Local development keeps using the dev backend.
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api');
 
 const api = axios.create({
   baseURL: API_URL,

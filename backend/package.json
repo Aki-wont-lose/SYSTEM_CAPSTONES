@@ -19,6 +19,9 @@
         "monitoring",
         "sti"
     ],
+    "engines": {
+        "node": "20.x"
+    },
     "author": "STI College",
     "license": "ISC",
     "dependencies": {

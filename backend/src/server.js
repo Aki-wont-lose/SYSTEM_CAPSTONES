@@ -30,9 +30,26 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// On Vercel the app is invoked as a serverless function, so a listening socket
+// must not be opened. Locally (and on Render/Railway) we bind the port as usual.
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+
 // Middleware
+const allowedOrigin = (origin, callback) => {
+  if (!origin) return callback(null, true);
+  const configured = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+  const isAllowed =
+    configured.includes(origin) ||
+    /^http:\/\/localhost:\d+$/.test(origin) ||
+    /^https:\/\/[\w.-]*\.vercel\.app$/.test(origin);
+  callback(null, isAllowed);
+};
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: allowedOrigin,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -88,10 +105,12 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`✓ SIMES Backend Server running on port ${PORT}`);
-  console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`✓ Database: ${process.env.DATABASE_URL?.split('@')[1] || 'Not configured'}`);
-});
+if (!isServerless) {
+  app.listen(PORT, () => {
+    console.log(`✓ SIMES Backend Server running on port ${PORT}`);
+    console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`✓ Database: ${process.env.DATABASE_URL?.split('@')[1] || 'Not configured'}`);
+  });
+}
 
 export default app;
