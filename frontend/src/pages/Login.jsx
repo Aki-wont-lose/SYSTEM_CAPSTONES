@@ -61,7 +61,6 @@ const StudentView = ({ onBack }) => {
     <div className="space-y-2.5">
       {error && <div className="flex gap-2 bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100"><AlertCircle className="w-4 h-4 mt-0.5" /><span>{error}</span></div>}
       {isMicrosoftLoginEnabled && <button type="button" onClick={handleClick} disabled={loading} className="w-full flex items-center justify-center gap-2.5 border rounded-xl py-3 text-sm font-semibold hover:bg-sti-gray-light disabled:opacity-50">{loading ? <span className="w-4 h-4 border-2 border-sti-gray border-t-transparent rounded-full animate-spin" /> : <MicrosoftIcon />} Sign in with Microsoft</button>}
-      <p className="text-center text-xs text-sti-gray pt-1">Use your school Microsoft account to continue.</p>
       <button type="button" onClick={onBack} className="w-full flex items-center justify-center gap-1.5 text-xs text-sti-gray pt-2"><ArrowLeft className="w-3.5 h-3.5" /> Back</button>
     </div>
   );
