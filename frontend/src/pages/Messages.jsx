@@ -102,7 +102,7 @@ const Messages = () => {
 
   const removeContact = (contact) => {
     const name = contact.displayName || contact.email;
-    if (!confirm(`Remove ${name} from your chat list?`)) return;
+    if (!confirm(`Remove ${name} from your chat list?\n\nOnly for you. All messages are kept — search for ${name} any time to chat again.`)) return;
     setHiddenIds(current => {
       const next = current.includes(contact.id) ? current : [...current, contact.id];
       updateStoredList('hiddenChats', next);
@@ -193,7 +193,11 @@ const Messages = () => {
                  {displayContacts.map(renderContact)}
                </>
              ) : (
-               <p className="text-sm text-sti-gray p-4 text-center">No one else is on the system yet</p>
+               <p className="text-sm text-sti-gray p-4 text-center">
+                 {hiddenIds.length > 0
+                   ? <>You removed everyone from your list<br/><span className="text-xs">Search for anyone to chat again</span></>
+                   : 'No one else is on the system yet'}
+               </p>
              )}
           </div>
         </Card>

@@ -1,24 +1,20 @@
-import { createContext, useState, useEffect } from 'react';
+﻿import { createContext, useState, useEffect } from 'react';
 import { loginRequest, validateTokenRequest, setThemeRequest, changePasswordRequest } from '../services/authService';
 import { signInWithMicrosoftPopup, completeMicrosoftLogin } from '../services/microsoftAuthService';
+import { SESSION_TOKEN_KEY, SESSION_USER_KEY, getToken, getStoredUser, saveSession, saveStoredUser, clearSession } from '../services/session';
 
 export const AuthContext = createContext(null);
 
-const persistSession = (newToken, userData) => {
-  localStorage.setItem('simes_token', newToken);
-  localStorage.setItem('simes_user', JSON.stringify(userData));
-};
-
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('simes_token'));
+  const [token, setToken] = useState(() => getToken());
   const [loading, setLoading] = useState(true);
   const [theme, setThemeState] = useState(localStorage.getItem('simes_theme') || 'LIGHT');
 
   useEffect(() => {
     const initAuth = async () => {
-      const storedToken = localStorage.getItem('simes_token');
-      const storedUser = localStorage.getItem('simes_user');
+      const storedToken = getToken();
+      const storedUser = getStoredUser();
 
       if (storedToken && storedUser) {
         try {
@@ -31,9 +27,12 @@ export const AuthProvider = ({ children }) => {
           if (savedTheme) setThemeState(savedTheme);
           else if (parsedUser.theme) setThemeState(parsedUser.theme);
         } catch (error) {
-          localStorage.removeItem('simes_token');
-          localStorage.removeItem('simes_user');
+          clearSession();
         }
+      } else {
+        // No session for this tab: make sure a stale browser-wide session is not left behind
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+        localStorage.removeItem(SESSION_USER_KEY);
       }
       setLoading(false);
     };
@@ -56,7 +55,7 @@ export const AuthProvider = ({ children }) => {
     const response = await loginRequest(email, password);
     const { token: newToken, user: userData } = response.data;
 
-    persistSession(newToken, userData);
+    saveSession(newToken, userData);
     setToken(newToken);
     setUser(userData);
     if (userData.theme) setThemeState(userData.theme);
@@ -71,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     const response = await completeMicrosoftLogin(idToken);
     const { token: newToken, user: userData } = response.data;
 
-    persistSession(newToken, userData);
+    saveSession(newToken, userData);
     setToken(newToken);
     setUser(userData);
     if (userData.theme) setThemeState(userData.theme);
@@ -80,8 +79,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('simes_token');
-    localStorage.removeItem('simes_user');
+    clearSession();
     setToken(null);
     setUser(null);
   };
@@ -89,7 +87,7 @@ export const AuthProvider = ({ children }) => {
   const updateUser = (updatedData) => {
     const newUser = { ...user, ...updatedData };
     setUser(newUser);
-    localStorage.setItem('simes_user', JSON.stringify(newUser));
+    saveStoredUser(newUser);
   };
 
   const changePassword = async (currentPassword, newPassword, confirmPassword) => {
@@ -103,11 +101,11 @@ export const AuthProvider = ({ children }) => {
     setThemeState(nextTheme);
     // Keep simes_user in sync so refresh doesn't revert to old theme from parsedUser
     try {
-      const storedUser = localStorage.getItem('simes_user');
+      const storedUser = getStoredUser();
       if (storedUser) {
         const parsed = JSON.parse(storedUser);
         parsed.theme = nextTheme;
-        localStorage.setItem('simes_user', JSON.stringify(parsed));
+        saveStoredUser(parsed);
         setUser(parsed);
       }
     } catch {}
