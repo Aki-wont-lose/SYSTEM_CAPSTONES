@@ -447,9 +447,14 @@ const AccountManagement = () => {
                       className="hidden"
                       onChange={(e) => { handleBatchFile(e.target.files[0]); e.target.value = ''; }}
                     />
-                    <Button variant="secondary" icon={Upload} onClick={() => document.getElementById('batch-staff-csv').click()}>
-                      Batch Upload
-                    </Button>
+                    <Button
+                      variant="secondary"
+                      icon={Upload}
+                      onClick={() => document.getElementById('batch-staff-csv').click()}
+                      title="Batch upload accounts from a spreadsheet"
+                      aria-label="Batch upload accounts from a spreadsheet"
+                      className="!px-3"
+                    />
                   </div>
                 </>
               )}
