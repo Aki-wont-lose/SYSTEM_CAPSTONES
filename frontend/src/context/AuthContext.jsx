@@ -1,7 +1,6 @@
 import { createContext, useState, useEffect } from 'react';
 import { loginRequest, validateTokenRequest, setThemeRequest, changePasswordRequest } from '../services/authService';
 import { signInWithMicrosoftPopup, completeMicrosoftLogin } from '../services/microsoftAuthService';
-import { signInWithGooglePopup, completeGoogleLogin } from '../services/googleAuthService';
 
 export const AuthContext = createContext(null);
 
@@ -80,21 +79,6 @@ export const AuthProvider = ({ children }) => {
     return userData;
   };
 
-  // Same idea, using the student's real STI-issued Google account — offered
-  // as an interim option while STI's Microsoft accounts are still pending.
-  const loginWithGoogle = async () => {
-    const idToken = await signInWithGooglePopup();
-    const response = await completeGoogleLogin(idToken);
-    const { token: newToken, user: userData } = response.data;
-
-    persistSession(newToken, userData);
-    setToken(newToken);
-    setUser(userData);
-    if (userData.theme) setThemeState(userData.theme);
-
-    return userData;
-  };
-
   const logout = () => {
     localStorage.removeItem('simes_token');
     localStorage.removeItem('simes_user');
@@ -146,7 +130,6 @@ export const AuthProvider = ({ children }) => {
         toggleTheme,
         login,
         loginWithMicrosoft,
-        loginWithGoogle,
         logout,
         updateUser,
         changePassword,

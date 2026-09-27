@@ -16,7 +16,12 @@ import { recordAudit } from './auditLogService.js';
 
 const prisma = new PrismaClient();
 
-const MS_CLIENT_ID = process.env.MS_CLIENT_ID;
+// A Client ID is a public identifier (it ships in the browser bundle), so the
+// fallback below keeps Microsoft sign-in working on hosts where no environment
+// variable has been set. MS_CLIENT_ID still overrides it when present.
+const BAKED_MS_CLIENT_ID = 'df253f7d-abd6-47c3-90a8-40f1987f9c75';
+
+const MS_CLIENT_ID = process.env.MS_CLIENT_ID || BAKED_MS_CLIENT_ID;
 // "common" accepts both personal Microsoft accounts and any organization's
 // (e.g. a school's Office 365) accounts — matches the multi-tenant app setup
 // described in the README.
@@ -105,8 +110,13 @@ export const loginWithMicrosoft = async (idToken) => {
 
   // No link yet — fall back to matching the verified email, and remember the
   // match so future sign-ins work even if the Microsoft email changes.
+  // Matched case-insensitively: Microsoft may hand back a different casing
+  // than the one stored on the account (Cruz.352467@ vs cruz.352467@).
   if (!user) {
-    user = await prisma.user.findUnique({ where: { email }, include: { student: true } });
+    user = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      include: { student: true }
+    });
     if (user) {
       await prisma.linkedAccount.upsert({
         where: { provider_providerId: { provider: 'MICROSOFT', providerId: identity.providerId } },

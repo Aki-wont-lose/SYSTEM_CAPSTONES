@@ -3,9 +3,13 @@
 // MSAL (Microsoft Authentication Library) setup for "Sign in with Microsoft".
 // VITE_MS_CLIENT_ID comes from a free Azure App Registration — see the
 // README section "Microsoft Sign-In Setup" for the exact steps.
-// If it's not set, the Microsoft button is simply hidden (see Login.jsx).
+// The Client ID below is the fallback so the app works on hosts (e.g. Vercel)
+// where no environment variable has been set. A Client ID is a public value:
+// it ships inside the browser bundle and is not a secret.
 
-export const MS_CLIENT_ID = import.meta.env.VITE_MS_CLIENT_ID || '';
+const BAKED_MS_CLIENT_ID = 'df253f7d-abd6-47c3-90a8-40f1987f9c75';
+
+export const MS_CLIENT_ID = import.meta.env.VITE_MS_CLIENT_ID || BAKED_MS_CLIENT_ID;
 const MS_TENANT = import.meta.env.VITE_MS_TENANT || 'common';
 
 export const msalConfig = {

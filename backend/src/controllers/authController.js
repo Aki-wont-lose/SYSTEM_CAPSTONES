@@ -8,7 +8,6 @@ import {
   changePassword
 } from '../services/authService.js';
 import { loginWithMicrosoft } from '../services/microsoftAuthService.js';
-import { loginWithGoogle } from '../services/googleAuthService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 // Direct email + password login — Admin accounts only.
@@ -35,15 +34,6 @@ export const microsoftLogin = asyncHandler(async (req, res) => {
   }
   const result = await loginWithMicrosoft(idToken);
   res.status(200).json({ success: true, message: 'Signed in with Microsoft', data: result });
-});
-
-export const googleLogin = asyncHandler(async (req, res) => {
-  const { idToken } = req.body;
-  if (!idToken) {
-    return res.status(400).json({ success: false, message: 'Google ID token is required' });
-  }
-  const result = await loginWithGoogle(idToken);
-  res.status(200).json({ success: true, message: 'Signed in with Google', data: result });
 });
 
 export const forgotPassword = asyncHandler(async (req, res) => {

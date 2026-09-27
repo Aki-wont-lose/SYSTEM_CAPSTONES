@@ -52,7 +52,7 @@ export const loginUser = async (email, password) => {
   }
 
   if (!user.password) {
-    const error = new Error('This account has no password yet. Sign in with Microsoft or Google instead.');
+    const error = new Error('This account has no password yet. Sign in with Microsoft instead.');
     error.status = 403;
     throw error;
   }
