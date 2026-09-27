@@ -193,11 +193,7 @@ const Messages = () => {
                  {displayContacts.map(renderContact)}
                </>
              ) : (
-               <p className="text-sm text-sti-gray p-4 text-center">
-                 {hiddenIds.length > 0
-                   ? <>You removed everyone from your list<br/><span className="text-xs">Search for anyone to chat again</span></>
-                   : 'No one else is on the system yet'}
-               </p>
+               <p className="text-sm text-sti-gray p-4 text-center">Search for anyone to start a chat</p>
              )}
           </div>
         </Card>
