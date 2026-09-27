@@ -8,6 +8,8 @@ const titles = {
   '/my-dtr': 'My DTR',
   '/my-logs': 'My Logs',
   '/requirements': 'Requirements',
+  '/templates': 'Templates',
+  '/submissions': 'My Submissions',
   '/find-company': 'Find Company',
   '/schedule': 'Schedule',
   '/messages': 'Messages',
