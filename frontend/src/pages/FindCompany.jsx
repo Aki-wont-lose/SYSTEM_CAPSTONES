@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Building2, MapPin, Phone, Mail, Users, Search, Filter, GraduationCap } from 'lucide-react';
 import Card from '../components/Card';
-import MapEmbed from '../components/MapEmbed';
 import { getCompanies } from '../services/companyService';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentSummary } from '../services/attendanceService';
@@ -148,17 +147,11 @@ const FindCompany = () => {
             </div>
           </div>
 
-          {/* Map + details - on cp, map first for immediate visual */}
+          {/* Company details */}
           <div className="lg:col-span-3 order-1 lg:order-2">
-            <Card className="p-0 overflow-hidden">
-              <MapEmbed
-                latitude={selected?.latitude}
-                longitude={selected?.longitude}
-                address={selected?.address || selected?.name}
-                className="w-full h-64 sm:h-72"
-              />
+            <Card className="p-4 sm:p-5">
               {selected && (
-                <div className="p-4 sm:p-5">
+                <div>
                   <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm sm:text-base">{selected.name}</h3>
                   {selected.industryType && <p className="text-xs text-sti-gray mb-2 sm:mb-3">{selected.industryType}</p>}
                   <div className="space-y-2 text-xs sm:text-sm">
