@@ -4,7 +4,6 @@ import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
-import LocationPicker from '../components/LocationPicker';
 import { getCompanies, createCompany, updateCompany, deleteCompany, batchCreateCompanies } from '../services/companyService';
 
 const PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'];
@@ -23,7 +22,7 @@ const Companies = () => {
   const [batchLoading, setBatchLoading] = useState(false);
   const [programFilter, setProgramFilter] = useState('');
   const downloadTemplate = () => {
-    const columns = ['name', 'address', 'contactPerson', 'contactNumber', 'email', 'industryType', 'availableSlots', 'programs'];
+    const columns = ['name', 'address', 'contactPerson', 'contactNumber', 'email', 'industryType', 'availableSlots', 'course'];
     const sample = [{
       name: 'Company Name',
       address: 'Full address',
@@ -32,13 +31,13 @@ const Companies = () => {
       email: 'hr@company.com',
       industryType: 'Information Technology',
       availableSlots: 5,
-      programs: 'BSIT|BSCS'
+      course: 'BSIT|BSCS'
     }];
     const worksheet = XLSX.utils.json_to_sheet(sample, { header: columns });
-    const programsSheet = XLSX.utils.json_to_sheet(PROGRAMS.map((program) => ({ program })), { header: ['program'] });
+    const coursesSheet = XLSX.utils.json_to_sheet(PROGRAMS.map((program) => ({ course: program })), { header: ['course'] });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Companies');
-    XLSX.utils.book_append_sheet(workbook, programsSheet, 'Programs');
+    XLSX.utils.book_append_sheet(workbook, coursesSheet, 'Courses');
     XLSX.writeFile(workbook, 'Partner_Company_Templates.xlsx');
   };
 
@@ -69,7 +68,7 @@ const Companies = () => {
             email: obj['email'] || '',
             industryType: obj['industrytype'] || obj['industry'] || '',
             availableSlots: parseInt(obj['availableslots'] || obj['slots'] || obj['slot'] || '0') || 0,
-            programs: String(obj['programs'] || obj['program'] || '').split(/[|;,/]+/).map(p=>p.trim().toUpperCase()).filter(p=>PROGRAMS.includes(p))
+            programs: String(obj['programs'] || obj['program'] || obj['course'] || '').split(/[|;,/]+/).map(p=>p.trim().toUpperCase()).filter(p=>PROGRAMS.includes(p))
           };
         }).filter(Boolean);
       } else {
@@ -92,7 +91,7 @@ const Companies = () => {
             email: obj['email'] || '',
             industryType: obj['industrytype'] || obj['industry'] || '',
             availableSlots: parseInt(obj['availableslots'] || obj['slots'] || obj['slot'] || '0') || 0,
-            programs: String(obj['programs'] || obj['program'] || '').split(/[|;,/]+/).map(p=>p.trim().toUpperCase()).filter(p=>PROGRAMS.includes(p))
+            programs: String(obj['programs'] || obj['program'] || obj['course'] || '').split(/[|;,/]+/).map(p=>p.trim().toUpperCase()).filter(p=>PROGRAMS.includes(p))
           };
         }).filter(Boolean);
       }
@@ -281,31 +280,17 @@ const Companies = () => {
             </h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <input required placeholder="Company name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field text-sm py-3" />
-              <input placeholder="Industry type" value={form.industryType} onChange={(e) => setForm({ ...form, industryType: e.target.value })} className="input-field text-sm py-3" />
               <input placeholder="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input-field text-sm py-3" />
-
-              <LocationPicker
-                latitude={form.latitude === '' ? null : parseFloat(form.latitude)}
-                longitude={form.longitude === '' ? null : parseFloat(form.longitude)}
-                onChange={(lat, lng) => setForm({ ...form, latitude: lat, longitude: lng })}
-                className="w-full h-48 sm:h-52"
-              />
-
               <input placeholder="Contact person" value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} className="input-field text-sm py-3" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input placeholder="Contact number" value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field text-sm py-3" />
                 <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field text-sm py-3" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <input type="number" min="0" placeholder="Available slots" value={form.availableSlots} onChange={(e) => setForm({ ...form, availableSlots: e.target.value })} className="input-field text-sm py-3" />
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="input-field text-sm py-3">
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                </select>
-              </div>
+              <input placeholder="Industry type" value={form.industryType} onChange={(e) => setForm({ ...form, industryType: e.target.value })} className="input-field text-sm py-3" />
+              <input type="number" min="0" placeholder="Available slots" value={form.availableSlots} onChange={(e) => setForm({ ...form, availableSlots: e.target.value })} className="input-field text-sm py-3" />
               <div>
                 <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1.5">
-                  Programs this company accepts
+                  Course
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {PROGRAMS.map((p) => {
