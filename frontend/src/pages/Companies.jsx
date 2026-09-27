@@ -314,7 +314,6 @@ const Companies = () => {
                     );
                   })}
                 </div>
-                <p className="text-[11px] text-sti-gray mt-1.5">Leave all unselected to open this company to every program.</p>
               </div>
               <Button type="submit" variant="primary" className="w-full py-3" loading={saving}>
                 {editing ? 'Save Changes' : 'Add Company'}
