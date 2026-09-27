@@ -9,6 +9,7 @@ import {
   updateAnnouncement,
   deleteAnnouncement
 } from '../services/announcementService';
+import { compressImage } from '../services/imageService';
 
 const emptyForm = { title: '', content: '', image: null, images: null, isActive: true };
 
@@ -82,8 +83,9 @@ const AnnouncementManagement = () => {
 
     const accepted = [];
     for (const file of picked.slice(0, 3)) {
-      if (file.size > 4 * 1024 * 1024) { alert(`${file.name} is larger than 4MB`); continue; }
-      accepted.push(await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(file); }));
+      if (file.size > 8 * 1024 * 1024) { alert(`${file.name} is larger than 8MB`); continue; }
+      // Compressed before upload so the dashboard photo stays light and fits the layout
+      accepted.push(await compressImage(file));
     }
     if (!accepted.length) return;
 
@@ -193,16 +195,14 @@ const AnnouncementManagement = () => {
             <textarea required rows={5} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} className="input-field resize-none" placeholder="Write the announcement details..." />
           </div>
           <div>
-            <label className="block text-sm font-medium text-sti-gray-dark dark:text-white mb-1.5">Photos (optional, up to 3 for sliding carousel)</label>
+            <label className="block text-sm font-medium text-sti-gray-dark dark:text-white mb-1.5">Photos</label>
             <input type="file" accept="image/*" multiple onChange={handlePhotoPick} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white" />
-            {photos.length > 0 ? (
+            {photos.length > 0 && (
               <div className="mt-2">
                 {photos.map((img, i) => <img key={i} src={img} alt={`preview ${i + 1}`} className="w-full h-24 object-cover rounded-lg border mb-2" />)}
                 <button type="button" onClick={() => setForm(prev => ({ ...prev, image: null, images: null }))} className="mt-1 text-xs text-red-600 hover:underline">Remove all</button>
                 <p className="text-xs text-green-600 mt-1">✓ {photos.length} photo(s) ready</p>
               </div>
-            ) : (
-              <p className="text-xs text-sti-gray mt-1">No photos selected - choose 1 or 3 for sliding</p>
             )}
           </div>
           <label className="flex items-center gap-2 text-sm text-sti-gray-dark dark:text-white">

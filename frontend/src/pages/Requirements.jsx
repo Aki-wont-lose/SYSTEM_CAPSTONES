@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { FileCheck2, Upload, CheckCircle2, XCircle, Clock3, X, Download, AlertTriangle, ListChecks, CalendarClock, Search } from 'lucide-react';
+import { FileCheck2, Upload, CheckCircle2, XCircle, Clock3, X, Download, AlertTriangle, Search } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { getMySubmissions, submitRequirementFile, getMyWeeklyTasks, completeWeeklyTask } from '../services/requirementService';
+import WeeklyToDo from '../components/WeeklyToDo';
+import { getMySubmissions, submitRequirementFile } from '../services/requirementService';
 
 const statusConfig = {
   PENDING: { label: 'Pending Review', style: 'bg-yellow-50 text-sti-yellow-dark', Icon: Clock3 },
@@ -34,7 +35,6 @@ const PAGE_SIZES = [10, 25, 50, 100, 'ALL'];
 
 const Requirements = ({ mode = 'all' }) => {
   const [items, setItems] = useState([]);
-  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState(null);
   const [error, setError] = useState('');
@@ -47,9 +47,8 @@ const Requirements = ({ mode = 'all' }) => {
 
   const loadData = async () => {
     try {
-      const [subRes, taskRes] = await Promise.all([getMySubmissions(), getMyWeeklyTasks()]);
-      setItems(subRes.data);
-      setTasks(taskRes.data);
+      const res = await getMySubmissions();
+      setItems(res.data);
     } catch (err) {
       setError(err.response?.data?.message || 'Could not load requirements');
     } finally {
@@ -91,16 +90,6 @@ const Requirements = ({ mode = 'all' }) => {
     }
   };
 
-  const handleCompleteTask = async (taskId) => {
-    setError('');
-    try {
-      await completeWeeklyTask(taskId);
-      loadData();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Could not update the to-do');
-    }
-  };
-
   const downloadTemplate = (req) => {
     const a = document.createElement('a');
     a.href = req.templateFile;
@@ -136,7 +125,6 @@ const Requirements = ({ mode = 'all' }) => {
 
   const isTemplates = mode === 'templates';
   const isSubmissions = mode === 'submissions';
-  const pendingTasks = tasks.filter((t) => t.status !== 'COMPLETED');
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -159,52 +147,7 @@ const Requirements = ({ mode = 'all' }) => {
 
       <input ref={fileInputRef} type="file" onChange={handleFileChange} className="hidden" />
 
-      {(isSubmissions || mode === 'all') && pendingTasks.length > 0 && (
-        <Card>
-          <div className="flex items-center gap-2 mb-3">
-            <ListChecks className="w-5 h-5 text-sti-blue" />
-            <h2 className="font-bold text-sti-gray-dark dark:text-white">Weekly To-Do</h2>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sti-blue-50 text-sti-blue">{pendingTasks.length}</span>
-          </div>
-          <div className="space-y-2">
-            {pendingTasks.map((task) => {
-              const missed = task.derivedStatus === 'MISSING';
-              return (
-                <div key={task.id} className={`flex items-start gap-3 p-3 rounded-xl border ${missed ? 'border-red-100 bg-red-50/60 dark:bg-red-950/30 dark:border-red-900' : 'border-black/5 dark:border-white/10'}`}>
-                  <button
-                    onClick={() => handleCompleteTask(task.id)}
-                    className="mt-0.5 p-1 rounded-lg hover:bg-sti-blue-50 text-sti-blue shrink-0"
-                    title="Mark as done"
-                  >
-                    <CheckCircle2 className="w-5 h-5" />
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-sti-gray-dark dark:text-white">{task.title}</p>
-                    {task.description && <p className="text-xs text-sti-gray mt-0.5">{task.description}</p>}
-                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className="text-[11px] font-medium text-sti-gray flex items-center gap-1">
-                        <CalendarClock className="w-3.5 h-3.5" /> Week of {formatDate(task.weekOf)}
-                      </span>
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${missed ? 'bg-red-100 text-red-700' : 'bg-amber-50 text-amber-700'}`}>
-                        {missed ? 'Overdue' : `Due ${formatDate(task.dueDate)}`}
-                      </span>
-                    </div>
-                  </div>
-                  {task.requirement?.templateFile && (
-                    <button
-                      onClick={() => { const a = document.createElement('a'); a.href = task.requirement.templateFile; a.download = task.requirement.templateFileName || 'template.pdf'; a.click(); }}
-                      className="p-2 rounded-lg hover:bg-sti-blue-50 text-sti-blue shrink-0"
-                      title="Download template"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      )}
+      {(isSubmissions || mode === 'all') && <WeeklyToDo onChanged={loadData} />}
 
       {items.length === 0 ? (
         <Card className="text-center py-16">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Clock, CheckCircle2, Hourglass, Megaphone } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
+import WeeklyToDo from '../components/WeeklyToDo';
 import WelcomeCarousel from '../components/WelcomeCarousel';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentSummary } from '../services/attendanceService';
@@ -60,8 +61,9 @@ const StudentDashboard = () => {
             </div>
           </div>
         </div>
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-4 sm:space-y-6">
           <CalendarWidget />
+          <WeeklyToDo emptyMessage="Nothing due this week. New tasks show up here each week." />
         </div>
       </div>
 
