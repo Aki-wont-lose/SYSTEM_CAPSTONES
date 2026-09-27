@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, X, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -163,13 +163,13 @@ const ForgotPasswordModal = ({ onClose }) => {
   };
   return (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-cardHover w-full max-w-sm p-6 relative">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-sm p-6 relative">
         <button onClick={onClose} className="absolute top-4 right-4 text-sti-gray"><X className="w-5 h-5" /></button>
         {stage === 'request' && (
           <>
             <h2 className="text-lg font-bold mb-1">Reset your password</h2>
             <p className="text-sm text-sti-gray mb-5">Enter your email and we'll generate a reset link.</p>
-            {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+            {error && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>}
             <form onSubmit={handleRequest} className="space-y-4">
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email address" className="input-field" />
               <Button type="submit" variant="primary" className="w-full" loading={loading}>Send reset link</Button>
@@ -180,7 +180,7 @@ const ForgotPasswordModal = ({ onClose }) => {
           <>
             <h2 className="text-lg font-bold mb-1">Enter new password</h2>
             {devToken && <div className="mb-4 text-xs bg-sti-yellow/15 px-3 py-2 rounded-lg border">No email provider — token pre-filled below.</div>}
-            {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+            {error && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>}
             <form onSubmit={handleReset} className="space-y-4">
               <input type="text" required value={resetToken || devToken || ''} onChange={(e) => setResetToken(e.target.value)} placeholder="Reset token" className="input-field text-xs" />
               <input type="password" required value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="New password (min 8)" className="input-field" />

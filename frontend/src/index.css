@@ -36,6 +36,76 @@
   }
 }
 
+/* ---------------------------------------------------------------------------
+   Dark mode readability
+
+   The tokens below are flipped for dark mode inside :where(), which contributes
+   no specificity of its own. That gives us the right precedence for free:
+     - a plain utility like .text-sti-gray-dark is corrected automatically
+     - an explicit dark: variant on the element (dark:text-white) still wins,
+       because those compile to a higher specificity than html.dark
+
+   Keeping it here means no page needs its own dark: variant for these tokens.
+   --------------------------------------------------------------------------- */
+@layer base {
+  /* Text: the light-mode navy and grey values are unreadable on slate-800/900 */
+  html.dark :where(.text-sti-gray-dark) {
+    color: #e2e8f0;
+  }
+  html.dark :where(.text-sti-gray) {
+    color: #b4c0cf;
+  }
+  html.dark :where(.text-sti-blue) {
+    color: #93b4f9;
+  }
+
+  /* Status text: the 600/700 tones are too dark once their chip background is dark */
+  html.dark :where(.text-red-500) {
+    color: #f87171;
+  }
+  html.dark :where(.text-red-600) {
+    color: #fca5a5;
+  }
+  html.dark :where(.text-red-700) {
+    color: #fecaca;
+  }
+  html.dark :where(.text-green-600) {
+    color: #86efac;
+  }
+  html.dark :where(.text-green-700) {
+    color: #bbf7d0;
+  }
+  html.dark :where(.text-emerald-600) {
+    color: #6ee7b7;
+  }
+  html.dark :where(.text-orange-600) {
+    color: #fdba74;
+  }
+  html.dark :where(.text-amber-600) {
+    color: #fcd34d;
+  }
+
+  /* Backgrounds: light-mode tints that were otherwise left light in dark mode */
+  html.dark :where(.bg-sti-blue-50) {
+    background-color: rgba(30, 95, 217, 0.18);
+  }
+  html.dark :where(.bg-sti-blue-100) {
+    background-color: rgba(30, 95, 217, 0.28);
+  }
+  html.dark :where(.bg-sti-gray-light) {
+    background-color: #1e293b;
+  }
+  html.dark :where(.bg-red-50) {
+    background-color: rgba(239, 68, 68, 0.18);
+  }
+  html.dark :where(.bg-green-50) {
+    background-color: rgba(34, 197, 94, 0.18);
+  }
+  html.dark :where(.bg-yellow-50) {
+    background-color: rgba(250, 204, 21, 0.18);
+  }
+}
+
 @layer components {
   .btn-primary {
     @apply bg-sti-blue text-white px-5 py-2.5 rounded-xl font-semibold text-sm
