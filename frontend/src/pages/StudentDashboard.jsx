@@ -1,13 +1,13 @@
 ﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle2, Hourglass, Megaphone } from 'lucide-react';
+import { Clock, CheckCircle2, Hourglass } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
 import WeeklyToDo from '../components/WeeklyToDo';
 import WelcomeCarousel from '../components/WelcomeCarousel';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentSummary } from '../services/attendanceService';
-import { getActiveAnnouncements } from '../services/announcementService';
+import { getActiveAnnouncements, parseAnnouncementPhotos } from '../services/announcementService';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -73,15 +73,27 @@ const StudentDashboard = () => {
           {announcements.length === 0 ? (
             <Card className="text-center py-6"><p className="text-sm text-sti-gray">No announcements yet</p></Card>
           ) : (
-            announcements.slice(0,2).map((a) => (
-              <Card key={a.id} className="!p-0 overflow-hidden">
-                {a.image && <img src={a.image} alt={a.title} className="w-full max-h-80 object-contain bg-sti-gray-light dark:bg-slate-900" />}
-                <div className="p-3">
-                  <h4 className="font-semibold text-sm text-sti-gray-dark dark:text-white">{a.title}</h4>
-                  <p className="text-sm text-sti-gray mt-1 line-clamp-2">{a.content}</p>
-                </div>
-              </Card>
-            ))
+            announcements.slice(0,2).map((a) => {
+              const photos = parseAnnouncementPhotos(a);
+              return (
+                <Card key={a.id} className="p-0 overflow-hidden">
+                  {photos.length === 1 && (
+                    <img src={photos[0]} alt={a.title} className="w-full max-h-80 object-contain bg-sti-gray-light dark:bg-slate-900" />
+                  )}
+                  {photos.length > 1 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-px bg-sti-gray-light dark:bg-slate-900">
+                      {photos.map((src, i) => (
+                        <img key={i} src={src} alt={`${a.title} ${i + 1}`} className="w-full aspect-square object-cover" />
+                      ))}
+                    </div>
+                  )}
+                  <div className="p-3">
+                    <h4 className="font-semibold text-sm text-sti-gray-dark dark:text-white">{a.title}</h4>
+                    <p className="text-sm text-sti-gray mt-1 line-clamp-2">{a.content}</p>
+                  </div>
+                </Card>
+              );
+            })
           )}
         </div>
         <div className="hidden lg:block" />

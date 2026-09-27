@@ -49,7 +49,7 @@ const WeeklyToDo = ({ emptyMessage, onChanged }) => {
   if (!loading && pending.length === 0 && !emptyMessage) return null;
 
   return (
-    <Card className="!p-4 sm:!p-6">
+    <Card className="p-4 sm:p-6">
       <div className="flex items-center gap-2 mb-3">
         <ListChecks className="w-5 h-5 text-sti-blue shrink-0" />
         <h2 className="font-bold text-sti-gray-dark dark:text-white">Weekly To-Do</h2>

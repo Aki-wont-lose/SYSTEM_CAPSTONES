@@ -135,10 +135,11 @@
       transition-all duration-150 placeholder:text-sti-gray
       dark:bg-slate-800 dark:border-white/10 dark:text-white;
   }
-  .card {
-    @apply bg-white rounded-2xl shadow-card border border-black/5
-      dark:bg-slate-800 dark:border-white/5;
+.card {
+  @apply bg-white rounded-2xl shadow-card border border-black/5 p-6
+  dark:bg-slate-800 dark:border-white/5;
   }
+
   /* Mobile (cp) optimizations - mostly students on cellphone */
   @media (max-width: 640px) {
     /* Larger tap targets, prevent zoom on input focus */

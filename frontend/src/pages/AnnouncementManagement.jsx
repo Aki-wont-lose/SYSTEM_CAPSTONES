@@ -7,24 +7,12 @@ import {
   getAllAnnouncements,
   createAnnouncement,
   updateAnnouncement,
-  deleteAnnouncement
+  deleteAnnouncement,
+  parseAnnouncementPhotos
 } from '../services/announcementService';
 import { compressImage } from '../services/imageService';
 
 const emptyForm = { title: '', content: '', image: null, images: null, isActive: true };
-
-// Photos are stored as a JSON array in `images` (up to 3) with `image` holding the first one
-const parsePhotos = (form) => {
-  if (form.images) {
-    try {
-      const parsed = JSON.parse(form.images);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  }
-  return form.image ? [form.image] : [];
-};
 
 const AnnouncementManagement = () => {
   const [announcements, setAnnouncements] = useState([]);
@@ -37,7 +25,7 @@ const AnnouncementManagement = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
-  const photos = parsePhotos(form);
+  const photos = parseAnnouncementPhotos(form);
 
   const loadAnnouncements = async () => {
     setLoading(true);

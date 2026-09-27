@@ -1,5 +1,18 @@
 import api from './api';
 
+// Photos live in `images` as a JSON array (up to 3), with `image` holding the first one
+export const parseAnnouncementPhotos = (announcement) => {
+  if (announcement?.images) {
+    try {
+      const parsed = JSON.parse(announcement.images);
+      if (Array.isArray(parsed)) return parsed.filter(Boolean);
+    } catch {
+      // fall through to the single-image field
+    }
+  }
+  return announcement?.image ? [announcement.image] : [];
+};
+
 export const getActiveAnnouncements = async (limit = 10) => {
   const response = await api.get('/announcements/active', { params: { limit } });
   return response.data;

@@ -1,7 +1,7 @@
 const Card = ({ children, className = '', hover = false, ...props }) => {
   return (
     <div
-      className={`card p-6 ${hover ? 'hover:shadow-cardHover transition-shadow duration-200' : ''} ${className}`}
+      className={`card ${hover ? 'hover:shadow-cardHover transition-shadow duration-200' : ''} ${className}`}
       {...props}
     >
       {children}

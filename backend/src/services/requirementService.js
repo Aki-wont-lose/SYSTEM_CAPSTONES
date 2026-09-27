@@ -414,11 +414,57 @@ export const getGradingSummary = async (filters = {}) => {
   };
 };
 
-// Weekly to-dos for a student
+// Weekly to-dos for a student.
+// Tasks are (re)generated on read so a student always sees the current week's to-dos
+// the moment a WEEKLY requirement exists, without needing a scheduled job.
+const ensureCurrentWeekTasks = async (student) => {
+  const weekOf = startOfWeek(new Date());
+
+  const weeklyRequirements = await prisma.requirement.findMany({
+    where: { isRequired: true, cadence: 'WEEKLY' },
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
+  });
+  const applicable = weeklyRequirements.filter((req) => !req.program || req.program === student.course);
+  if (!applicable.length) return;
+
+  const existing = await prisma.weeklyTask.findMany({
+    where: { studentId: student.id, requirementId: { in: applicable.map((r) => r.id) }, weekOf },
+    select: { requirementId: true }
+  });
+  const alreadyHave = new Set(existing.map((t) => t.requirementId));
+
+  const toCreate = applicable
+    .filter((req) => !alreadyHave.has(req.id))
+    .map((req) => ({
+      studentId: student.id,
+      requirementId: req.id,
+      title: req.title,
+      description: req.description,
+      weekOf,
+      dueDate: req.dueInDays ? addDays(weekOf, Number(req.dueInDays)) : addDays(weekOf, 7)
+    }));
+
+  if (toCreate.length) {
+    await prisma.weeklyTask.createMany({ data: toCreate, skipDuplicates: true });
+  }
+};
+
 export const getStudentWeeklyTasks = async (studentId) => {
   const now = new Date();
+  const student = await prisma.student.findUnique({ where: { id: studentId }, select: { id: true, course: true } });
+  if (!student) return [];
+
+  await ensureCurrentWeekTasks(student);
+
+  // Anything older than the previous week is settled so the list cannot grow forever
+  const weekFloor = startOfWeek(addDays(now, -7));
+  await prisma.weeklyTask.updateMany({
+    where: { studentId, weekOf: { lt: weekFloor }, status: 'PENDING' },
+    data: { status: 'MISSING' }
+  });
+
   const tasks = await prisma.weeklyTask.findMany({
-    where: { studentId },
+    where: { studentId, weekOf: { gte: weekFloor } },
     orderBy: [{ dueDate: 'asc' }],
     include: { requirement: { select: { id: true, title: true, templateFile: true, templateFileName: true } } }
   });
