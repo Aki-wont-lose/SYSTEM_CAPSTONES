@@ -23,11 +23,31 @@ export const updateMyProfile = async (userId, data) => {
     if (Object.keys(updateData).length) return updateStudent(student.id, updateData);
     return student;
   }
-  // Staff self-service fields (name and contact number live on User)
-  const STAFF_EDITABLE = ['firstName', 'lastName', 'contactNumber'];
+  // Staff self-service fields (email is the sign-in identity, so it is validated and lowercased).
+  // role is intentionally absent: nobody can change their own role here, which is what protects
+  // the last remaining ADMIN from locking themselves out of the admin-only pages.
+  const STAFF_EDITABLE = ['firstName', 'lastName', 'contactNumber', 'email'];
   const staffUpdate = {};
   for (const field of STAFF_EDITABLE) {
     if (data[field] !== undefined) staffUpdate[field] = String(data[field] || '').trim() || null;
+  }
+  if (staffUpdate.email !== undefined) {
+    const email = String(staffUpdate.email).trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      const error = new Error('Enter a valid email address');
+      error.status = 400;
+      throw error;
+    }
+    const taken = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' }, NOT: { id: userId } },
+      select: { id: true }
+    });
+    if (taken) {
+      const error = new Error('That email address is already used by another account');
+      error.status = 409;
+      throw error;
+    }
+    staffUpdate.email = email;
   }
   if (Object.keys(staffUpdate).length) {
     return prisma.user.update({

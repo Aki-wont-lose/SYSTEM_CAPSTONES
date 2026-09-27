@@ -9,8 +9,9 @@ const AdminProfile = () => {
   const { user, updateUser } = useAuth();
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [details, setDetails] = useState({ firstName: '', lastName: '', contactNumber: '' });
+  const [details, setDetails] = useState({ firstName: '', lastName: '', contactNumber: '', email: '' });
   const [savingDetails, setSavingDetails] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
   const [toast, setToast] = useState(null);
   const fileRef = useRef(null);
   const defaults = [{bg:'bg-sti-blue'},{bg:'bg-sti-yellow'},{bg:'bg-emerald-500'}];
@@ -25,7 +26,8 @@ const AdminProfile = () => {
         setDetails({
           firstName: profileUser.firstName || '',
           lastName: profileUser.lastName || '',
-          contactNumber: profileUser.contactNumber || ''
+          contactNumber: profileUser.contactNumber || '',
+          email: profileUser.email || ''
         });
       } catch {}
     };
@@ -38,12 +40,36 @@ const AdminProfile = () => {
     e.preventDefault();
     setSavingDetails(true);
     try {
-      await api.put('/profile', details);
+      const res = await api.put('/profile', {
+        firstName: details.firstName,
+        lastName: details.lastName,
+        contactNumber: details.contactNumber
+      });
+      const updated = res.data?.data || {};
+      setDetails(d => ({ ...d, firstName: updated.firstName ?? d.firstName, lastName: updated.lastName ?? d.lastName, contactNumber: updated.contactNumber ?? d.contactNumber }));
+      updateUser({ firstName: updated.firstName, lastName: updated.lastName, contactNumber: updated.contactNumber });
       setToast({ tone: 'success', msg: 'Profile details saved' });
     } catch (err) {
       setToast({ tone: 'error', msg: err.response?.data?.message || 'Could not save your details' });
     } finally {
       setSavingDetails(false);
+      setTimeout(() => setToast(null), 3500);
+    }
+  };
+
+  const handleSaveEmail = async (e) => {
+    e.preventDefault();
+    setSavingEmail(true);
+    try {
+      const res = await api.put('/profile', { email: details.email });
+      const updated = res.data?.data || {};
+      setDetails(d => ({ ...d, email: updated.email || d.email }));
+      updateUser({ email: updated.email || details.email });
+      setToast({ tone: 'success', msg: 'Email address saved. Use it to sign in next time.' });
+    } catch (err) {
+      setToast({ tone: 'error', msg: err.response?.data?.message || 'Could not save your email' });
+    } finally {
+      setSavingEmail(false);
       setTimeout(() => setToast(null), 3500);
     }
   };
@@ -138,20 +164,34 @@ const AdminProfile = () => {
 
       <Card>
         <h3 className="font-bold text-sti-gray-dark dark:text-white mb-5">Account Information</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <form onSubmit={handleSaveEmail} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="flex items-center gap-1.5 text-xs font-medium text-sti-gray mb-1.5">
               <Mail className="w-3.5 h-3.5" /> Email Address
             </label>
-            <p className="text-sm font-medium text-sti-gray-dark dark:text-slate-200 py-2.5">{user?.email}</p>
+            <input
+              type="email"
+              value={details.email}
+              onChange={(e) => setDetails({ ...details, email: e.target.value })}
+              className="input-field"
+              placeholder="you@stamaria.sti.edu.ph"
+            />
           </div>
           <div>
             <label className="flex items-center gap-1.5 text-xs font-medium text-sti-gray mb-1.5">
               <Shield className="w-3.5 h-3.5" /> Role
             </label>
-            <p className="text-sm font-medium text-sti-gray-dark dark:text-slate-200 py-2.5">{user?.role ? user.role.charAt(0)+user.role.slice(1).toLowerCase() : 'Administrator'}</p>
+            <p className="text-sm font-medium text-sti-gray-dark dark:text-slate-200 py-2.5 flex items-center gap-2">
+              {user?.role ? user.role.charAt(0)+user.role.slice(1).toLowerCase() : 'Administrator'}
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sti-gray-light text-sti-gray dark:bg-white/10">Locked</span>
+            </p>
           </div>
-        </div>
+          <div className="sm:col-span-2 flex items-center gap-3">
+            <Button type="submit" icon={Save} loading={savingEmail} className="text-sm px-4 py-2">Save email</Button>
+            {toast && <p className={`text-xs ${toast.tone === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>{toast.msg}</p>}
+          </div>
+        </form>
+        <p className="text-[11px] text-sti-gray mt-4">This is the email you sign in with. You keep your current session after changing it.</p>
       </Card>
     </div>
   );

@@ -32,8 +32,9 @@ export const generateTemporaryPassword = () => {
 };
 
 export const loginUser = async (email, password) => {
-  const user = await prisma.user.findUnique({
-    where: { email },
+  // Case-insensitive so changing your own email in Profile can never lock you out of sign-in
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: String(email || '').trim(), mode: 'insensitive' } },
     include: { student: true }
   });
 
