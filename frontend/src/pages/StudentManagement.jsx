@@ -317,9 +317,14 @@ const StudentManagement = () => {
           )}
           {(role === 'ADMIN' || role === 'COORDINATOR') && (
             <>
-              <Button variant="secondary" icon={FileSpreadsheet} onClick={downloadBatchTemplate} title="Download the student import template">
-                Template
-              </Button>
+              <Button
+                variant="secondary"
+                icon={FileSpreadsheet}
+                onClick={downloadBatchTemplate}
+                title="Download the student import template"
+                aria-label="Download the student import template"
+                className="!px-3"
+              />
               <div
                 onDragOver={e=>{e.preventDefault(); setDragOver(true)}}
                 onDragLeave={()=>setDragOver(false)}
