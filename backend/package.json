@@ -20,7 +20,7 @@
         "sti"
     ],
     "engines": {
-        "node": "20.x"
+        "node": "24.x"
     },
     "author": "STI College",
     "license": "ISC",

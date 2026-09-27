@@ -2,3 +2,6 @@
 dist/
 .env
 *.log
+.vercel
+.env.local
+
