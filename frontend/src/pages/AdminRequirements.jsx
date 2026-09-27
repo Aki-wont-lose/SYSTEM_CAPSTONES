@@ -760,6 +760,16 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                   <option value="WEEKLY">Weekly (auto-creates next to-do)</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Template File (Coordinator uploads — student downloads & edits name)</label>
+                <input type="file" accept=".pdf,.doc,.docx" onChange={handleTemplateChange} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white hover:file:bg-sti-blue-dark file:text-xs file:font-semibold" />
+                {form.templateFileName && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-sti-blue">
+                    <FileCheck2 className="w-4 h-4" /> {form.templateFileName}
+                    <button type="button" onClick={() => setForm({ ...form, templateFile: null, templateFileName: null })} className="text-red-600 hover:underline">Remove</button>
+                  </div>
+                )}
+              </div>
               <Button type="submit" variant="primary" className="w-full" loading={saving}>
                 {editing ? 'Save Changes' : 'Add Requirement'}
               </Button>
