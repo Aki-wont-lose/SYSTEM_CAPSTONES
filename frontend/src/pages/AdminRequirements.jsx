@@ -202,7 +202,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
         program: form.program === 'ALL' ? null : form.program,
         dueInDays: form.dueInDays === '' ? null : Number(form.dueInDays),
         maxScore: Number(form.maxScore) || 0,
-        sortOrder: Number(form.sortOrder) || 0
+        sortOrder: editing ? Number(form.sortOrder) || 0 : requirements.length
       };
       if (editing) {
         await updateRequirement(editing.id, payload);
@@ -753,77 +753,12 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Recurrence</label>
-                  <select value={form.cadence} onChange={(e) => setForm({ ...form, cadence: e.target.value })} className="input-field">
-                    <option value="ONCE">One-time</option>
-                    <option value="WEEKLY">Weekly (auto-creates next to-do)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Due in (days)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.dueInDays}
-                    onChange={(e) => setForm({ ...form, dueInDays: e.target.value })}
-                    className="input-field"
-                    placeholder="e.g. 7"
-                  />
-                  <p className="text-[11px] text-sti-gray mt-1">After the deadline, unsubmitted items count as missing</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Max score</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={form.maxScore}
-                    onChange={(e) => setForm({ ...form, maxScore: e.target.value })}
-                    className="input-field"
-                    placeholder="0 = not graded"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Sort order</label>
-                  <input
-                    type="number"
-                    value={form.sortOrder}
-                    onChange={(e) => setForm({ ...form, sortOrder: e.target.value })}
-                    className="input-field"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              <label className="flex items-center gap-2 text-sm text-sti-gray-dark dark:text-slate-200">
-                <input
-                  type="checkbox"
-                  checked={form.autoGradeOnSubmit}
-                  onChange={(e) => setForm({ ...form, autoGradeOnSubmit: e.target.checked })}
-                  className="rounded border-sti-gray/40 text-sti-blue focus:ring-sti-blue"
-                />
-                Award full score automatically on upload
-              </label>
-              <label className="flex items-center gap-2 text-sm text-sti-gray-dark dark:text-slate-200">
-                <input
-                  type="checkbox"
-                  checked={form.isRequired}
-                  onChange={(e) => setForm({ ...form, isRequired: e.target.checked })}
-                  className="rounded border-sti-gray/40 text-sti-blue focus:ring-sti-blue"
-                />
-                Mark as required
-              </label>
               <div>
-                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Template PDF (Coordinator uploads — student downloads & edits name)</label>
-                <input type="file" accept=".pdf,.doc,.docx" onChange={handleTemplateChange} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white hover:file:bg-sti-blue-dark file:text-xs file:font-semibold" />
-                {form.templateFileName && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-sti-blue">
-                    <FileCheck2 className="w-4 h-4" /> {form.templateFileName}
-                    <button type="button" onClick={() => setForm({ ...form, templateFile: null, templateFileName: null })} className="text-red-600 hover:underline">Remove</button>
-                  </div>
-                )}
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Recurrence</label>
+                <select value={form.cadence} onChange={(e) => setForm({ ...form, cadence: e.target.value })} className="input-field">
+                  <option value="ONCE">One-time</option>
+                  <option value="WEEKLY">Weekly (auto-creates next to-do)</option>
+                </select>
               </div>
               <Button type="submit" variant="primary" className="w-full" loading={saving}>
                 {editing ? 'Save Changes' : 'Add Requirement'}
