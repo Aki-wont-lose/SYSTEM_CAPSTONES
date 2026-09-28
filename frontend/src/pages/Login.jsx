@@ -295,10 +295,17 @@ const ForgotPasswordModal = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-sm p-6 relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-sti-gray" aria-label="Close">
-          <X className="w-5 h-5" />
-        </button>
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-sm max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-end px-4 pt-4 shrink-0">
+          <button
+            onClick={onClose}
+            className="p-2 -mr-1 rounded-lg text-sti-gray hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="px-6 pb-6 overflow-y-auto">
         {stage === 'request' && (
           <>
             <h2 className="text-lg font-bold mb-1 dark:text-white">Reset your password</h2>
@@ -361,6 +368,7 @@ const ForgotPasswordModal = ({ onClose }) => {
             </Button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
@@ -409,10 +417,13 @@ const Login = () => {
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur border-b border-black/5 dark:border-white/10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between py-3 gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <img src="/sti-logo.png" alt="STI College Sta. Maria" className="h-9 sm:h-10 w-auto shrink-0" />
-            <span className="font-semibold text-sti-blue dark:text-white text-xs sm:text-sm truncate">
-              STI Education Services Group
-            </span>
+            <img src="/sti-logo.png" alt="STI College Sta. Maria" className="h-9 sm:h-11 w-auto shrink-0" />
+            <div className="min-w-0 leading-tight">
+              <p className="font-bold text-sti-gray-dark dark:text-white text-xs sm:text-sm truncate">
+                STI College Sta. Maria
+              </p>
+              <p className="text-sti-gray text-[11px] sm:text-xs truncate">STI Education Services Group</p>
+            </div>
           </div>
           <button
             onClick={() => setView('choice')}
@@ -424,7 +435,7 @@ const Login = () => {
       </header>
 
       <main className="flex-1 flex flex-col">
-        <section className="relative w-full h-[240px] sm:h-[340px] lg:h-[460px] bg-sti-blue-dark overflow-hidden">
+        <section className="relative w-full min-h-[calc(100vh-4.5rem)] bg-sti-blue-dark overflow-hidden">
           {slides.map((slide, idx) => (
             <img
               key={slide.src}
@@ -435,17 +446,7 @@ const Login = () => {
               }`}
             />
           ))}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-slate-900/25 to-slate-900/10" />
-          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-8 lg:p-12">
-            <div className="max-w-2xl">
-              <h1 className="text-white text-2xl sm:text-4xl lg:text-5xl font-extrabold leading-tight drop-shadow">
-                Student Internship Monitoring and Evaluation System
-              </h1>
-              <p className="text-white/85 text-sm sm:text-base mt-2 sm:mt-3 max-w-xl drop-shadow">
-                Track hours, requirements, and submissions for every intern, all in one place.
-              </p>
-            </div>
-          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-slate-900/10 to-slate-900/10" />
           {slides.length > 1 && (
             <>
               <button
@@ -522,12 +523,19 @@ const Login = () => {
 
       {view && !showForgot && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-sm p-6 relative animate-slide-up max-h-[90vh] overflow-y-auto">
-            <button onClick={closeDialog} className="absolute top-4 right-4 text-sti-gray" aria-label="Close">
-              <X className="w-5 h-5" />
-            </button>
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-sm max-h-[90vh] flex flex-col animate-slide-up overflow-hidden">
+            <div className="flex items-center justify-end px-4 pt-4 shrink-0">
+              <button
+                onClick={closeDialog}
+                className="p-2 -mr-1 rounded-lg text-sti-gray hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-6 pb-6 overflow-y-auto">
             {view === 'choice' && (
-              <div className="space-y-3">
+              <div className="space-y-3 -mt-3">
                 <button
                   onClick={() => setView('student')}
                   className="w-full py-3 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark"
@@ -550,6 +558,7 @@ const Login = () => {
             )}
             {view === 'student' && <StudentView onBack={() => setView('choice')} />}
             {view === 'admin' && <AdminView onBack={() => setView('choice')} onForgot={() => setShowForgot(true)} />}
+            </div>
           </div>
         </div>
       )}
