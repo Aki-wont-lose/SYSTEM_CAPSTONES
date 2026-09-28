@@ -443,7 +443,7 @@ const Login = () => {
       </main>
 
       <footer className="bg-sti-gray-light dark:bg-slate-900 px-4 sm:px-6 lg:px-8 py-6">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-sti-gray text-center sm:text-left">
             &copy; {new Date().getFullYear()} STI College Sta. Maria
           </p>
