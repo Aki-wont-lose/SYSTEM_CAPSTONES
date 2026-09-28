@@ -8,11 +8,7 @@ import {
   AlertCircle,
   X,
   CheckCircle2,
-  ArrowLeft,
-  BookOpen,
-  ClipboardCheck,
-  Clock,
-  Users
+  ArrowLeft
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../components/Button';
@@ -65,25 +61,25 @@ const socials = [
 
 const features = [
   {
-    Icon: BookOpen,
+    image: '/features/feature-1.jpg',
     title: 'Every requirement in one place',
     description:
       'Interns open requirement guides, download PDF templates, and see exactly what is still due from any phone or computer, whether they are at school or at the company.'
   },
   {
-    Icon: ClipboardCheck,
+    image: '/features/feature-2.jpg',
     title: 'Submit and get graded faster',
     description:
       'Weekly reports and documents upload in a single tap. Auto-graded items score instantly, and everything else goes straight into the coordinator review queue instead of an email thread.'
   },
   {
-    Icon: Clock,
+    image: '/features/feature-3.jpg',
     title: 'Camera-verified attendance',
     description:
       'Time in and time out are stamped with a photo, so supervisors see the real hours each intern worked, and late or missed days are flagged automatically.'
   },
   {
-    Icon: Users,
+    image: '/features/feature-4.jpg',
     title: 'Stay connected to your batch',
     description:
       'Message classmates, supervisors, and coordinators in one place, keep every conversation attached to the internship, and never lose track of who already replied.'
@@ -429,13 +425,18 @@ const Login = () => {
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-6 flex flex-col gap-3"
+                className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden flex flex-col"
               >
-                <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-sti-blue-50 dark:bg-sti-blue/15 flex items-center justify-center text-sti-blue dark:text-sti-blue-light shrink-0">
-                  <feature.Icon className="w-6 h-6" strokeWidth={2} />
+                <img
+                  src={feature.image}
+                  alt={feature.title}
+                  loading="lazy"
+                  className="block w-full h-48 sm:h-52 object-cover"
+                />
+                <div className="p-5 sm:p-6 flex flex-col gap-2 flex-1">
+                  <h2 className="font-semibold text-sti-gray-dark dark:text-white leading-tight">{feature.title}</h2>
+                  <p className="text-sm text-sti-gray leading-relaxed">{feature.description}</p>
                 </div>
-                <h2 className="font-semibold text-sti-gray-dark dark:text-white leading-tight">{feature.title}</h2>
-                <p className="text-sm text-sti-gray leading-relaxed">{feature.description}</p>
               </div>
             ))}
           </div>
