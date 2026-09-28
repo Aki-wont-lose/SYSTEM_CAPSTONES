@@ -64,8 +64,6 @@ const XIcon = ({ size = 18 }) => (
   </svg>
 );
 
-const heroImage = { src: '/hero/sti-login.jpg', alt: 'STI College Sta. Maria' };
-
 const socials = [
   { href: 'https://www.youtube.com/user/STIEducationGroup', label: 'YouTube', Icon: YouTubeIcon },
   { href: 'https://www.instagram.com/stieducationsvcs/', label: 'Instagram', Icon: InstagramIcon },
@@ -424,14 +422,6 @@ const Login = () => {
       </header>
 
       <main className="flex-1 flex flex-col">
-        <section className="w-full min-h-[calc(100vh-4.5rem)] bg-sti-blue-dark">
-          <img
-            src={heroImage.src}
-            alt={heroImage.alt}
-            className="w-full h-full min-h-[calc(100vh-4.5rem)] object-cover"
-          />
-        </section>
-
         <section className="px-4 sm:px-6 lg:px-8 py-8 sm:py-12 bg-sti-gray-light/70 dark:bg-slate-900/60">
           <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
             {features.map((feature) => (
@@ -475,18 +465,19 @@ const Login = () => {
       {view && !showForgot && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] flex flex-col animate-slide-up overflow-hidden">
-            <div className="flex items-center justify-end px-4 pt-4 shrink-0">
+            <div className="flex items-start justify-between gap-3 px-6 pt-5 shrink-0">
+              <h2 className="text-lg font-bold text-sti-gray-dark dark:text-white">Log in</h2>
               <button
                 onClick={closeDialog}
-                className="p-2 -mr-1 rounded-lg text-sti-gray hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                className="p-2 -mr-2 -mt-1 rounded-lg text-sti-gray hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                 aria-label="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="px-6 pb-6 overflow-y-auto">
+            <div className="px-6 pb-6 pt-4 overflow-y-auto">
             {view === 'choice' && (
-              <div className="space-y-3 -mt-3">
+              <div className="space-y-3">
                 <button
                   onClick={() => setView('student')}
                   className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark leading-snug"
