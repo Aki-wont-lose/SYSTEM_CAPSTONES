@@ -83,7 +83,9 @@ export const auditTrail = (req, res, next) => {
   try {
     const token = req.headers.authorization?.split(' ')[1];
     if (token) {
-      const decoded = jwt.verify(token, JWT_SECRET);
+      // Same HS256 pin as verifyToken, so the audit trail attributes a request the
+      // same way the API authorises it.
+      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
       actor = { userId: decoded.userId, userEmail: decoded.email, userRole: decoded.role };
     }
   } catch {
