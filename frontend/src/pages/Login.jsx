@@ -447,17 +447,17 @@ const Login = () => {
           <p className="text-xs text-sti-gray text-center sm:text-left">
             &copy; {new Date().getFullYear()} STI College Sta. Maria
           </p>
-          <div className="flex items-center gap-1 sm:gap-2 text-sti-gray-dark dark:text-white/80">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             {socials.map(({ href, label, Icon }) => (
               <a
                 key={label}
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+                className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-sti-blue bg-white text-sti-blue hover:bg-sti-blue hover:text-white dark:bg-slate-800 dark:text-sti-blue-light dark:border-sti-blue-light dark:hover:bg-sti-blue-light dark:hover:text-slate-900 transition-colors"
                 aria-label={label}
               >
-                <Icon size={18} />
+                <Icon size={22} />
               </a>
             ))}
           </div>
