@@ -60,30 +60,10 @@ const socials = [
 ];
 
 const features = [
-  {
-    image: '/features/feature-1.jpg',
-    title: 'Every requirement in one place',
-    description:
-      'Interns open requirement guides, download PDF templates, and see exactly what is still due from any phone or computer, whether they are at school or at the company.'
-  },
-  {
-    image: '/features/feature-2.jpg',
-    title: 'Submit and get graded faster',
-    description:
-      'Weekly reports and documents upload in a single tap. Auto-graded items score instantly, and everything else goes straight into the coordinator review queue instead of an email thread.'
-  },
-  {
-    image: '/features/feature-3.jpg',
-    title: 'Camera-verified attendance',
-    description:
-      'Time in and time out are stamped with a photo, so supervisors see the real hours each intern worked, and late or missed days are flagged automatically.'
-  },
-  {
-    image: '/features/feature-4.jpg',
-    title: 'Stay connected to your batch',
-    description:
-      'Message classmates, supervisors, and coordinators in one place, keep every conversation attached to the internship, and never lose track of who already replied.'
-  }
+  { image: '/features/feature-1.jpg', alt: 'Requirement guides, PDF templates and what is still due' },
+  { image: '/features/feature-2.jpg', alt: 'Submitting weekly reports and getting graded faster' },
+  { image: '/features/feature-3.jpg', alt: 'Camera-verified time in and time out attendance' },
+  { image: '/features/feature-4.jpg', alt: 'Messaging classmates, supervisors and coordinators' }
 ];
 
 const StudentView = ({ onBack }) => {
@@ -423,21 +403,13 @@ const Login = () => {
         <section className="px-4 sm:px-6 lg:px-8 py-8 sm:py-12 bg-sti-gray-light/70 dark:bg-slate-900/60">
           <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
             {features.map((feature) => (
-              <div
-                key={feature.title}
-                className="bg-white dark:bg-slate-800 rounded-2xl overflow-hidden flex flex-col"
-              >
-                <img
-                  src={feature.image}
-                  alt={feature.title}
-                  loading="lazy"
-                  className="block w-full h-48 sm:h-52 object-cover"
-                />
-                <div className="p-5 sm:p-6 flex flex-col gap-2 flex-1">
-                  <h2 className="font-semibold text-sti-gray-dark dark:text-white leading-tight">{feature.title}</h2>
-                  <p className="text-sm text-sti-gray leading-relaxed">{feature.description}</p>
-                </div>
-              </div>
+              <img
+                key={feature.image}
+                src={feature.image}
+                alt={feature.alt}
+                loading="lazy"
+                className="block w-full h-auto rounded-2xl"
+              />
             ))}
           </div>
         </section>
