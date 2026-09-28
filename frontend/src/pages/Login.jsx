@@ -420,7 +420,7 @@ const Login = () => {
           <img
             src={heroImage.src}
             alt={heroImage.alt}
-            className="block w-full max-h-[240px] sm:max-h-[320px] lg:max-h-[400px] object-cover"
+            className="block w-full max-h-[240px] sm:max-h-[320px] lg:max-h-[400px] object-cover object-top"
           />
         </section>
 
