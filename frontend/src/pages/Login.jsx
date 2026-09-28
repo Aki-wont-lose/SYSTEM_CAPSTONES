@@ -9,8 +9,6 @@ import {
   X,
   CheckCircle2,
   ArrowLeft,
-  ChevronLeft,
-  ChevronRight,
   BookOpen,
   ClipboardCheck,
   Clock,
@@ -66,7 +64,7 @@ const XIcon = ({ size = 18 }) => (
   </svg>
 );
 
-const slides = [{ src: '/hero/sti-login.jpg', alt: 'STI College Sta. Maria' }];
+const heroImage = { src: '/hero/sti-login.jpg', alt: 'STI College Sta. Maria' };
 
 const socials = [
   { href: 'https://www.youtube.com/user/STIEducationGroup', label: 'YouTube', Icon: YouTubeIcon },
@@ -376,16 +374,7 @@ const ForgotPasswordModal = ({ onClose }) => {
 
 const Login = () => {
   const [view, setView] = useState(null);
-  const [slideIndex, setSlideIndex] = useState(0);
   const [showForgot, setShowForgot] = useState(false);
-
-  useEffect(() => {
-    if (slides.length < 2) return undefined;
-    const timer = setInterval(() => {
-      setSlideIndex((prev) => (prev + 1) % slides.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     if (!view && !showForgot) return undefined;
@@ -435,50 +424,8 @@ const Login = () => {
       </header>
 
       <main className="flex-1 flex flex-col">
-        <section className="relative w-full min-h-[calc(100vh-4.5rem)] bg-sti-blue-dark overflow-hidden">
-          {slides.map((slide, idx) => (
-            <img
-              key={slide.src}
-              src={slide.src}
-              alt={slide.alt}
-              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out ${
-                idx === slideIndex ? 'opacity-100' : 'opacity-0'
-              }`}
-            />
-          ))}
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-slate-900/10 to-slate-900/10" />
-          {slides.length > 1 && (
-            <>
-              <button
-                type="button"
-                onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)}
-                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
-                aria-label="Previous slide"
-              >
-                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setSlideIndex((slideIndex + 1) % slides.length)}
-                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
-                aria-label="Next slide"
-              >
-                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-              </button>
-              <div className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 px-2 py-1 rounded-full bg-black/40 backdrop-blur-sm">
-                {slides.map((slide, idx) => (
-                  <button
-                    key={slide.src}
-                    onClick={() => setSlideIndex(idx)}
-                    className={`h-1.5 sm:h-2 rounded-full transition-all ${
-                      idx === slideIndex ? 'w-6 sm:w-8 bg-white' : 'w-2 sm:w-2.5 bg-white/50 hover:bg-white/70'
-                    }`}
-                    aria-label={`Go to slide ${idx + 1}`}
-                  />
-                ))}
-              </div>
-            </>
-          )}
+        <section className="w-full min-h-[calc(100vh-4.5rem)] bg-sti-blue-dark">
+          <img src={heroImage.src} alt={heroImage.alt} className="w-full h-full min-h-[calc(100vh-4.5rem)] object-cover" />
         </section>
 
         <section className="px-4 sm:px-6 lg:px-8 py-8 sm:py-12 bg-sti-gray-light/70 dark:bg-slate-900/60">
