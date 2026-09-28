@@ -46,15 +46,6 @@ const FacebookIcon = ({ size = 18 }) => (
   </svg>
 );
 
-const InstagramIcon = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
-    <path
-      fill="currentColor"
-      d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.5a5.5 5.5 0 1 1 0 11 5.5 5.5 0 0 1 0-11zm0 2a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zm5.8-3a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0z"
-    />
-  </svg>
-);
-
 const XIcon = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
     <path
@@ -67,10 +58,9 @@ const XIcon = ({ size = 18 }) => (
 const heroImage = { src: '/hero/sti-login.jpg', alt: 'STI College Sta. Maria' };
 
 const socials = [
-  { href: 'https://www.youtube.com/user/STIEducationGroup', label: 'YouTube', Icon: YouTubeIcon },
-  { href: 'https://www.instagram.com/stieducationsvcs/', label: 'Instagram', Icon: InstagramIcon },
-  { href: 'https://www.facebook.com/stieducation', label: 'Facebook', Icon: FacebookIcon },
-  { href: 'https://x.com/stieducation', label: 'X', Icon: XIcon }
+  { href: 'https://www.youtube.com/user/STIdotEdu', label: 'YouTube', Icon: YouTubeIcon },
+  { href: 'https://www.facebook.com/sti.edu', label: 'Facebook', Icon: FacebookIcon },
+  { href: 'https://x.com/sticollege', label: 'X', Icon: XIcon }
 ];
 
 const features = [
@@ -408,10 +398,10 @@ const Login = () => {
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <img src="/sti-logo.png" alt="STI College Sta. Maria" className="block h-10 sm:h-14 w-auto shrink-0" />
             <div className="min-w-0 leading-tight">
-              <p className="font-extrabold text-sti-gray-dark dark:text-white text-base sm:text-xl lg:text-2xl truncate">
+              <p className="font-extrabold text-black dark:text-black text-base sm:text-xl lg:text-2xl truncate">
                 STI College Sta. Maria
               </p>
-              <p className="font-bold text-sti-blue dark:text-sti-blue-light text-xs sm:text-sm lg:text-base truncate">
+              <p className="font-bold text-black dark:text-black text-xs sm:text-sm lg:text-base truncate">
                 STI Education Services Group
               </p>
             </div>
@@ -427,7 +417,11 @@ const Login = () => {
 
       <main className="flex-1 flex flex-col">
         <section className="w-full">
-          <img src={heroImage.src} alt={heroImage.alt} className="block w-full object-cover" />
+          <img
+            src={heroImage.src}
+            alt={heroImage.alt}
+            className="block w-full max-h-[240px] sm:max-h-[320px] lg:max-h-[400px] object-cover"
+          />
         </section>
 
         <section className="px-4 sm:px-6 lg:px-8 py-8 sm:py-12 bg-sti-gray-light/70 dark:bg-slate-900/60">
