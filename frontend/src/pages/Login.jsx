@@ -66,12 +66,7 @@ const XIcon = ({ size = 18 }) => (
   </svg>
 );
 
-const slides = [
-  { src: '/hero/slide-4.jpg', alt: 'STI College Sta. Maria' },
-  { src: '/hero/slide-1.jpg', alt: 'SIMES student dashboard' },
-  { src: '/hero/slide-2.jpg', alt: 'SIMES attendance and daily records' },
-  { src: '/hero/slide-3.jpg', alt: 'SIMES requirements and submissions' }
-];
+const slides = [{ src: '/hero/sti-campus.jpg', alt: 'STI College Sta. Maria' }];
 
 const socials = [
   { href: 'https://www.youtube.com/user/STIEducationGroup', label: 'YouTube', Icon: YouTubeIcon },
@@ -377,6 +372,7 @@ const Login = () => {
   const [showForgot, setShowForgot] = useState(false);
 
   useEffect(() => {
+    if (slides.length < 2) return undefined;
     const timer = setInterval(() => {
       setSlideIndex((prev) => (prev + 1) % slides.length);
     }, 6000);
@@ -412,7 +408,12 @@ const Login = () => {
     <div className="min-h-screen flex flex-col bg-white dark:bg-slate-950">
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur border-b border-black/5 dark:border-white/10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between py-3 gap-4">
-          <img src="/sti-logo.png" alt="STI College Sta. Maria" className="h-9 sm:h-10 w-auto" />
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <img src="/sti-logo.png" alt="STI College Sta. Maria" className="h-9 sm:h-10 w-auto shrink-0" />
+            <span className="font-semibold text-sti-blue dark:text-white text-xs sm:text-sm truncate">
+              STI Education Services Group
+            </span>
+          </div>
           <button
             onClick={() => setView('choice')}
             className="px-4 sm:px-5 py-2 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark shadow-sm shrink-0"
@@ -445,34 +446,38 @@ const Login = () => {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)}
-            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setSlideIndex((slideIndex + 1) % slides.length)}
-            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
-            aria-label="Next slide"
-          >
-            <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-          </button>
-          <div className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 px-2 py-1 rounded-full bg-black/40 backdrop-blur-sm">
-            {slides.map((slide, idx) => (
+          {slides.length > 1 && (
+            <>
               <button
-                key={slide.src}
-                onClick={() => setSlideIndex(idx)}
-                className={`h-1.5 sm:h-2 rounded-full transition-all ${
-                  idx === slideIndex ? 'w-6 sm:w-8 bg-white' : 'w-2 sm:w-2.5 bg-white/50 hover:bg-white/70'
-                }`}
-                aria-label={`Go to slide ${idx + 1}`}
-              />
-            ))}
-          </div>
+                type="button"
+                onClick={() => setSlideIndex((slideIndex - 1 + slides.length) % slides.length)}
+                className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setSlideIndex((slideIndex + 1) % slides.length)}
+                className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 p-2 sm:p-2.5 rounded-full bg-black/40 text-white hover:bg-black/60 transition-colors"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+              <div className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 px-2 py-1 rounded-full bg-black/40 backdrop-blur-sm">
+                {slides.map((slide, idx) => (
+                  <button
+                    key={slide.src}
+                    onClick={() => setSlideIndex(idx)}
+                    className={`h-1.5 sm:h-2 rounded-full transition-all ${
+                      idx === slideIndex ? 'w-6 sm:w-8 bg-white' : 'w-2 sm:w-2.5 bg-white/50 hover:bg-white/70'
+                    }`}
+                    aria-label={`Go to slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
         </section>
 
         <section className="px-4 sm:px-6 lg:px-8 py-8 sm:py-12 bg-sti-gray-light/70 dark:bg-slate-900/60">
@@ -521,10 +526,6 @@ const Login = () => {
             <button onClick={closeDialog} className="absolute top-4 right-4 text-sti-gray" aria-label="Close">
               <X className="w-5 h-5" />
             </button>
-            <div className="mb-5 pr-6">
-              <h2 className="text-lg font-bold text-sti-gray-dark dark:text-white">SIMES</h2>
-              <p className="text-sm text-sti-gray">Choose how you want to sign in</p>
-            </div>
             {view === 'choice' && (
               <div className="space-y-3">
                 <button
