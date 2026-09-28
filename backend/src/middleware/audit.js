@@ -2,7 +2,11 @@
 import jwt from 'jsonwebtoken';
 import { recordAudit } from '../services/auditLogService.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+// SECURITY: import the single source of truth rather than repeating the old
+// `process.env.JWT_SECRET || 'your-secret-key'` fallback, which would let the audit
+// trail accept tokens signed with a published secret. auth.js throws at import time
+// if the secret is missing or a placeholder.
+import { JWT_SECRET } from './auth.js';
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

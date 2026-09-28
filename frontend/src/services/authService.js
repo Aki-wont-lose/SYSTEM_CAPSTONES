@@ -21,11 +21,6 @@ export const changePasswordRequest = async (currentPassword, newPassword, confir
   return response.data;
 };
 
-export const registerRequest = async (userData) => {
-  const response = await api.post('/auth/register', userData);
-  return response.data;
-};
-
 export const validateTokenRequest = async (token) => {
   const response = await api.get('/auth/validate', {
     headers: { Authorization: `Bearer ${token}` }

@@ -9,27 +9,17 @@ import {
   getStudentStats
 } from '../services/studentService.js';
 import { createStaffAccount } from '../modules/accounts/service.js';
+import { assertStudentAccess, scopeWhere } from '../services/accessScope.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 export const fetchAllStudents = asyncHandler(async (req, res) => {
   const { status, search } = req.query;
-  // Role-based filtering: coordinator sees only their course, supervisor only assigned company/students (first supervisor sees all for testing if no company)
-  const filters = { ojt_status: status, search };
-  if (req.user?.role === 'COORDINATOR' && req.user?.coordinatorCourse) {
-    filters.course = req.user.coordinatorCourse;
-  }
-  if (req.user?.role === 'SUPERVISOR') {
-    if (req.user?.supervisorCompanyId) filters.companyId = req.user.supervisorCompanyId;
-    else if (req.user?.supervisorEmail || req.user?.email) {
-      // Check if any students actually have this supervisorEmail; if none, show all for testing (first supervisor)
-      const hasAssigned = await (await import('../services/studentService.js')).getAllStudents({ supervisorEmail: req.user.supervisorEmail || req.user.email });
-      if (hasAssigned.length === 0) {
-        // No assigned students yet - show all for testing
-      } else {
-        filters.supervisorEmail = req.user.supervisorEmail || req.user.email;
-      }
-    }
-  }
+  // Role-based filtering: coordinator sees only their course, supervisor only their
+  // assigned company/students. Scoping is enforced in studentScopeWhere, which fails
+  // CLOSED - an unassigned supervisor now sees no students. (This branch previously
+  // fell through to "show all" when a supervisor had no assigned students, which
+  // handed every supervisor the entire roster.)
+  const filters = scopeWhere(req.user, { ojt_status: status, search });
   const students = await getAllStudents(filters);
 
   res.status(200).json({
@@ -49,6 +39,11 @@ export const fetchStudentById = asyncHandler(async (req, res) => {
       message: 'Student not found'
     });
   }
+
+  // Object-level authorization. Without this, any supervisor or coordinator could
+  // read any student in the institution - including camera-capture photos and
+  // contact details - by changing the id in the URL.
+  assertStudentAccess(req.user, student);
 
   res.status(200).json({
     success: true,
@@ -167,9 +162,17 @@ export const addStudent = asyncHandler(async (req, res) => {
 
 export const updateStudentProfile = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const updateData = req.body;
+
+  // Object-level authorization before any write. updateStudent() applies a field
+  // allow-list; this enforces WHICH student may be written.
+  const existing = await getStudentById(id);
+  if (!existing) {
+    return res.status(404).json({ success: false, message: 'Student not found' });
+  }
+  assertStudentAccess(req.user, existing);
 
   // Prevent updating sensitive linking fields only - studentId is now editable by admin/coordinator
+  const updateData = { ...req.body };
   delete updateData.userId;
   delete updateData.user;
 
@@ -184,6 +187,15 @@ export const updateStudentProfile = asyncHandler(async (req, res) => {
 
 export const removeStudent = asyncHandler(async (req, res) => {
   const { id } = req.params;
+
+  // Deleting a student also deletes their login account (user onDelete: Cascade),
+  // so this must be scoped. Previously any coordinator could delete any student.
+  const existing = await getStudentById(id);
+  if (!existing) {
+    return res.status(404).json({ success: false, message: 'Student not found' });
+  }
+  assertStudentAccess(req.user, existing);
+
   await deleteStudent(id);
 
   res.status(200).json({

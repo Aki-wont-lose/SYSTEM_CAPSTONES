@@ -37,7 +37,7 @@ export const fetchAllSubmissions = asyncHandler(async (req, res) => {
 
 export const fetchGradingSummary = asyncHandler(async (req, res) => {
   const { course, search, requirementId } = req.query;
-  const data = await getGradingSummary({ course, search, requirementId });
+  const data = await getGradingSummary({ course, search, requirementId }, req.user);
   res.status(200).json({ success: true, data });
 });
 

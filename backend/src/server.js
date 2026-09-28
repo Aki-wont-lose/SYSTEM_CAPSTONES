@@ -76,19 +76,25 @@ app.get('/api/health', (req, res) => {
 
 // Public routes
 app.use('/api/auth', authRoutes);
+// /api/announcements is mounted WITHOUT verifyToken because GET /active is
+// deliberately public (the login page renders announcements). Every other route in
+// that module carries its own verifyToken, so it is not a gap.
+app.use('/api/announcements', announcementRoutes);
 app.use('/api/accounts', verifyToken, accountRoutes);
 
-// Protected routes — organised by feature (same UI, role-limited via verifyRole inside each module)
-app.use('/api/announcements', announcementRoutes);
+// Protected routes — organised by feature (same UI, role-limited via verifyRole inside each module).
+// verifyToken is applied at the mount as defense in depth: dashboard/profile/notifications
+// already guard every individual route, so this is idempotent, but it means a future
+// route added to those modules without a guard is still refused by default.
 app.use('/api/students', verifyToken, studentRoutes);
 app.use('/api/attendance', verifyToken, attendanceRoutes);
 app.use('/api/companies', verifyToken, companyRoutes);
 app.use('/api/requirements', verifyToken, requirementRoutes);
 app.use('/api/logs', verifyToken, logEntryRoutes);
-app.use('/api/dashboard', dashboardRoutes); // ADMIN/COORDINATOR/SUPERVISOR stats + STUDENT /me
-app.use('/api/profile', profileRoutes); // any role: GET /api/profile , PUT /api/profile
+app.use('/api/dashboard', verifyToken, dashboardRoutes); // ADMIN/COORDINATOR/SUPERVISOR stats + STUDENT /me
+app.use('/api/profile', verifyToken, profileRoutes); // any role: GET /api/profile , PUT /api/profile
 app.use('/api/messages', verifyToken, messagingRoutes); // Coordinator ↔ Supervisor (+ADMIN)
-app.use('/api/notifications', notificationRoutes);
+app.use('/api/notifications', verifyToken, notificationRoutes);
 app.use('/api/connections', verifyToken, connectionRoutes); // friend requests that gate new student chats
 app.use('/api/audit-logs', verifyToken, auditLogRoutes); // ADMIN/COORDINATOR read-only trail of every change
 

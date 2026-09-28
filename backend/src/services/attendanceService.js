@@ -16,11 +16,16 @@ const toLocalDateOnly = (date) => {
   return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
 };
 
+// `limit` arrives from req.query, so it is client-controlled. A non-numeric or
+// negative value previously reached Prisma's `take` and rejected the request with a
+// 500; an uncapped value could ask for the student's entire history.
 export const getAttendanceHistory = async (studentId, limit = 30) => {
+  const parsed = parseInt(limit, 10);
+  const take = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 365) : 30;
   return prisma.attendance.findMany({
     where: { studentId },
     orderBy: { date: 'desc' },
-    take: limit
+    take
   });
 };
 
@@ -158,18 +163,43 @@ export const recordTimeOut = async (studentId, date, photo) => {
   }
 };
 
+// Only these columns may ever be written through updateAttendanceRecord.
+// Previously the raw req.body was spread straight into prisma.attendance.update,
+// which let any caller set reviewStatus, reviewedByName, studentId and more.
+const EDITABLE_ATTENDANCE_FIELDS = ['timeIn', 'timeOut', 'renderedHours'];
+
 export const updateAttendanceRecord = async (attendanceId, updateData) => {
   try {
+    const existing = await prisma.attendance.findUnique({
+      where: { id: attendanceId },
+      include: { student: { select: { id: true, course: true, companyId: true, supervisorEmail: true } } }
+    });
+
+    if (!existing) {
+      const notFound = new Error('Attendance record not found');
+      notFound.status = 404;
+      throw notFound;
+    }
+
+    // Allow-list: silently drop anything not explicitly permitted.
+    const sanitized = {};
+    for (const field of EDITABLE_ATTENDANCE_FIELDS) {
+      if (updateData[field] !== undefined) sanitized[field] = updateData[field];
+    }
+    if (Object.keys(sanitized).length === 0) {
+      const bad = new Error('No editable fields supplied');
+      bad.status = 400;
+      throw bad;
+    }
+
     // Recalculate hours if timeIn or timeOut changed
     let renderedHours = undefined;
-    
-    if ((updateData.timeIn || updateData.timeOut)) {
-      const attendance = await prisma.attendance.findUnique({
-        where: { id: attendanceId }
-      });
 
-      const timeIn = updateData.timeIn ? new Date(updateData.timeIn) : new Date(attendance.timeIn);
-      const timeOut = updateData.timeOut ? new Date(updateData.timeOut) : new Date(attendance.timeOut);
+    if ((sanitized.timeIn || sanitized.timeOut)) {
+      const attendance = existing;
+
+      const timeIn = sanitized.timeIn ? new Date(sanitized.timeIn) : (attendance.timeIn ? new Date(attendance.timeIn) : null);
+      const timeOut = sanitized.timeOut ? new Date(sanitized.timeOut) : (attendance.timeOut ? new Date(attendance.timeOut) : null);
 
       if (timeIn && timeOut) {
         const diffMs = timeOut - timeIn;
@@ -178,7 +208,7 @@ export const updateAttendanceRecord = async (attendanceId, updateData) => {
       }
     }
 
-    const updatePayload = { ...updateData };
+    const updatePayload = { ...sanitized };
     if (renderedHours !== undefined) {
       updatePayload.renderedHours = renderedHours;
     }

@@ -1,6 +1,7 @@
 // src/services/logEntryService.js
 import { PrismaClient } from '@prisma/client';
 import { recordAudit } from './auditLogService.js';
+import { studentScopeWhere, canAccessStudent } from './accessScope.js';
 const prisma = new PrismaClient();
 
 export const getStudentLogs = async (studentId) => {
@@ -10,13 +11,18 @@ export const getStudentLogs = async (studentId) => {
   });
 };
 
-export const getAllLogs = async (filters = {}) => {
+export const getAllLogs = async (filters = {}, user = null) => {
   const where = {};
   if (filters.status) where.status = filters.status;
   if (filters.studentId) where.studentId = filters.studentId;
 
+  // Object-level scoping: a coordinator/supervisor must not be able to read every
+  // log in the institution by calling this endpoint with no filters. Filtering is
+  // applied through the `student` relation, so it composes with the filters above.
+  const scoped = user ? { ...where, student: studentScopeWhere(user) } : where;
+
   return prisma.logEntry.findMany({
-    where,
+    where: scoped,
     include: { student: { select: { firstName: true, lastName: true, studentId: true } } },
     orderBy: { date: 'desc' }
   });
@@ -33,8 +39,45 @@ export const createLog = async (studentId, date, taskDescription) => {
   });
 };
 
-// Admin assigns a task to a student (creates a log entry on their behalf)
-export const assignTask = async (studentId, date, taskDescription, assignedBy) => {
+// Resolves the student that owns a log entry, 404ing when the log does not exist.
+const loadLogStudentId = async (logId) => {
+  const log = await prisma.logEntry.findUnique({
+    where: { id: logId },
+    select: { studentId: true }
+  });
+  if (!log) {
+    const error = new Error('Log entry not found');
+    error.status = 404;
+    throw error;
+  }
+  return log.studentId;
+};
+
+// Loads a Student and enforces the caller's scope, throwing 404 when the student
+// does not exist and 403 when it exists but belongs to someone else.
+const assertStudentInScope = async (studentId, user) => {
+  const student = await prisma.student.findUnique({
+    where: { id: studentId },
+    select: { id: true, course: true, companyId: true, supervisorEmail: true }
+  });
+  if (!student) {
+    const error = new Error('Student not found');
+    error.status = 404;
+    throw error;
+  }
+  if (!canAccessStudent(user, student)) {
+    const error = new Error('You do not have access to this student.');
+    error.status = 403;
+    throw error;
+  }
+  return student;
+};
+
+// Staff assigns a task to a student (creates a log entry on their behalf).
+// The target student must be inside the caller's scope, otherwise a supervisor
+// could create log entries for any student in the institution by id.
+export const assignTask = async (studentId, date, taskDescription, assignedBy, user = null) => {
+  if (user) await assertStudentInScope(studentId, user);
   return prisma.logEntry.create({
     data: { studentId, date: new Date(date), taskDescription, assignedBy, status: 'PENDING' }
   });
@@ -69,6 +112,10 @@ export const reviewLog = async (id, status, comment, reviewer = null) => {
     error.status = 400;
     throw error;
   }
+  // The reviewer is authenticated and role-checked, but the log they are approving
+  // may belong to any student. Enforce record scope before mutating it.
+  if (reviewer) await assertStudentInScope((await loadLogStudentId(id)), reviewer);
+
   const updated = await prisma.logEntry.update({
     where: { id },
     data: { status, comment }
@@ -115,6 +162,9 @@ export const deleteLogAsStaff = async (id, actor) => {
     error.status = 404;
     throw error;
   }
+  // Role check alone was not enough: any supervisor could delete any student's log.
+  if (actor) await assertStudentInScope(log.studentId, actor);
+
   await recordAudit({
     userId: actor?.userId,
     userEmail: actor?.email,

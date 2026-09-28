@@ -65,9 +65,27 @@ export const getAllCompanies = async (filters = {}) => {
 export const getCompanyPrograms = () => VALID_PROGRAMS;
 
 export const getCompanyById = async (id) => {
+  // `include: { students: true }` returned every scalar column of every intern at
+  // that company - email, contact number, supervisor contact and base64 profile
+  // picture - to any authenticated caller, including students. Only staff who own
+  // the company may see the roster, and then only the columns the roster needs.
   return prisma.company.findUnique({
     where: { id },
-    include: { students: true }
+    include: {
+      students: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          studentId: true,
+          course: true,
+          section: true,
+          ojt_status: true,
+          completedHours: true,
+          requiredHours: true
+        }
+      }
+    }
   });
 };
 

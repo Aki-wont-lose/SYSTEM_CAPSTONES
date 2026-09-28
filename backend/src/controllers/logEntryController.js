@@ -21,7 +21,7 @@ export const fetchMyLogs = asyncHandler(async (req, res) => {
 
 export const fetchAllLogs = asyncHandler(async (req, res) => {
   const { status, studentId } = req.query;
-  const logs = await getAllLogs({ status, studentId });
+  const logs = await getAllLogs({ status, studentId }, req.user);
   res.status(200).json({ success: true, data: logs });
 });
 
@@ -35,7 +35,8 @@ export const addLog = asyncHandler(async (req, res) => {
 
 export const addAssignedTask = asyncHandler(async (req, res) => {
   const { studentId, date, taskDescription } = req.body;
-  const log = await assignTask(studentId, date, taskDescription, 'Admin');
+  // The target student must be inside the caller's scope; assignTask enforces it.
+  const log = await assignTask(studentId, date, taskDescription, 'Admin', req.user);
   res.status(201).json({ success: true, message: 'Task assigned', data: log });
 });
 

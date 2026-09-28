@@ -1,6 +1,7 @@
 // src/services/requirementService.js
 import { PrismaClient } from '@prisma/client';
 import { recordAudit } from './auditLogService.js';
+import { scopeWhere } from './accessScope.js';
 const prisma = new PrismaClient();
 
 const startOfDay = (d) => new Date(new Date(d).setHours(0, 0, 0, 0));
@@ -316,9 +317,11 @@ export const reviewSubmission = async (submissionId, status, remarks, score, rev
 };
 
 // Automated grading summary: per-student completion, missing deadlines, and score totals
-export const getGradingSummary = async (filters = {}) => {
+export const getGradingSummary = async (filters = {}, user = null) => {
   const now = new Date();
-  const studentWhere = {};
+  // Restrict the student set to the caller's scope. Without this, any supervisor or
+  // coordinator could call /requirements/grading and read every student's scores.
+  const studentWhere = user ? scopeWhere(user, {}) : {};
   if (filters.course) studentWhere.course = filters.course;
   if (filters.search) {
     studentWhere.OR = [

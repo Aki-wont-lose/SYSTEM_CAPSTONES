@@ -4,7 +4,6 @@ import {
   requestPasswordReset,
   resetPassword,
   updateUserTheme,
-  registerUser,
   changePassword
 } from '../services/authService.js';
 import { loginWithMicrosoft } from '../services/microsoftAuthService.js';
@@ -64,23 +63,6 @@ export const setTheme = asyncHandler(async (req, res) => {
   }
   const user = await updateUserTheme(req.user.userId, theme);
   res.status(200).json({ success: true, message: 'Theme updated', data: { theme: user.theme } });
-});
-
-export const register = asyncHandler(async (req, res) => {
-  const { email, password, confirmPassword, role } = req.body;
-
-  if (!email || !password || !confirmPassword) {
-    return res.status(400).json({ success: false, message: 'Email, password, and confirm password are required' });
-  }
-  if (password !== confirmPassword) {
-    return res.status(400).json({ success: false, message: 'Passwords do not match' });
-  }
-  if (password.length < 8) {
-    return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long' });
-  }
-
-  const user = await registerUser(email, password, role);
-  res.status(201).json({ success: true, message: 'User registered successfully', data: user });
 });
 
 export const validateToken = asyncHandler(async (req, res) => {

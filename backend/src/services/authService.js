@@ -9,8 +9,6 @@ const prisma = new PrismaClient();
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 10;
 const RESET_TTL_MINUTES = 30;
 
-const isDev = process.env.NODE_ENV !== 'production';
-
 export const hashPassword = async (password) => bcrypt.hash(password, BCRYPT_ROUNDS);
 
 const TEMP_UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -147,8 +145,11 @@ export const requestPasswordReset = async (email) => {
   console.log(`\n🔑 Password reset token for ${email}: ${resetToken} (expires in ${RESET_TTL_MINUTES} min)\n`);
 
   return {
-    message: 'If that account exists, a reset link has been generated.',
-    ...(isDev ? { devResetToken: resetToken } : {})
+    // SECURITY: the reset token is NEVER returned in the HTTP response. Returning it
+    // (even "just" in development) handed anyone who could reach
+    // /api/auth/forgot-password a valid token for ANY account, including ADMIN.
+    // Delivery is out-of-band only.
+    message: 'If that account exists, a reset link has been generated.'
   };
 };
 
@@ -181,28 +182,4 @@ export const updateUserTheme = async (userId, theme) => {
     where: { id: userId },
     data: { theme }
   });
-};
-
-const ALLOWED_ROLES = ['ADMIN', 'COORDINATOR', 'SUPERVISOR', 'STUDENT'];
-export const registerUser = async (email, password, role = 'STUDENT') => {
-  const normalizedRole = role.toUpperCase();
-  if (!ALLOWED_ROLES.includes(normalizedRole)) {
-    const error = new Error(`Invalid role. Must be one of: ${ALLOWED_ROLES.join(', ')}`);
-    error.status = 400;
-    throw error;
-  }
-  const existingUser = await prisma.user.findUnique({ where: { email } });
-  if (existingUser) {
-    const error = new Error('User with this email already exists');
-    error.status = 400;
-    throw error;
-  }
-
-  const hashedPassword = await hashPassword(password);
-
-  const user = await prisma.user.create({
-    data: { email, password: hashedPassword, role: normalizedRole }
-  });
-
-  return { id: user.id, email: user.email, role: user.role };
 };

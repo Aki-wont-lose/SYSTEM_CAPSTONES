@@ -253,9 +253,8 @@ const Messages = () => {
                     </button>
                   </form>
                 </>
-              )}
-            </>
-          )}
+              </>
+            )}
         </Card>
       </div>
       {toast && (

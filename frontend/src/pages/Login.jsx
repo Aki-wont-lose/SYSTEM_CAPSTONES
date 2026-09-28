@@ -218,7 +218,6 @@ const AdminView = ({ onBack, onForgot }) => {
 const ForgotPasswordModal = ({ onClose }) => {
   const [stage, setStage] = useState('request');
   const [email, setEmail] = useState('');
-  const [devToken, setDevToken] = useState(null);
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState('');
@@ -230,7 +229,6 @@ const ForgotPasswordModal = ({ onClose }) => {
     setLoading(true);
     try {
       const res = await forgotPasswordRequest(email);
-      setDevToken(res.data?.devResetToken || null);
       setStage('reset');
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong');
@@ -248,7 +246,7 @@ const ForgotPasswordModal = ({ onClose }) => {
     }
     setLoading(true);
     try {
-      await resetPasswordRequest(resetToken || devToken, newPassword);
+      await resetPasswordRequest(resetToken, newPassword);
       setStage('done');
     } catch (err) {
       setError(err.response?.data?.message || 'Reset link is invalid');
@@ -293,17 +291,16 @@ const ForgotPasswordModal = ({ onClose }) => {
         {stage === 'reset' && (
           <>
             <h2 className="text-lg font-bold mb-1 dark:text-white">Enter new password</h2>
-            {devToken && (
-              <div className="mb-4 text-xs bg-sti-yellow/15 px-3 py-2 rounded-lg border dark:border-white/10">
-                No email provider — token pre-filled below.
-              </div>
-            )}
+            <p className="text-xs text-sti-gray mb-3">
+              Paste the reset token you were given. If you cannot find it, ask an
+              administrator to reset your password.
+            </p>
             {error && <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>}
             <form onSubmit={handleReset} className="space-y-4">
               <input
                 type="text"
                 required
-                value={resetToken || devToken || ''}
+                value={resetToken}
                 onChange={(e) => setResetToken(e.target.value)}
                 placeholder="Reset token"
                 className="input-field text-xs"

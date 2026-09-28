@@ -22,7 +22,9 @@ router.get('/summary', fetchStudentSummary);
 router.get('/monthly', fetchMonthlyAttendance);
 router.post('/time-in', timeIn);
 router.post('/time-out', timeOut);
-router.put('/:id', updateAttendance);
+// Staff-only. A student edits their day through /time-in, /time-out and
+// /:id/submit; they must not be able to rewrite an arbitrary record by id.
+router.put('/:id', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), updateAttendance);
 
 // Student locks a finished day and sends it to the supervisor for approval
 router.post('/:id/submit', submitForReview);

@@ -3,6 +3,17 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// This endpoint is PUBLIC (no auth), so the limit is attacker-controlled. Cap it
+// and fall back to the default when it is missing, non-numeric or negative -
+// an unvalidated value reached Prisma's `take` and could request the whole table.
+export const MAX_PUBLIC_ANNOUNCEMENTS = 50;
+
+const clampLimit = (value, fallback = 10) => {
+  const parsed = parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, MAX_PUBLIC_ANNOUNCEMENTS);
+};
+
 export const getActiveAnnouncements = async (limit = 10) => {
   return prisma.announcement.findMany({
     where: {
@@ -12,7 +23,7 @@ export const getActiveAnnouncements = async (limit = 10) => {
       }
     },
     orderBy: { publishedAt: 'desc' },
-    take: limit
+    take: clampLimit(limit)
   });
 };
 

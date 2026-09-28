@@ -18,14 +18,28 @@ export const AuthProvider = ({ children }) => {
 
       if (storedToken && storedUser) {
         try {
-          await validateTokenRequest(storedToken);
-          setToken(storedToken);
+          // The server response is authoritative. sessionStorage is user-writable
+          // (devtools), so previously the app re-hydrated `user` from it and only
+          // checked that the token was valid - which let anyone edit their stored
+          // role to ADMIN and reach admin-only routes and UI. The backend already
+          // re-checks every request, so this only closes the client-side bypass.
+          const response = await validateTokenRequest(storedToken);
+          const authoritative = response?.data;
+          if (!authoritative?.role) throw new Error('Session could not be revalidated');
+
           const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
+          // Server wins on every security-relevant field; the stored copy only
+          // supplies `theme`, which is a local UI preference.
+          const merged = { ...parsedUser, ...authoritative };
+
+          setToken(storedToken);
+          setUser(merged);
+          saveStoredUser(merged);
+
           // Prefer saved simes_theme (user's last toggle) over DB value to avoid flash to dark on refresh
           const savedTheme = localStorage.getItem('simes_theme');
           if (savedTheme) setThemeState(savedTheme);
-          else if (parsedUser.theme) setThemeState(parsedUser.theme);
+          else if (merged.theme) setThemeState(merged.theme);
         } catch (error) {
           clearSession();
         }
@@ -90,6 +104,26 @@ export const AuthProvider = ({ children }) => {
     saveStoredUser(newUser);
   };
 
+  // Re-read the session from the server. Used after a profile update so the role and
+  // account state on screen come from the API rather than from anything cached in
+  // sessionStorage.
+  const refreshUser = async () => {
+    const currentToken = getToken();
+    if (!currentToken) return null;
+    const response = await validateTokenRequest(currentToken);
+    const authoritative = response?.data;
+    if (!authoritative?.role) {
+      clearSession();
+      setToken(null);
+      setUser(null);
+      return null;
+    }
+    const merged = { ...user, ...authoritative };
+    setUser(merged);
+    saveStoredUser(merged);
+    return merged;
+  };
+
   const changePassword = async (currentPassword, newPassword, confirmPassword) => {
     const response = await changePasswordRequest(currentPassword, newPassword, confirmPassword);
     updateUser({ mustChangePassword: false });
@@ -130,6 +164,7 @@ export const AuthProvider = ({ children }) => {
         loginWithMicrosoft,
         logout,
         updateUser,
+        refreshUser,
         changePassword,
         isAuthenticated: !!token,
         mustChangePassword: !!user?.mustChangePassword,

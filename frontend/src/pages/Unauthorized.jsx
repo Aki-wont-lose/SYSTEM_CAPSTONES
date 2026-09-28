@@ -3,12 +3,22 @@ import { ShieldAlert } from 'lucide-react';
 import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
 
+// Must stay in sync with roleHome in AuthContext, otherwise COORDINATOR and
+// SUPERVISOR were sent to /dashboard, which is a STUDENT-only route, which bounced
+// them straight back to /unauthorized.
+const HOME_BY_ROLE = {
+  ADMIN: '/admin/dashboard',
+  COORDINATOR: '/coordinator/dashboard',
+  SUPERVISOR: '/supervisor/dashboard',
+  STUDENT: '/dashboard'
+};
+
 const Unauthorized = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   const goHome = () => {
-    navigate(user?.role === 'ADMIN' ? '/admin/dashboard' : '/dashboard');
+    navigate(HOME_BY_ROLE[user?.role] || '/login');
   };
 
   return (

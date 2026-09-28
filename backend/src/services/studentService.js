@@ -126,11 +126,46 @@ export const createStudent = async (studentData, userData) => {
   }
 };
 
+// Staff-editable student fields, verified against the Student model in
+// schema.prisma. The raw request body is NEVER passed to Prisma: doing so let a
+// coordinator set completedHours, ojt_status, companyId and supervisorEmail on any
+// student in any course - i.e. edit their own grades and OJT assignment.
+//
+// Deliberately excluded:
+//   completedHours  - derived from attendance records, never client-settable
+//   id/userId       - identity, must not be reassigned
+//   createdAt/updatedAt
+// Note: any field not in this list is silently dropped, so a typo here can never
+// cause a Prisma "unknown argument" runtime error.
+export const STAFF_EDITABLE_STUDENT_FIELDS = [
+  'firstName',
+  'lastName',
+  'studentId',
+  'course',
+  'section',
+  'email',
+  'contactNumber',
+  'profilePicture',
+  'ojt_status',
+  'requiredHours',
+  'companyId',
+  'supervisorName',
+  'supervisorEmail',
+  'supervisorContact',
+  'workingDays',
+  'workingHours'
+];
+
 export const updateStudent = async (studentId, updateData) => {
   try {
+    const sanitized = {};
+    for (const field of STAFF_EDITABLE_STUDENT_FIELDS) {
+      if (updateData[field] !== undefined) sanitized[field] = updateData[field];
+    }
+
     return prisma.student.update({
       where: { id: studentId },
-      data: updateData,
+      data: sanitized,
       include: {
         user: {
           select: {
