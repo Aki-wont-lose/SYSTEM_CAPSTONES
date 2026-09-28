@@ -66,7 +66,7 @@ const XIcon = ({ size = 18 }) => (
   </svg>
 );
 
-const slides = [{ src: '/hero/sti-campus.jpg', alt: 'STI College Sta. Maria' }];
+const slides = [{ src: '/hero/sti-login.jpg', alt: 'STI College Sta. Maria' }];
 
 const socials = [
   { href: 'https://www.youtube.com/user/STIEducationGroup', label: 'YouTube', Icon: YouTubeIcon },
@@ -134,7 +134,7 @@ const StudentView = ({ onBack }) => {
           type="button"
           onClick={handleClick}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-2.5 border rounded-xl py-3 text-sm font-semibold hover:bg-sti-gray-light disabled:opacity-50 dark:border-white/10 dark:hover:bg-white/10 dark:text-white"
+          className="w-full min-h-[48px] flex items-center justify-center gap-2.5 border rounded-xl px-4 py-3 text-sm font-semibold leading-snug text-center hover:bg-sti-gray-light disabled:opacity-50 dark:border-white/10 dark:hover:bg-white/10 dark:text-white"
         >
           {loading ? (
             <span className="w-4 h-4 border-2 border-sti-gray border-t-transparent rounded-full animate-spin" />
@@ -538,13 +538,13 @@ const Login = () => {
               <div className="space-y-3 -mt-3">
                 <button
                   onClick={() => setView('student')}
-                  className="w-full py-3 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark"
+                  className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark leading-snug"
                 >
                   Log in with Your Student Account
                 </button>
                 <button
                   onClick={() => setView('admin')}
-                  className="w-full py-3 rounded-xl border border-black/10 dark:border-white/10 text-sm font-semibold hover:bg-sti-gray-light dark:hover:bg-white/10 dark:text-white"
+                  className="w-full min-h-[48px] py-3 px-4 rounded-xl border border-black/10 dark:border-white/10 text-sm font-semibold hover:bg-sti-gray-light dark:hover:bg-white/10 dark:text-white leading-snug"
                 >
                   Log in with Staff Account
                 </button>
