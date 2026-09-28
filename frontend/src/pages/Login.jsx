@@ -394,7 +394,7 @@ const Login = () => {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-slate-950">
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-950 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between py-3 gap-4">
+        <div className="w-full flex items-center justify-between py-3 gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <img src="/sti-logo.png" alt="STI College Sta. Maria" className="block h-7 sm:h-9 w-auto shrink-0" />
             <div className="min-w-0 leading-tight">
@@ -454,7 +454,7 @@ const Login = () => {
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-sti-blue bg-white text-sti-blue hover:bg-sti-blue hover:text-white dark:bg-slate-800 dark:text-sti-blue-light dark:border-sti-blue-light dark:hover:bg-sti-blue-light dark:hover:text-slate-900 transition-colors"
+                className="flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12 rounded-full border-2 border-black bg-white text-black hover:bg-black hover:text-white dark:bg-slate-800 dark:text-white dark:border-white dark:hover:bg-white dark:hover:text-black transition-colors"
                 aria-label={label}
               >
                 <Icon size={22} />
