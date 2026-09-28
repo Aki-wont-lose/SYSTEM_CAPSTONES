@@ -406,7 +406,7 @@ const Login = () => {
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-950 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between py-3 gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <img src="/sti-logo.png" alt="STI College Sta. Maria" className="h-9 sm:h-11 w-auto shrink-0" />
+            <img src="/sti-logo.png" alt="STI College Sta. Maria" className="block h-9 sm:h-11 w-auto shrink-0" />
             <div className="min-w-0 leading-tight">
               <p className="font-bold text-sti-gray-dark dark:text-white text-xs sm:text-sm truncate">
                 STI College Sta. Maria
@@ -424,8 +424,8 @@ const Login = () => {
       </header>
 
       <main className="flex-1 flex flex-col">
-        <section className="w-full bg-sti-blue-dark">
-          <img src={heroImage.src} alt={heroImage.alt} className="w-full object-cover" />
+        <section className="w-full">
+          <img src={heroImage.src} alt={heroImage.alt} className="block w-full object-cover" />
         </section>
 
         <section className="px-4 sm:px-6 lg:px-8 py-8 sm:py-12 bg-sti-gray-light/70 dark:bg-slate-900/60">
