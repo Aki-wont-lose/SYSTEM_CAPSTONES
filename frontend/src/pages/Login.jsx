@@ -488,13 +488,13 @@ const Login = () => {
                   onClick={() => setView('student')}
                   className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark leading-snug"
                 >
-                  Log in with Your Student Account
+                  Log in with Office 365
                 </button>
                 <button
                   onClick={() => setView('admin')}
                   className="w-full min-h-[48px] py-3 px-4 rounded-xl border border-black/10 dark:border-white/10 text-sm font-semibold hover:bg-sti-gray-light dark:hover:bg-white/10 dark:text-white leading-snug"
                 >
-                  Log in with Staff Account
+                  Admin Log in
                 </button>
                 <button
                   onClick={closeDialog}
