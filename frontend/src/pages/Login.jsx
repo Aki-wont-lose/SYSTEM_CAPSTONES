@@ -396,12 +396,12 @@ const Login = () => {
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-950 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between py-3 gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <img src="/sti-logo.png" alt="STI College Sta. Maria" className="block h-9 sm:h-11 w-auto shrink-0" />
+            <img src="/sti-logo.png" alt="STI College Sta. Maria" className="block h-7 sm:h-9 w-auto shrink-0" />
             <div className="min-w-0 leading-tight">
-              <p className="font-extrabold text-black dark:text-black text-base sm:text-xl lg:text-2xl truncate">
+              <p className="font-extrabold text-black dark:text-black text-sm sm:text-base lg:text-lg truncate">
                 STI College Sta. Maria
               </p>
-              <p className="font-bold text-black dark:text-black text-xs sm:text-sm lg:text-base truncate">
+              <p className="font-bold text-black dark:text-black text-[11px] sm:text-xs lg:text-sm truncate">
                 STI Education Services Group
               </p>
             </div>
