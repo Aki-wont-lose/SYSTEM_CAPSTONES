@@ -64,6 +64,8 @@ const XIcon = ({ size = 18 }) => (
   </svg>
 );
 
+const heroImage = { src: '/hero/sti-login.jpg', alt: 'STI College Sta. Maria' };
+
 const socials = [
   { href: 'https://www.youtube.com/user/STIEducationGroup', label: 'YouTube', Icon: YouTubeIcon },
   { href: 'https://www.instagram.com/stieducationsvcs/', label: 'Instagram', Icon: InstagramIcon },
@@ -422,6 +424,10 @@ const Login = () => {
       </header>
 
       <main className="flex-1 flex flex-col">
+        <section className="w-full bg-sti-blue-dark">
+          <img src={heroImage.src} alt={heroImage.alt} className="w-full object-cover" />
+        </section>
+
         <section className="px-4 sm:px-6 lg:px-8 py-8 sm:py-12 bg-sti-gray-light/70 dark:bg-slate-900/60">
           <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-5">
             {features.map((feature) => (
