@@ -416,11 +416,12 @@ const Login = () => {
       </main>
 
       <footer className="bg-sti-gray-light dark:bg-slate-900 px-4 sm:px-6 lg:px-8 py-6">
-        <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6">
+        <div className="w-full grid grid-cols-1 sm:grid-cols-3 items-center gap-4">
+          <div className="hidden sm:block" aria-hidden="true" />
           <p className="text-xs text-sti-gray text-center">
             &copy; {new Date().getFullYear()} STI College Sta. Maria
           </p>
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center justify-center sm:justify-end gap-2.5 sm:gap-3">
             {socials.map(({ href, label, Icon }) => (
               <a
                 key={label}
