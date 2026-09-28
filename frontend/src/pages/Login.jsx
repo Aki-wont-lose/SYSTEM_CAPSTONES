@@ -293,7 +293,7 @@ const ForgotPasswordModal = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-sm max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-end px-4 pt-4 shrink-0">
           <button
             onClick={onClose}
@@ -403,7 +403,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-slate-950">
-      <header className="sticky top-0 z-40 bg-white/95 dark:bg-slate-950/95 backdrop-blur border-b border-black/5 dark:border-white/10 px-4 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-40 bg-white dark:bg-slate-950 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-between py-3 gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <img src="/sti-logo.png" alt="STI College Sta. Maria" className="h-9 sm:h-11 w-auto shrink-0" />
@@ -416,7 +416,7 @@ const Login = () => {
           </div>
           <button
             onClick={() => setView('choice')}
-            className="px-4 sm:px-5 py-2 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark shadow-sm shrink-0"
+            className="px-4 sm:px-5 py-2 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark shrink-0"
           >
             Log in
           </button>
@@ -425,7 +425,11 @@ const Login = () => {
 
       <main className="flex-1 flex flex-col">
         <section className="w-full min-h-[calc(100vh-4.5rem)] bg-sti-blue-dark">
-          <img src={heroImage.src} alt={heroImage.alt} className="w-full h-full min-h-[calc(100vh-4.5rem)] object-cover" />
+          <img
+            src={heroImage.src}
+            alt={heroImage.alt}
+            className="w-full h-full min-h-[calc(100vh-4.5rem)] object-cover"
+          />
         </section>
 
         <section className="px-4 sm:px-6 lg:px-8 py-8 sm:py-12 bg-sti-gray-light/70 dark:bg-slate-900/60">
@@ -433,7 +437,7 @@ const Login = () => {
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-card border border-black/5 dark:border-white/5 p-5 sm:p-6 flex flex-col gap-3 hover:shadow-cardHover transition-shadow duration-200"
+                className="bg-white dark:bg-slate-800 rounded-2xl p-5 sm:p-6 flex flex-col gap-3"
               >
                 <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-sti-blue-50 dark:bg-sti-blue/15 flex items-center justify-center text-sti-blue dark:text-sti-blue-light shrink-0">
                   <feature.Icon className="w-6 h-6" strokeWidth={2} />
@@ -446,7 +450,7 @@ const Login = () => {
         </section>
       </main>
 
-      <footer className="bg-sti-gray-light dark:bg-slate-900 border-t border-black/5 dark:border-white/10 px-4 sm:px-6 lg:px-8 py-6">
+      <footer className="bg-sti-gray-light dark:bg-slate-900 px-4 sm:px-6 lg:px-8 py-6">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-sti-gray text-center sm:text-left">
             &copy; {new Date().getFullYear()} STI College Sta. Maria
@@ -470,7 +474,7 @@ const Login = () => {
 
       {view && !showForgot && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-cardHover w-full max-w-sm max-h-[90vh] flex flex-col animate-slide-up overflow-hidden">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] flex flex-col animate-slide-up overflow-hidden">
             <div className="flex items-center justify-end px-4 pt-4 shrink-0">
               <button
                 onClick={closeDialog}
