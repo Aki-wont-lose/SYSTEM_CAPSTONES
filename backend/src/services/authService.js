@@ -2,7 +2,7 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
-import { generateToken } from '../middleware/auth.js';
+import { generateToken, isSuperAdmin } from '../middleware/auth.js';
 import { recordAudit } from './auditLogService.js';
 
 const prisma = new PrismaClient();
@@ -78,6 +78,7 @@ export const loginUser = async (email, password) => {
       mustChangePassword: user.mustChangePassword,
       coordinatorCourse: user.coordinatorCourse,
       supervisorCompanyId: user.supervisorCompanyId,
+      isSuperAdmin: isSuperAdmin(user),
       student: user.student
     }
   };

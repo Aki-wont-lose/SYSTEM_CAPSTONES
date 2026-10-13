@@ -169,6 +169,7 @@ export const AuthProvider = ({ children }) => {
         isAuthenticated: !!token,
         mustChangePassword: !!user?.mustChangePassword,
         isAdmin: user?.role === 'ADMIN',
+        isSuperAdmin: !!user?.isSuperAdmin,
         isCoordinator: user?.role === 'COORDINATOR',
         isSupervisor: user?.role === 'SUPERVISOR',
         isStudent: user?.role === 'STUDENT',

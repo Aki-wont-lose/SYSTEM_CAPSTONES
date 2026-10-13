@@ -29,8 +29,18 @@ const statusStyles = {
 const TABS = [
   { key: 'SUPERVISOR', label: 'Supervisors' },
   { key: 'COORDINATOR', label: 'Coordinators' },
+  { key: 'ADMIN', label: 'Admins' },
   { key: 'STUDENT', label: 'Students' },
 ];
+
+const TAB_LABELS = {
+  SUPERVISOR: { singular: 'Supervisor', plural: 'supervisors' },
+  COORDINATOR: { singular: 'Coordinator', plural: 'coordinators' },
+  ADMIN: { singular: 'Admin', plural: 'admins' },
+  STUDENT: { singular: 'Student', plural: 'students' },
+};
+
+const roleText = (role) => TAB_LABELS[role]?.singular || 'Supervisor';
 
 const PAGE_SIZES = [10, 50, 100, 'ALL'];
 
@@ -40,14 +50,16 @@ const AccountManagement = () => {
   const { user } = useAuth();
   const role = user?.role;
   const isAdmin = role === 'ADMIN';
+  const isSuperAdmin = !!user?.isSuperAdmin;
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
-  // Staff tabs (supervisors/coordinators) are visible to ADMIN only; every other
-  // role that reaches this page manages students only.
-  const allowedTabs = isAdmin ? TABS : TABS.filter((tab) => tab.key === 'STUDENT');
+  // Supervisors/coordinators are visible to any ADMIN; the Admins tab is private
+  // to the super-admin. Every other role that reaches this page sees students.
+  const staffTabs = isSuperAdmin ? TABS : TABS.filter((tab) => tab.key !== 'ADMIN');
+  const allowedTabs = isAdmin ? staffTabs : TABS.filter((tab) => tab.key === 'STUDENT');
   const initialTab = allowedTabs.some((tab) => tab.key === requestedTab) ? requestedTab : allowedTabs[0].key;
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [counts, setCounts] = useState({ students: 0, supervisors: 0, coordinators: 0 });
+  const [counts, setCounts] = useState({ students: 0, supervisors: 0, coordinators: 0, admins: 0 });
   const [staff, setStaff] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +76,8 @@ const AccountManagement = () => {
   const [selected, setSelected] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const tabLabel = TAB_LABELS[activeTab] || TAB_LABELS.SUPERVISOR;
 
   const selectTab = (key) => {
     setActiveTab(key);
@@ -90,7 +104,7 @@ const AccountManagement = () => {
     if (!isAdmin) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await getStaffAccounts({ search });
+      const res = await getStaffAccounts({ role: activeTab, search });
       setStaff(res.data || []);
     } catch (err) {
       console.error(err);
@@ -107,7 +121,7 @@ const AccountManagement = () => {
     const timer = setTimeout(loadStaff, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search]);
+  }, [search, activeTab]);
 
   const handleSort = (key) => {
     setSort((prev) => (prev.key === key ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' }));
@@ -163,7 +177,8 @@ const AccountManagement = () => {
   };
 
   const openAddModal = () => {
-    setForm({ ...emptyStaffForm, role: activeTab === 'COORDINATOR' ? 'COORDINATOR' : 'SUPERVISOR' });
+    const nextRole = activeTab === 'COORDINATOR' ? 'COORDINATOR' : activeTab === 'ADMIN' ? 'ADMIN' : 'SUPERVISOR';
+    setForm({ ...emptyStaffForm, role: nextRole });
     setError('');
     setModalMode('add');
   };
@@ -202,7 +217,7 @@ const AccountManagement = () => {
           contactNumber: form.contactNumber
         });
         setCredentials({
-          title: `${form.role === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'} account created`,
+          title: `${roleText(form.role)} account created`,
           email: res.data.user.email,
           password: res.data.temporaryPassword
         });
@@ -387,7 +402,7 @@ const AccountManagement = () => {
       <Card className="p-0 overflow-hidden">
         <div className="flex overflow-x-auto border-b border-black/5 dark:border-white/10">
           {allowedTabs.map((tab) => {
-            const value = tab.key === 'STUDENT' ? counts.students : tab.key === 'COORDINATOR' ? counts.coordinators : counts.supervisors;
+            const value = tab.key === 'STUDENT' ? counts.students : tab.key === 'COORDINATOR' ? counts.coordinators : tab.key === 'ADMIN' ? counts.admins : counts.supervisors;
             const isActive = activeTab === tab.key;
             return (
               <button
@@ -418,7 +433,7 @@ const AccountManagement = () => {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
               <input
                 type="text"
-                placeholder={`Search ${activeTab === 'COORDINATOR' ? 'coordinators' : 'supervisors'}...`}
+                placeholder={`Search ${tabLabel.plural}...`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="input-field pl-10"
@@ -428,14 +443,14 @@ const AccountManagement = () => {
               {isAdmin && (
                 <>
                   <Button variant="primary" icon={Plus} onClick={openAddModal}>
-                    Add {activeTab === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
+                    Add {tabLabel.singular}
                   </Button>
                   <Button
                     variant="secondary"
                     icon={FileSpreadsheet}
                     onClick={downloadBatchTemplate}
-                    title={`Download the ${activeTab === 'COORDINATOR' ? 'coordinator' : 'supervisor'} import template`}
-                    aria-label={`Download the ${activeTab === 'COORDINATOR' ? 'coordinator' : 'supervisor'} import template`}
+                    title={`Download the ${tabLabel.singular.toLowerCase()} import template`}
+                    aria-label={`Download the ${tabLabel.singular.toLowerCase()} import template`}
                     className="!px-3"
                   />
                   <div
@@ -483,7 +498,7 @@ const AccountManagement = () => {
               </div>
             ) : visibleStaff.length === 0 ? (
               <p className="text-sm text-sti-gray py-12 text-center">
-                No {activeTab === 'COORDINATOR' ? 'coordinators' : 'supervisors'} found.
+                No {tabLabel.plural} found.
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -513,7 +528,7 @@ const AccountManagement = () => {
                         <td className="px-6 py-3.5">
                           <p className="font-medium text-sti-gray-dark dark:text-white break-all">{member.email}</p>
                           <p className="text-xs text-sti-gray">
-                            {member.role === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}
+                            {roleText(member.role)}
                             {member.assignedStudents != null ? ` • ${member.assignedStudents} assigned` : ''}
                           </p>
                         </td>
@@ -541,9 +556,11 @@ const AccountManagement = () => {
                                 <button onClick={() => openEditModal(member)} title="Edit account" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
                                   <Pencil className="w-4 h-4" />
                                 </button>
-                                <button onClick={() => setDeleteTarget(member)} title="Remove account" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                {member.role !== 'ADMIN' && (
+                                  <button onClick={() => setDeleteTarget(member)} title="Remove account" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
                               </>
                             )}
                           </div>
@@ -575,7 +592,7 @@ const AccountManagement = () => {
       <Modal
         isOpen={modalMode === 'add' || modalMode === 'edit'}
         onClose={() => { setModalMode(null); setSelected(null); }}
-        title={modalMode === 'add' ? `Add ${form.role === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'}` : 'Edit Account'}
+        title={modalMode === 'add' ? `Add ${roleText(form.role)}` : 'Edit Account'}
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -587,6 +604,7 @@ const AccountManagement = () => {
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, coordinatorCourse: '', companyId: '' })} className="input-field">
                 <option value="SUPERVISOR">Supervisor</option>
                 <option value="COORDINATOR">Coordinator</option>
+                {isSuperAdmin && <option value="ADMIN">Admin</option>}
               </select>
             </div>
           ) : (
@@ -607,7 +625,7 @@ const AccountManagement = () => {
               >
                 <option value="SUPERVISOR">Supervisor</option>
                 <option value="COORDINATOR">Coordinator</option>
-                <option value="ADMIN">Admin</option>
+                {isSuperAdmin && <option value="ADMIN">Admin</option>}
               </select>
             </div>
           )}
@@ -628,7 +646,7 @@ const AccountManagement = () => {
             <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" />
           </div>
 
-          {form.role === 'COORDINATOR' ? (
+          {form.role === 'COORDINATOR' && (
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Program *</label>
               <select required value={form.coordinatorCourse} onChange={(e) => setForm({ ...form, coordinatorCourse: e.target.value })} className="input-field">
@@ -642,7 +660,9 @@ const AccountManagement = () => {
                 <option value="BSAIS">BSAIS</option>
               </select>
             </div>
-          ) : (
+          )}
+
+          {form.role === 'SUPERVISOR' && (
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Company *</label>
               <select required value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field">

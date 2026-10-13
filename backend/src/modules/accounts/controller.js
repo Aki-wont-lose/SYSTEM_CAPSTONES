@@ -22,7 +22,8 @@ export const fetchStaff = asyncHandler(async (req, res) => {
     role,
     search,
     includeInactive: includeInactive !== 'false',
-    requesterRole: req.user.role
+    requesterRole: req.user.role,
+    requesterIsSuperAdmin: !!req.user.isSuperAdmin
   });
   res.status(200).json({ success: true, message: 'Accounts retrieved', data: staff });
 });
@@ -32,17 +33,20 @@ export const fetchAccount = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Account retrieved', data: account });
 });
 
+const roleLabel = (role) =>
+  role === 'COORDINATOR' ? 'Coordinator' : role === 'ADMIN' ? 'Admin' : 'Supervisor';
+
 export const addStaffAccount = asyncHandler(async (req, res) => {
-  const result = await createStaffAccount(req.body);
+  const result = await createStaffAccount({ ...req.body, requesterIsSuperAdmin: !!req.user.isSuperAdmin });
   res.status(201).json({
     success: true,
-    message: `${result.user.role === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'} account created`,
+    message: `${roleLabel(result.user.role)} account created`,
     data: result
   });
 });
 
 export const editStaffAccount = asyncHandler(async (req, res) => {
-  const account = await updateStaffAccount(req.params.id, req.body);
+  const account = await updateStaffAccount(req.params.id, req.body, { requesterIsSuperAdmin: !!req.user.isSuperAdmin });
   res.status(200).json({ success: true, message: 'Account updated', data: account });
 });
 

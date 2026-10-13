@@ -22,6 +22,21 @@ export { JWT_SECRET };
 
 assertUsableSecret(JWT_SECRET);
 
+// The single super-admin is identified by email, not by a database flag, so no
+// migration is needed and the designation cannot be granted through the API.
+// There is exactly one because an email belongs to exactly one account. The
+// default matches the seeded administrator; override with SUPER_ADMIN_EMAIL.
+export const SUPER_ADMIN_EMAIL = String(process.env.SUPER_ADMIN_EMAIL || 'admin@stamaria.sti.edu.ph')
+  .trim()
+  .toLowerCase();
+
+// True only for the administrator whose email matches SUPER_ADMIN_EMAIL. Takes
+// the authoritative DB row (via verifyToken) so a role change cannot forge it.
+export const isSuperAdmin = (user) =>
+  Boolean(user) &&
+  user.role === 'ADMIN' &&
+  String(user.email || '').trim().toLowerCase() === SUPER_ADMIN_EMAIL;
+
 // 4 user levels — ADMIN, COORDINATOR, SUPERVISOR, STUDENT (adviser spec)
 export const ROLES = {
   ADMIN: 'ADMIN',
@@ -95,7 +110,8 @@ export const verifyToken = (req, res, next) => {
           role: user.role,
           mustChangePassword: user.mustChangePassword,
           coordinatorCourse: user.coordinatorCourse,
-          supervisorCompanyId: user.supervisorCompanyId
+          supervisorCompanyId: user.supervisorCompanyId,
+          isSuperAdmin: isSuperAdmin(user)
         };
         next();
       })

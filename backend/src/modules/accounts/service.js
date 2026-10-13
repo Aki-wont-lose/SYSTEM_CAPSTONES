@@ -42,12 +42,16 @@ export const getAccountCounts = async (requesterRole) => {
   return { students, supervisors, coordinators, admins };
 };
 
-export const listStaff = async ({ role, search, includeInactive = true, requesterRole } = {}) => {
+export const listStaff = async ({ role, search, includeInactive = true, requesterRole, requesterIsSuperAdmin = false } = {}) => {
   // Only ADMIN may browse coordinator/supervisor/admin accounts.
   if (requesterRole && requesterRole !== 'ADMIN') return [];
 
   const where = {};
-  if (role && STAFF_ROLES.includes(role)) where.role = role;
+  if (role === 'ADMIN') {
+    // Administrator accounts are private to the super-admin.
+    if (!requesterIsSuperAdmin) return [];
+    where.role = 'ADMIN';
+  } else if (role && STAFF_ROLES.includes(role)) where.role = role;
   else if (role === 'ALL') where.role = { in: [...STAFF_ROLES, 'ADMIN'] };
   else where.role = { in: STAFF_ROLES };
   if (!includeInactive) where.isActive = true;
@@ -80,10 +84,17 @@ export const listStaff = async ({ role, search, includeInactive = true, requeste
   }));
 };
 
-export const createStaffAccount = async ({ email, firstName, lastName, role, coordinatorCourse, companyId, contactNumber }) => {
+export const createStaffAccount = async ({ email, firstName, lastName, role, coordinatorCourse, companyId, contactNumber, requesterIsSuperAdmin = false }) => {
   const normalizedRole = String(role || '').toUpperCase();
-  if (!STAFF_ROLES.includes(normalizedRole)) {
-    const error = new Error('Role must be COORDINATOR or SUPERVISOR');
+  // Only the super-admin may create another ADMIN. Everyone else is confined to
+  // the coordinator/supervisor roles the Add form exposes to them.
+  if (normalizedRole === 'ADMIN' && !requesterIsSuperAdmin) {
+    const error = new Error('Only the super-admin can create administrator accounts');
+    error.status = 403;
+    throw error;
+  }
+  if (!STAFF_ROLES.includes(normalizedRole) && !(requesterIsSuperAdmin && normalizedRole === 'ADMIN')) {
+    const error = new Error(requesterIsSuperAdmin ? 'Role must be ADMIN, COORDINATOR or SUPERVISOR' : 'Role must be COORDINATOR or SUPERVISOR');
     error.status = 400;
     throw error;
   }
@@ -144,7 +155,7 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
   return { user, temporaryPassword, fullName: `${normalizedFirstName} ${normalizedLastName}`, contactNumber: normalizedContact };
 };
 
-export const updateStaffAccount = async (userId, updateData) => {
+export const updateStaffAccount = async (userId, updateData, { requesterIsSuperAdmin = false } = {}) => {
   const existing = await prisma.user.findUnique({ where: { id: userId } });
   if (!existing) {
     const error = new Error('Account not found');
@@ -154,6 +165,13 @@ export const updateStaffAccount = async (userId, updateData) => {
   if (!STAFF_ROLES.includes(existing.role) && existing.role !== 'ADMIN') {
     const error = new Error('Only admin, coordinator and supervisor accounts can be edited here');
     error.status = 400;
+    throw error;
+  }
+  // Administrator accounts are managed by the super-admin only, so a co-admin
+  // cannot disable, demote or rename them.
+  if (existing.role === 'ADMIN' && !requesterIsSuperAdmin) {
+    const error = new Error('Only the super-admin can manage administrator accounts');
+    error.status = 403;
     throw error;
   }
 
@@ -182,6 +200,12 @@ export const updateStaffAccount = async (userId, updateData) => {
     if (!EDITABLE_ROLES.includes(normalizedRole)) {
       const error = new Error('Role must be ADMIN, COORDINATOR or SUPERVISOR');
       error.status = 400;
+      throw error;
+    }
+    // Promoting an account to ADMIN is a super-admin-only action.
+    if (normalizedRole === 'ADMIN' && !requesterIsSuperAdmin) {
+      const error = new Error('Only the super-admin can grant the administrator role');
+      error.status = 403;
       throw error;
     }
     data.role = normalizedRole;
