@@ -371,10 +371,10 @@ const Login = () => {
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <img src="/sti-logo.png" alt="STI College Sta. Maria" className="block h-7 sm:h-9 w-auto shrink-0" />
             <div className="min-w-0 leading-tight">
-              <p className="font-extrabold text-black dark:text-black text-sm sm:text-base lg:text-lg truncate">
+              <p className="font-extrabold text-black dark:text-white text-sm sm:text-base lg:text-lg truncate">
                 STI College Sta. Maria
               </p>
-              <p className="font-bold text-black dark:text-black text-[11px] sm:text-xs lg:text-sm truncate">
+              <p className="font-bold text-black dark:text-white text-[11px] sm:text-xs lg:text-sm truncate">
                 STI Education Services Group
               </p>
             </div>

@@ -3,7 +3,6 @@ import { Users, UserCheck, CheckCircle2, Clock3, GraduationCap } from 'lucide-re
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
 import WelcomeCarousel from '../components/WelcomeCarousel';
-import { getActiveAnnouncements } from '../services/announcementService';
 
 const PROGRAM_ORDER = ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'];
 

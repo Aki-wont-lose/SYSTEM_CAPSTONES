@@ -247,7 +247,7 @@ const StudentDTR = () => {
                       </td>
                       <td className="px-6 py-3.5">
                         {record.timeInPhoto ? (
-                          <button onClick={() => setPreviewRecord(record)} className="text-sti-blue hover:text-sti-blue-dark">
+                          <button onClick={() => setPreviewRecord(record)} className="text-sti-blue hover:text-sti-blue-dark dark:hover:text-white">
                             <ImageIcon className="w-4 h-4" />
                           </button>
                         ) : '—'}

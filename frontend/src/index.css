@@ -104,6 +104,11 @@
   html.dark :where(.bg-yellow-50) {
     background-color: rgba(250, 204, 21, 0.18);
   }
+  /* Neutral chips (Not Started / Draft / Inactive) kept a light grey bg while
+     their text flipped to light, so flip the bg too. */
+  html.dark :where(.bg-gray-100) {
+    background-color: #334155;
+  }
 }
 
 @layer components {

@@ -472,7 +472,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                     {req.category && <p className="text-xs text-sti-gray mt-1">{req.category}</p>}
                     {req.description && <p className="text-xs text-sti-gray mt-1">{req.description}</p>}
                     {req.templateFile && (
-                      <button onClick={() => downloadTemplate(req)} className="mt-2 flex items-center gap-1.5 text-xs font-medium text-sti-blue hover:text-sti-blue-dark">
+                      <button onClick={() => downloadTemplate(req)} className="mt-2 flex items-center gap-1.5 text-xs font-medium text-sti-blue hover:text-sti-blue-dark dark:hover:text-white">
                         <Download className="w-3.5 h-3.5" /> Download template: {req.templateFileName || 'template.pdf'}
                       </button>
                     )}
@@ -627,7 +627,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                         </td>
                         <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{sub.requirement?.title}</td>
                         <td className="px-6 py-3.5">
-                          <button onClick={() => downloadFile(sub)} className="flex items-center gap-1 text-sti-blue hover:text-sti-blue-dark text-xs font-medium">
+                          <button onClick={() => downloadFile(sub)} className="flex items-center gap-1 text-sti-blue hover:text-sti-blue-dark dark:hover:text-white text-xs font-medium">
                             <Download className="w-3.5 h-3.5" /> {sub.fileName}
                           </button>
                         </td>

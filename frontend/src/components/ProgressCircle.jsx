@@ -29,7 +29,7 @@ const ProgressCircle = ({ percentage, size = 160, strokeWidth = 14, label = 'Com
         />
       </svg>
       <div className="absolute flex flex-col items-center">
-        <span className="text-3xl font-extrabold text-sti-blue-dark">{Math.round(clamped)}%</span>
+        <span className="text-3xl font-extrabold text-sti-blue-dark dark:text-white">{Math.round(clamped)}%</span>
         <span className="text-xs text-sti-gray font-medium">{label}</span>
       </div>
     </div>
