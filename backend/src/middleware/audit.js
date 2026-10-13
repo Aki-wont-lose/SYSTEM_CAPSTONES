@@ -42,8 +42,6 @@ const actionFor = (req) => {
   if (req.method === 'DELETE') return 'DELETE';
   if (/\/review|\/respond/.test(req.path)) return 'REVIEW';
   if (/\/submit/.test(req.path)) return 'SUBMIT';
-  if (req.method === 'POST' && /linked-accounts/.test(req.path)) return 'LINK';
-  if (req.method === 'DELETE' && /linked-accounts/.test(req.path)) return 'UNLINK';
   return METHOD_ACTIONS[req.method] || 'UPDATE';
 };
 
@@ -71,8 +69,6 @@ const VERBS = {
   DELETE: 'Deleted',
   REVIEW: 'Reviewed',
   SUBMIT: 'Submitted',
-  LINK: 'Linked',
-  UNLINK: 'Unlinked',
 };
 
 export const auditTrail = (req, res, next) => {
