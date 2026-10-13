@@ -59,7 +59,7 @@ export const getAuditLogs = async (filters = {}) => {
     if (filters.to) where.createdAt.lte = new Date(`${filters.to}T23:59:59.999Z`);
   }
 
-  const [data, total, entities, actors] = await Promise.all([
+  const [data, total, entities, actors, actionRows] = await Promise.all([
     prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
     prisma.auditLog.count({ where }),
     prisma.auditLog.findMany({ where: { entity: { not: 'System' } }, distinct: ['entity'], select: { entity: true } }),
@@ -68,7 +68,17 @@ export const getAuditLogs = async (filters = {}) => {
       distinct: ['userId'],
       select: { userId: true, userEmail: true, userRole: true },
     }),
+    prisma.auditLog.findMany({ distinct: ['action'], select: { action: true } }),
   ]);
+
+  // Offer only the actions that actually occur in the trail, so retired flows
+  // (e.g. the old Microsoft LINK/UNLINK actions) never appear as dead filters.
+  // Ordered by the canonical AUDIT_ACTIONS sequence for a stable dropdown.
+  const actionOrder = new Map(AUDIT_ACTIONS.map((action, index) => [action, index]));
+  const actions = actionRows
+    .map((row) => row.action)
+    .filter(Boolean)
+    .sort((a, b) => (actionOrder.get(a) ?? AUDIT_ACTIONS.length) - (actionOrder.get(b) ?? AUDIT_ACTIONS.length));
 
   return {
     data,
@@ -77,7 +87,7 @@ export const getAuditLogs = async (filters = {}) => {
     limit,
     totalPages: Math.max(1, Math.ceil(total / limit)),
     facets: {
-      actions: AUDIT_ACTIONS,
+      actions,
       entities: entities.map((e) => e.entity).sort(),
       actors: actors.filter((a) => a.userEmail).map((a) => ({ id: a.userId, email: a.userEmail, role: a.userRole })),
     },
