@@ -24,9 +24,16 @@ const staffSelect = {
   _count: { select: { receivedMessages: true } }
 };
 
-export const getAccountCounts = async () => {
-  const [students, supervisors, coordinators, admins] = await Promise.all([
-    prisma.student.count(),
+export const getAccountCounts = async (requesterRole) => {
+  const students = await prisma.student.count();
+
+  // Staff head-counts are only meaningful to an ADMIN; everyone else gets the
+  // student total (the only figure their Account Management screen shows).
+  if (requesterRole !== 'ADMIN') {
+    return { students, supervisors: 0, coordinators: 0, admins: 0 };
+  }
+
+  const [supervisors, coordinators, admins] = await Promise.all([
     prisma.user.count({ where: { role: 'SUPERVISOR' } }),
     prisma.user.count({ where: { role: 'COORDINATOR' } }),
     prisma.user.count({ where: { role: 'ADMIN' } })
@@ -35,7 +42,10 @@ export const getAccountCounts = async () => {
   return { students, supervisors, coordinators, admins };
 };
 
-export const listStaff = async ({ role, search, includeInactive = true } = {}) => {
+export const listStaff = async ({ role, search, includeInactive = true, requesterRole } = {}) => {
+  // Only ADMIN may browse coordinator/supervisor/admin accounts.
+  if (requesterRole && requesterRole !== 'ADMIN') return [];
+
   const where = {};
   if (role && STAFF_ROLES.includes(role)) where.role = role;
   else if (role === 'ALL') where.role = { in: [...STAFF_ROLES, 'ADMIN'] };

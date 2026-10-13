@@ -14,10 +14,11 @@ import {
 
 const router = express.Router();
 
-// ADMIN + COORDINATOR manage account lists
-router.get('/counts', verifyRole(['ADMIN', 'COORDINATOR', 'SUPERVISOR']), fetchAccountCounts);
-router.get('/', verifyRole(['ADMIN', 'COORDINATOR', 'SUPERVISOR']), fetchStaff);
-router.get('/:id', verifyRole(['ADMIN', 'COORDINATOR']), fetchAccount);
+// Counts stay open to ADMIN + COORDINATOR (the coordinator's screen only shows
+// the student total); the staff list itself is ADMIN-only.
+router.get('/counts', verifyRole(['ADMIN', 'COORDINATOR']), fetchAccountCounts);
+router.get('/', verifyRole(['ADMIN']), fetchStaff);
+router.get('/:id', verifyRole(['ADMIN']), fetchAccount);
 
 // Only ADMIN creates/edits/removes coordinator and supervisor accounts
 router.post('/', verifyRole(['ADMIN']), addStaffAccount);

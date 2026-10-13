@@ -42,7 +42,10 @@ const AccountManagement = () => {
   const isAdmin = role === 'ADMIN';
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = searchParams.get('tab');
-  const initialTab = TABS.some((tab) => tab.key === requestedTab) ? requestedTab : 'SUPERVISOR';
+  // Staff tabs (supervisors/coordinators) are visible to ADMIN only; every other
+  // role that reaches this page manages students only.
+  const allowedTabs = isAdmin ? TABS : TABS.filter((tab) => tab.key === 'STUDENT');
+  const initialTab = allowedTabs.some((tab) => tab.key === requestedTab) ? requestedTab : allowedTabs[0].key;
   const [activeTab, setActiveTab] = useState(initialTab);
   const [counts, setCounts] = useState({ students: 0, supervisors: 0, coordinators: 0 });
   const [staff, setStaff] = useState([]);
@@ -84,6 +87,7 @@ const AccountManagement = () => {
   };
 
   const loadStaff = async () => {
+    if (!isAdmin) { setLoading(false); return; }
     setLoading(true);
     try {
       const res = await getStaffAccounts({ search });
@@ -382,7 +386,7 @@ const AccountManagement = () => {
     <div className="space-y-6 animate-fade-in">
       <Card className="p-0 overflow-hidden">
         <div className="flex overflow-x-auto border-b border-black/5 dark:border-white/10">
-          {TABS.map((tab) => {
+          {allowedTabs.map((tab) => {
             const value = tab.key === 'STUDENT' ? counts.students : tab.key === 'COORDINATOR' ? counts.coordinators : counts.supervisors;
             const isActive = activeTab === tab.key;
             return (

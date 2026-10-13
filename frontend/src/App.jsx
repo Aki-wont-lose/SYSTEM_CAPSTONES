@@ -128,7 +128,6 @@ function App() {
         <Route path="/coordinator/grading" element={<Navigate to="/coordinator/submissions" replace />} />
         <Route path="/coordinator/companies" element={<Companies />} />
         <Route path="/coordinator/logs" element={<AdminLogs />} />
-        <Route path="/coordinator/audit-logs" element={<AuditLogs />} />
         <Route path="/coordinator/announcements" element={<AnnouncementManagement />} />
         <Route path="/coordinator/messages" element={<Messages />} />
         <Route path="/coordinator/profile" element={<AdminProfile />} />

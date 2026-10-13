@@ -12,7 +12,7 @@ import {
 } from './service.js';
 
 export const fetchAccountCounts = asyncHandler(async (req, res) => {
-  const counts = await getAccountCounts();
+  const counts = await getAccountCounts(req.user.role);
   res.status(200).json({ success: true, message: 'Account counts retrieved', data: counts });
 });
 
@@ -21,7 +21,8 @@ export const fetchStaff = asyncHandler(async (req, res) => {
   const staff = await listStaff({
     role,
     search,
-    includeInactive: includeInactive !== 'false'
+    includeInactive: includeInactive !== 'false',
+    requesterRole: req.user.role
   });
   res.status(200).json({ success: true, message: 'Accounts retrieved', data: staff });
 });

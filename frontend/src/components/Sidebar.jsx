@@ -23,7 +23,6 @@ const linksByRole = {
     { to: '/coordinator/submissions', label: 'Submissions', icon: ClipboardList },
     { to: '/coordinator/companies', label: 'Partner Companies', icon: Building2 },
     { to: '/coordinator/logs', label: 'Student Logs', icon: ClipboardList },
-    { to: '/coordinator/audit-logs', label: 'Audit Logs', icon: ScrollText },
     { to: '/coordinator/announcements', label: 'Announcements', icon: Megaphone },
     { to: '/coordinator/messages', label: 'Messages', icon: MessageCircle },
     { to: '/coordinator/profile', label: 'Profile', icon: UserCircle },
