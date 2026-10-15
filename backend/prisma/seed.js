@@ -1,7 +1,6 @@
 // prisma/seed.js
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -19,10 +18,8 @@ async function main() {
   await prisma.announcement.deleteMany();
 
   const adminPassword = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD || 'Admin123!', 10);
-  // Students sign in only via "Sign in with Google" or "Sign in with Microsoft"
-  // Passwords are hashed and not visible in code - see .env SEED_*_PASSWORD
-  const student1Password = await bcrypt.hash(crypto.randomUUID(), 10);
-  const student2Password = await bcrypt.hash(crypto.randomUUID(), 10);
+  // Students sign in ONLY via "Sign in with Microsoft" (their school account), so
+  // no password is stored for them — password: null, exactly like createStudent().
 
   // Admin
   await prisma.user.create({
@@ -46,11 +43,11 @@ async function main() {
   });
   console.log('✓ Coordinator & Supervisor users created (COORDINATOR / SUPERVISOR)');
 
-  // Student users (exactly the two specified accounts)
+  // Student users (exactly the two specified accounts) — Microsoft-only, no password
   const student1User = await prisma.user.create({
     data: {
-      email: 'Cruz.352467@gmail.com',
-      password: student1Password,
+      email: 'cruz.352467@stamaria.sti.edu.ph',
+      password: null,
       role: 'STUDENT',
       isActive: true
     }
@@ -58,8 +55,8 @@ async function main() {
 
   const student2User = await prisma.user.create({
     data: {
-      email: 'Cabatu.334507@gmail.com',
-      password: student2Password,
+      email: 'cabatu.334507@stamaria.sti.edu.ph',
+      password: null,
       role: 'STUDENT',
       isActive: true
     }
@@ -72,9 +69,9 @@ async function main() {
       studentId: '352467',
       firstName: 'Marvin',
       lastName: 'Cruz',
-      course: 'BS Information Technology',
-      section: 'IT-401',
-      email: 'Cruz.352467@gmail.com',
+      course: 'BSIT',
+      section: 'BSIT 4-101',
+      email: 'cruz.352467@stamaria.sti.edu.ph',
       contactNumber: '09694808531',
       ojt_status: 'NOT_STARTED',
       requiredHours: 486,
@@ -88,9 +85,9 @@ async function main() {
       studentId: '334507',
       firstName: 'Wenzer',
       lastName: 'Cabatu',
-      course: 'BS Information Technology',
-      section: 'IT-401',
-      email: 'Cabatu.334507@gmail.com',
+      course: 'BSIT',
+      section: 'BSIT 4-101',
+      email: 'cabatu.334507@stamaria.sti.edu.ph',
       contactNumber: '09625780288',
       ojt_status: 'NOT_STARTED',
       requiredHours: 486,
@@ -147,9 +144,9 @@ async function main() {
   console.log('Admin:       admin@stamaria.sti.edu.ph / Admin123! ');
   console.log('Coordinator: coordinator@stamaria.sti.edu.ph / Coordinator123!');
   console.log('Supervisor:  supervisor@stamaria.sti.edu.ph / Supervisor123!');
-  console.log('Student1: Cruz.352467@gmail.com (log in with "Log in with Student Account" -> Google)');
-  console.log('Student2: Cabatu.334507@gmail.com (log in with "Log in with Student Account" -> Google)');
-  console.log('\n(Student Google sign-in requires GOOGLE_CLIENT_ID to be set in backend/.env — see README "Google Sign-In Setup". Each student\'s real Google account email must exactly match the email above.)');
+  console.log('Student1: cruz.352467@stamaria.sti.edu.ph (Microsoft-only, no password)');
+  console.log('Student2: cabatu.334507@stamaria.sti.edu.ph (Microsoft-only, no password)');
+  console.log('\n(Students sign in ONLY with "Sign in with Microsoft" using their school account. Each student\'s Microsoft email must match the email above.)');
 }
 
 main()
