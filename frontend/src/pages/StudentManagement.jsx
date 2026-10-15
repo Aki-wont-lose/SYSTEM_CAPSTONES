@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, KeyRound, ArrowUpDown, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, CheckCircle2, ArrowUpDown, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -637,22 +637,17 @@ const StudentManagement = () => {
         </div>
       </Modal>
 
-      <Modal isOpen={!!newCredentials} onClose={() => setNewCredentials(null)} title="Student Account Created" maxWidth="max-w-md">
+      <Modal isOpen={!!newCredentials} onClose={() => setNewCredentials(null)} title="Account created" maxWidth="max-w-md">
         {newCredentials && (
-          <div className="space-y-4">
-            <div className="flex gap-2 bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-200 text-xs rounded-xl px-3 py-2.5 border border-blue-100 dark:border-blue-900">
-              <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>No password was generated. Share this email with the student — it must match their school Microsoft account.</span>
+          <div className="text-center space-y-5">
+            <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-sti-blue to-sti-blue-dark flex items-center justify-center shadow-lg shadow-sti-blue/30 animate-slide-up">
+              <CheckCircle2 className="w-9 h-9 text-white" strokeWidth={2.5} />
             </div>
-            <div className="space-y-2">
-              <div>
-                <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">Email</p>
-                <p className="text-sm text-sti-gray-dark dark:text-white bg-sti-gray-light dark:bg-slate-900 rounded-lg px-3 py-2 break-all">{newCredentials.email}</p>
-              </div>
+            <div>
+              <h3 className="text-lg font-bold text-sti-gray-dark dark:text-white">Account created</h3>
+              <p className="text-sm text-sti-gray mt-1 break-all">{newCredentials.email}</p>
             </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="primary" onClick={() => setNewCredentials(null)}>Done</Button>
-            </div>
+            <Button variant="primary" className="w-full" onClick={() => setNewCredentials(null)}>Done</Button>
           </div>
         )}
       </Modal>
