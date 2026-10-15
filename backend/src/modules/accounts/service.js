@@ -140,8 +140,12 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     throw error;
   }
 
-  const temporaryPassword = generateTemporaryPassword();
-  const hashedPassword = await hashPassword(temporaryPassword);
+  // Admins and coordinators sign in with their school Microsoft account, so no
+  // password is stored for them. Supervisors may not have a school Microsoft
+  // account, so they keep a generated temporary password as before.
+  const needsPassword = normalizedRole === 'SUPERVISOR';
+  const temporaryPassword = needsPassword ? generateTemporaryPassword() : null;
+  const hashedPassword = needsPassword ? await hashPassword(temporaryPassword) : null;
 
   const user = await prisma.user.create({
     data: {
@@ -152,7 +156,7 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
       firstName: normalizedFirstName,
       lastName: normalizedLastName,
       contactNumber: normalizedContact,
-      mustChangePassword: true,
+      mustChangePassword: needsPassword,
       coordinatorCourse: normalizedRole === 'COORDINATOR' ? coordinatorCourse : null,
       supervisorCompanyId: normalizedRole === 'SUPERVISOR' ? companyId : null
     },

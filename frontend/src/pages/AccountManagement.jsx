@@ -721,24 +721,35 @@ const AccountManagement = () => {
       <Modal isOpen={!!credentials} onClose={() => setCredentials(null)} title={credentials?.title || 'Account created'} maxWidth="max-w-md">
         {credentials && (
           <div className="space-y-4">
-            <div className="flex gap-2 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-xs rounded-xl px-3 py-2.5 border border-amber-200 dark:border-amber-900">
-              <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>Share these credentials securely. The temporary password is shown only once.</span>
-            </div>
+            {credentials.password ? (
+              <div className="flex gap-2 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-xs rounded-xl px-3 py-2.5 border border-amber-200 dark:border-amber-900">
+                <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>Share these credentials securely. The temporary password is shown only once.</span>
+              </div>
+            ) : (
+              <div className="flex gap-2 bg-sti-blue-50 dark:bg-slate-900 text-sti-blue text-xs rounded-xl px-3 py-2.5 border border-black/5 dark:border-white/10">
+                <Check className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>No password needed. This account signs in with its school Microsoft account — use "Log in with Office 365".</span>
+              </div>
+            )}
             <div className="space-y-2">
               <div>
                 <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">Email</p>
                 <p className="text-sm text-sti-gray-dark dark:text-white bg-sti-gray-light dark:bg-slate-900 rounded-lg px-3 py-2 break-all">{credentials.email}</p>
               </div>
-              <div>
-                <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">Temporary password</p>
-                <p className="text-sm font-mono text-sti-gray-dark dark:text-white bg-sti-gray-light dark:bg-slate-900 rounded-lg px-3 py-2 break-all">{credentials.password}</p>
-              </div>
+              {credentials.password && (
+                <div>
+                  <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">Temporary password</p>
+                  <p className="text-sm font-mono text-sti-gray-dark dark:text-white bg-sti-gray-light dark:bg-slate-900 rounded-lg px-3 py-2 break-all">{credentials.password}</p>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-3">
-              <Button type="button" variant="secondary" icon={copied ? Check : Copy} onClick={copyCredentials}>
-                {copied ? 'Copied' : 'Copy'}
-              </Button>
+              {credentials.password && (
+                <Button type="button" variant="secondary" icon={copied ? Check : Copy} onClick={copyCredentials}>
+                  {copied ? 'Copied' : 'Copy'}
+                </Button>
+              )}
               <Button variant="primary" onClick={() => setCredentials(null)}>Done</Button>
             </div>
           </div>
