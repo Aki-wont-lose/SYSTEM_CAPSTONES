@@ -451,7 +451,7 @@ const StudentManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID</label>
-              <input required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field" placeholder="352467" />
+              <input required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field" />
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">OJT Status</label>
