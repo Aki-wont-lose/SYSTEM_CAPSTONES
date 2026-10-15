@@ -129,9 +129,6 @@ const Sidebar = ({ role, isOpen, onClose }) => {
         <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-5">
           {sections.map(({ section, links }) => (
             <div key={section}>
-              <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-3 mb-1.5">
-                {section}
-              </p>
               <div className="space-y-0.5">
                 {links.map(({ to, label, icon: Icon }) => (
                   <NavLink

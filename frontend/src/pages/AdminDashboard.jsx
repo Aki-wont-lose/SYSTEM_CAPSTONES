@@ -50,7 +50,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Announcements - fitted whole photo not cropped, aligned to Welcome width (2/3) */}
+      {/* Announcements (2/3) + Interns per Program (1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2 space-y-3">
           {announcements.length===0 ? (
@@ -66,40 +66,38 @@ const AdminDashboard = () => {
             </Card>
           ))}
         </div>
-        <div className="hidden lg:block" />
+        <div className="lg:col-span-1">
+          <Card>
+            <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm flex items-center gap-2">
+              <GraduationCap className="w-4 h-4 text-sti-blue" /> Interns per Program
+            </h3>
+            {programRows.length === 0 ? (
+              <p className="text-sm text-sti-gray mt-3">No program data yet.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                {programRows.map((row) => (
+                  <div key={row.label}>
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="font-medium text-sti-gray-dark dark:text-slate-200">{row.label}</span>
+                      <span className="text-sti-gray">{row.value} intern{row.value === 1 ? '' : 's'}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-sti-gray-light dark:bg-slate-700 overflow-hidden">
+                      <div className="h-full rounded-full bg-sti-blue" style={{ width: `${Math.round((row.value / maxProgram) * 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
 
       {/* Headline status counts */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard label="Total OJT Enrolled Student" value={stats.totalStudents ?? stats.total} icon={Users} accent="blue" />
-        <StatCard label="On Going OJT Students" value={stats.active ?? 0} icon={UserCheck} accent="green" />
+        <StatCard label="Total OJT Enrolled Students" value={stats.totalStudents ?? stats.total} icon={Users} accent="blue" />
+        <StatCard label="Ongoing OJT Students" value={stats.active ?? 0} icon={UserCheck} accent="green" />
         <StatCard label="Pending" value={stats.pending ?? 0} icon={Clock3} accent="red" />
         <StatCard label="Completed" value={stats.completed ?? 0} icon={CheckCircle2} accent="yellow" />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:gap-6">
-        <Card>
-          <h3 className="font-bold text-sti-gray-dark dark:text-white text-sm flex items-center gap-2">
-            <GraduationCap className="w-4 h-4 text-sti-blue" /> Interns per Program
-          </h3>
-          {programRows.length === 0 ? (
-            <p className="text-sm text-sti-gray mt-3">No program data yet.</p>
-          ) : (
-            <div className="mt-4 space-y-3">
-              {programRows.map((row) => (
-                <div key={row.label}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="font-medium text-sti-gray-dark dark:text-slate-200">{row.label}</span>
-                    <span className="text-sti-gray">{row.value} intern{row.value === 1 ? '' : 's'}</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-sti-gray-light dark:bg-slate-700 overflow-hidden">
-                    <div className="h-full rounded-full bg-sti-blue" style={{ width: `${Math.round((row.value / maxProgram) * 100)}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
       </div>
 
       <Card className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

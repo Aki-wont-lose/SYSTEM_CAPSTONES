@@ -99,7 +99,7 @@ const StudentDashboard = () => {
           <div className="bg-sti-blue rounded-xl px-4 py-2.5 flex items-center justify-between">
             <div>
               <p className="text-white font-bold text-sm">
-                Hi, {student?.firstName}! •{' '}
+                Hi{student?.firstName ? `, ${student.firstName}` : ''}! •{' '}
                 {student?.company?.name ? `Interning at ${student.company.name}` : 'Keep tracking your progress.'}
               </p>
               <p className="text-white/70 text-xs">
