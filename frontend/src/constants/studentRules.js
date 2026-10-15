@@ -2,11 +2,13 @@
 //
 // Frontend mirror of backend/src/utils/studentValidation.js. Keep the two in
 // sync. The backend re-validates everything, so this only improves the UX.
+import { PROGRAM_VALUES } from './programs';
 
 // Official institutional domains (both accepted).
 export const INSTITUTIONAL_DOMAINS = ['stamaria.edu.ph', 'stamaria.sti.edu.ph'];
 
-export const SUPPORTED_PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'];
+// Reuse the one program list the rest of the app already reads from.
+export const SUPPORTED_PROGRAMS = PROGRAM_VALUES;
 
 const DOMAIN_PATTERN = INSTITUTIONAL_DOMAINS.map((d) => d.replace(/\./g, '\\.')).join('|');
 const EMAIL_RE = new RegExp(
