@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, KeyRound, ArrowUpDown, FileSpreadsheet } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, KeyRound, ArrowUpDown, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -15,6 +15,16 @@ import {
 import { getCompanies } from '../services/companyService';
 import { getStudentAttendanceForStaff, getStudentSummaryForStaff } from '../services/attendanceService';
 import { PROGRAM_OPTIONS } from '../constants/programs';
+import {
+  sectionsForProgram,
+  deriveYearLevel,
+  formatYearLevel,
+  isValidStudentEmail,
+  isValidSection,
+  generateSections,
+  ELMS_EMAIL_HELPER,
+  ELMS_EMAIL_ERROR
+} from '../constants/studentRules';
 
 const statusStyles = {
   NOT_STARTED: 'bg-gray-100 text-sti-gray-dark',
@@ -124,8 +134,12 @@ const StudentManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setSaving(true);
     setError('');
+    if (modalMode === 'add') {
+      if (!isValidStudentEmail(form.email)) { setError(ELMS_EMAIL_ERROR); return; }
+      if (!isValidSection(form.section)) { setError('Please select a valid section (e.g., BSIT 1-101).'); return; }
+    }
+    setSaving(true);
     try {
       if (modalMode === 'add') {
         const { companyId, ...rest } = form;
@@ -199,19 +213,21 @@ const StudentManagement = () => {
 
   const downloadBatchTemplate = () => {
     const sample = [{
-      studentId: '202401234',
+      studentId: '02000352467',
       firstName: 'Juan',
       lastName: 'Dela Cruz',
-      email: 'juan.delacruz@stamaria.sti.edu.ph',
+      email: 'Juan.DelaCruz.02000352467@stamaria.edu.ph',
       course: 'BSIT',
-      section: 'BSIT-1A',
+      section: 'BSIT 1-101',
       contactNumber: '09171234567'
     }];
     const worksheet = XLSX.utils.json_to_sheet(sample, { header: ['studentId', 'firstName', 'lastName', 'email', 'course', 'section', 'contactNumber'] });
     const programsSheet = XLSX.utils.json_to_sheet(PROGRAM_OPTIONS.map((program) => ({ course: program.value })), { header: ['course'] });
+    const sectionsSheet = XLSX.utils.json_to_sheet(generateSections().map((section) => ({ section })), { header: ['section'] });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
     XLSX.utils.book_append_sheet(workbook, programsSheet, 'Courses');
+    XLSX.utils.book_append_sheet(workbook, sectionsSheet, 'Sections');
     XLSX.writeFile(workbook, 'Student_Template.xlsx');
   };
 
@@ -280,6 +296,13 @@ const StudentManagement = () => {
       setBatchResult({ created: 0, failed: students.length || 1, errors: [err.response?.data?.message || err.message || 'Batch failed'] });
     } finally { setBatchLoading(false); }
   };
+
+  // Section options follow the selected course; year level is always derived
+  // from the section (never entered by hand).
+  const sectionOptions = sectionsForProgram(form.course);
+  const showLegacySection = form.section && !sectionOptions.includes(form.section);
+  const detectedYearLevel = deriveYearLevel(form.section);
+  const emailInvalid = modalMode === 'add' && form.email.trim() !== '' && !isValidStudentEmail(form.email);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -465,7 +488,7 @@ const StudentManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course</label>
-              <select required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value })} className="input-field">
+              <select required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value, section: '' })} className="input-field">
                 <option value="">Select a course</option>
                 {PROGRAM_OPTIONS.map((program) => (
                   <option key={program.value} value={program.value}>{program.label}</option>
@@ -474,15 +497,40 @@ const StudentManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Section</label>
-              <input required value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} className="input-field" />
+              <select
+                required
+                disabled={!form.course}
+                value={form.section}
+                onChange={(e) => setForm({ ...form, section: e.target.value })}
+                className="input-field disabled:bg-sti-gray-light"
+              >
+                <option value="">{form.course ? 'Select a section' : 'Select a course first'}</option>
+                {showLegacySection && <option value={form.section}>{form.section}</option>}
+                {sectionOptions.map((section) => (
+                  <option key={section} value={section}>{section}</option>
+                ))}
+              </select>
             </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
-              <input required type="email" disabled={modalMode === 'edit'} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field disabled:bg-sti-gray-light" />
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Year Level</label>
+              <input readOnly tabIndex={-1} value={detectedYearLevel ? formatYearLevel(detectedYearLevel) : ''} placeholder="Auto-detected from section" className="input-field bg-sti-gray-light/60 text-sti-gray cursor-default" />
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
               <input required value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
+              <input required type="email" disabled={modalMode === 'edit'} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={`input-field disabled:bg-sti-gray-light${emailInvalid ? ' border-red-300 focus:border-red-400' : ''}`} />
+              {modalMode === 'add' && emailInvalid && (
+                <p className="flex items-start gap-1.5 text-xs text-red-600 mt-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{ELMS_EMAIL_ERROR}</span>
+                </p>
+              )}
+              {modalMode === 'add' && !emailInvalid && form.email.trim() === '' && (
+                <p className="text-xs text-sti-gray mt-1.5">{ELMS_EMAIL_HELPER}</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Partner Company</label>

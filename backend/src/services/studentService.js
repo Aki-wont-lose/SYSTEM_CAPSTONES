@@ -1,7 +1,14 @@
 // src/services/studentService.js
 import { PrismaClient } from '@prisma/client';
+import { isValidStudentEmail, isValidSection, ELMS_EMAIL_ERROR, ELMS_SECTION_ERROR } from '../utils/studentValidation.js';
 
 const prisma = new PrismaClient();
+
+const badRequest = (message) => {
+  const err = new Error(message);
+  err.status = 400;
+  return err;
+};
 
 export const getAllStudents = async (filters = {}) => {
   const where = {};
@@ -83,6 +90,18 @@ export const getStudentByUserId = async (userId) => {
 };
 
 export const createStudent = async (studentData, userData) => {
+  // Enforce the institutional rules here, not only in the form, so a direct API
+  // call (or a CSV batch row) can never create a student with a non-ELMS email
+  // or an off-catalog section. Year level is derived from the section, so a
+  // valid section is required.
+  const email = String(studentData.email || userData?.email || '').trim();
+  if (!isValidStudentEmail(email)) {
+    throw badRequest(ELMS_EMAIL_ERROR);
+  }
+  if (!isValidSection(studentData.section)) {
+    throw badRequest(ELMS_SECTION_ERROR);
+  }
+
   try {
     // Students sign in with Microsoft only, so no password is stored for them.
     const user = await prisma.user.create({
@@ -161,6 +180,20 @@ export const updateStudent = async (studentId, updateData) => {
     const sanitized = {};
     for (const field of STAFF_EDITABLE_STUDENT_FIELDS) {
       if (updateData[field] !== undefined) sanitized[field] = updateData[field];
+    }
+
+    // Validate email/section only when they actually change, so legacy records
+    // (e.g. section "IT-401") stay editable without forcing a data migration,
+    // while any NEW value must follow the strict ELMS rules.
+    const current = await prisma.student.findUnique({
+      where: { id: studentId },
+      select: { email: true, section: true }
+    });
+    if (sanitized.email !== undefined && sanitized.email !== current?.email && !isValidStudentEmail(sanitized.email)) {
+      throw badRequest(ELMS_EMAIL_ERROR);
+    }
+    if (sanitized.section !== undefined && sanitized.section !== current?.section && !isValidSection(sanitized.section)) {
+      throw badRequest(ELMS_SECTION_ERROR);
     }
 
     return prisma.student.update({
