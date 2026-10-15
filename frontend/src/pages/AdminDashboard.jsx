@@ -40,14 +40,6 @@ const AdminDashboard = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Headline stats first so they are not pushed below the fold */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total OJT Enrolled Students" value={stats?.totalStudents ?? stats?.total ?? 0} icon={Users} accent="blue" />
-        <StatCard label="Ongoing OJT Students" value={stats?.active ?? 0} icon={UserCheck} accent="green" />
-        <StatCard label="Pending" value={stats?.pending ?? 0} icon={Clock3} accent="red" />
-        <StatCard label="Completed" value={stats?.completed ?? 0} icon={CheckCircle2} accent="yellow" />
-      </div>
-
       {/* Main content (left) + quick info (right). items-start keeps every card at
           its natural height so a short card never stretches into empty space. */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -92,6 +84,14 @@ const AdminDashboard = () => {
             )}
           </Card>
         </div>
+      </div>
+
+      {/* Headline status counts */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Total OJT Enrolled Students" value={stats?.totalStudents ?? stats?.total ?? 0} icon={Users} accent="blue" />
+        <StatCard label="Ongoing OJT Students" value={stats?.active ?? 0} icon={UserCheck} accent="green" />
+        <StatCard label="Pending" value={stats?.pending ?? 0} icon={Clock3} accent="red" />
+        <StatCard label="Completed" value={stats?.completed ?? 0} icon={CheckCircle2} accent="yellow" />
       </div>
 
       <Card className="flex items-center gap-2 text-sm text-sti-gray">
