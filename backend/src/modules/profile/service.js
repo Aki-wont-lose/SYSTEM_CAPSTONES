@@ -1,6 +1,7 @@
 // modules/profile/service.js — profile domain (student + any user)
 import { getStudentByUserId, updateStudent } from '../../services/studentService.js';
 import { getMicrosoftIdentity } from '../../services/microsoftAuthService.js';
+import { isValidStaffEmail, STAFF_EMAIL_ERROR } from '../../utils/staffValidation.js';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
@@ -45,6 +46,15 @@ export const updateMyProfile = async (userId, data) => {
     if (taken) {
       const error = new Error('That email address is already used by another account');
       error.status = 409;
+      throw error;
+    }
+    // Staff sign in with this address via Microsoft, so it has to keep matching
+    // the institutional rule create() enforces — otherwise a self-edit could
+    // strand the account. Only enforced when the address actually changes.
+    const current = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    if (current?.email !== email && !isValidStaffEmail(email)) {
+      const error = new Error(STAFF_EMAIL_ERROR);
+      error.status = 400;
       throw error;
     }
     staffUpdate.email = email;

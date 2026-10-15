@@ -204,6 +204,14 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
         error.status = 400;
         throw error;
       }
+      // Same rule as create(), so an edit can never relax what create enforces.
+      // Only applied when the address actually changes: legacy accounts seeded
+      // before the rule existed stay editable.
+      if (!isValidStaffEmail(normalizedEmail)) {
+        const error = new Error(STAFF_EMAIL_ERROR);
+        error.status = 400;
+        throw error;
+      }
     }
     data.email = normalizedEmail;
   }
