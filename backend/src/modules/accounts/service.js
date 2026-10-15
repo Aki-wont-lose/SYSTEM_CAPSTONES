@@ -1,6 +1,7 @@
 // src/modules/accounts/service.js
 import { PrismaClient } from '@prisma/client';
 import { hashPassword, generateTemporaryPassword } from '../../services/authService.js';
+import { isValidStaffEmail, STAFF_EMAIL_ERROR } from '../../utils/staffValidation.js';
 
 const prisma = new PrismaClient();
 
@@ -129,6 +130,12 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
     const error = new Error('An account with this email already exists');
+    error.status = 400;
+    throw error;
+  }
+
+  if (!isValidStaffEmail(normalizedEmail)) {
+    const error = new Error(STAFF_EMAIL_ERROR);
     error.status = 400;
     throw error;
   }
@@ -328,7 +335,7 @@ export const resetAccountPassword = async (userId) => {
   return { user, temporaryPassword };
 };
 
-export const deleteStaffAccount = async (userId) => {
+export const deleteStaffAccount = async (userId, { requesterIsSuperAdmin = false, requesterId = null } = {}) => {
   const existing = await prisma.user.findUnique({
     where: { id: userId },
     include: { _count: { select: { sentMessages: true, receivedMessages: true } } }
@@ -338,10 +345,20 @@ export const deleteStaffAccount = async (userId) => {
     error.status = 404;
     throw error;
   }
+  // Administrator accounts are private to the super-admin. The super-admin may
+  // remove the admins it created, but never its own account, so the system
+  // always keeps a top-level administrator able to manage it.
   if (existing.role === 'ADMIN') {
-    const error = new Error('Administrator accounts cannot be removed from Account Management');
-    error.status = 400;
-    throw error;
+    if (!requesterIsSuperAdmin) {
+      const error = new Error('Administrator accounts cannot be removed from Account Management');
+      error.status = 400;
+      throw error;
+    }
+    if (requesterId && existing.id === requesterId) {
+      const error = new Error('You cannot remove your own administrator account');
+      error.status = 400;
+      throw error;
+    }
   }
 
   await prisma.user.delete({ where: { id: userId } });

@@ -22,7 +22,6 @@ import {
   isValidStudentEmail,
   isValidSection,
   generateSections,
-  ELMS_EMAIL_HELPER,
   ELMS_EMAIL_ERROR
 } from '../constants/studentRules';
 
@@ -524,15 +523,11 @@ const StudentManagement = () => {
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
               <input required type="email" disabled={modalMode === 'edit'} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={`input-field disabled:bg-sti-gray-light${emailInvalid ? ' border-red-300 focus:border-red-400' : ''}`} />
-              {modalMode === 'add' && (
-                emailInvalid ? (
-                  <p className="flex items-start gap-1.5 text-xs text-red-600 mt-1.5">
-                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                    <span>{ELMS_EMAIL_ERROR}</span>
-                  </p>
-                ) : form.email.trim() === '' ? (
-                  <p className="text-xs text-sti-gray mt-1.5">{ELMS_EMAIL_HELPER}</p>
-                ) : null
+              {modalMode === 'add' && emailInvalid && (
+                <p className="flex items-start gap-1.5 text-xs text-red-600 mt-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{ELMS_EMAIL_ERROR}</span>
+                </p>
               )}
             </div>
             <div>

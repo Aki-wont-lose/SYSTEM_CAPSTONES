@@ -60,7 +60,10 @@ export const regenerateAccountPassword = asyncHandler(async (req, res) => {
 });
 
 export const removeStaffAccount = asyncHandler(async (req, res) => {
-  const result = await deleteStaffAccount(req.params.id);
+  const result = await deleteStaffAccount(req.params.id, {
+    requesterIsSuperAdmin: !!req.user.isSuperAdmin,
+    requesterId: req.user.id
+  });
   res.status(200).json({ success: true, message: 'Account removed', data: result });
 });
 

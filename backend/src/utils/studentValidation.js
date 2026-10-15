@@ -30,9 +30,8 @@ const EMAIL_RE = new RegExp(
   'i'
 );
 
-export const ELMS_EMAIL_HELPER = 'Use your official ELMS email, e.g., Cruz.345293@stamaria.edu.ph.';
 export const ELMS_EMAIL_ERROR =
-  'Invalid ELMS email format. Please use your official school email, including your required student identifier (e.g., Cruz.345293@stamaria.edu.ph).';
+  'Invalid ELMS email format. Please use your official school email.';
 
 export const isValidStudentEmail = (email) => EMAIL_RE.test(String(email || '').trim());
 

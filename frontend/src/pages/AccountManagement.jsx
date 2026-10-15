@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, Pencil, Trash2, KeyRound, Copy, Check, UserCheck, UserX, ArrowUpDown, ArrowUp, ArrowDown, Upload, FileSpreadsheet } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, KeyRound, Copy, Check, UserCheck, UserX, ArrowUpDown, ArrowUp, ArrowDown, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -15,6 +15,7 @@ import {
   deleteStaffAccount
 } from '../services/accountService';
 import { getCompanies } from '../services/companyService';
+import { isValidStaffEmail, STAFF_EMAIL_ERROR } from '../constants/staffRules';
 import * as XLSX from 'xlsx';
 import StudentManagement from './StudentManagement';
 
@@ -78,6 +79,10 @@ const AccountManagement = () => {
   const [error, setError] = useState('');
 
   const tabLabel = TAB_LABELS[activeTab] || TAB_LABELS.SUPERVISOR;
+
+  // Staff use the institutional <firstname>.<lastname>@stamaria.sti.edu.ph
+  // format. Only check while creating, matching the backend.
+  const staffEmailInvalid = modalMode === 'add' && form.email.trim() !== '' && !isValidStaffEmail(form.email);
 
   const selectTab = (key) => {
     setActiveTab(key);
@@ -204,6 +209,10 @@ const AccountManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (modalMode === 'add' && !isValidStaffEmail(form.email)) {
+      setError(STAFF_EMAIL_ERROR);
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -309,7 +318,7 @@ const AccountManagement = () => {
       : [{
         firstName: 'Maria',
         lastName: 'Santos',
-        email: 'maria.santos@partner.com',
+        email: 'maria.santos@stamaria.sti.edu.ph',
         role: 'SUPERVISOR',
         company: companies[0]?.name || 'Company name from Partner Companies',
         contactNumber: '09181234567'
@@ -561,7 +570,7 @@ const AccountManagement = () => {
                                 <button onClick={() => openEditModal(member)} title="Edit account" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
                                   <Pencil className="w-4 h-4" />
                                 </button>
-                                {member.role !== 'ADMIN' && (
+                                {(member.role !== 'ADMIN' || (isSuperAdmin && member.email !== user.email)) && (
                                   <button onClick={() => setDeleteTarget(member)} title="Remove account" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
                                     <Trash2 className="w-4 h-4" />
                                   </button>
@@ -648,7 +657,13 @@ const AccountManagement = () => {
 
           <div>
             <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
-            <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field" />
+            <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={`input-field${staffEmailInvalid ? ' border-red-300 focus:border-red-400' : ''}`} />
+            {staffEmailInvalid && (
+              <p className="flex items-start gap-1.5 text-xs text-red-600 mt-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>{STAFF_EMAIL_ERROR}</span>
+              </p>
+            )}
           </div>
 
           {form.role === 'COORDINATOR' && (
@@ -757,7 +772,7 @@ const AccountManagement = () => {
               <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-xl">
                 <p className="text-xs font-semibold text-sti-blue">Tip: Required columns</p>
                 <p className="text-xs text-sti-gray mt-1">
-                  Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">role</code> (SUPERVISOR or COORDINATOR). Coordinators also need <code className="bg-white dark:bg-slate-800 px-1 rounded">program</code>, supervisors need <code className="bg-white dark:bg-slate-800 px-1 rounded">company</code> (exact company name). Spaces, underscores and dashes in headers are accepted. A temporary password is generated for every imported account.
+                  Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">role</code> (SUPERVISOR or COORDINATOR). Emails must use the school format <code className="bg-white dark:bg-slate-800 px-1 rounded">firstname.lastname@stamaria.sti.edu.ph</code>. Coordinators also need <code className="bg-white dark:bg-slate-800 px-1 rounded">program</code>, supervisors need <code className="bg-white dark:bg-slate-800 px-1 rounded">company</code> (exact company name). Spaces, underscores and dashes in headers are accepted. A temporary password is generated for every imported account.
                 </p>
               </div>
             )}
