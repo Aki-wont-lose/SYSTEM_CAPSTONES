@@ -729,7 +729,7 @@ const AccountManagement = () => {
               <p className="text-sm text-sti-gray mt-1 break-all">{credentials.email}</p>
             </div>
 
-            {credentials.password ? (
+            {credentials.password && (
               <div className="text-left space-y-2">
                 <div className="flex gap-2 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-xs rounded-xl px-3 py-2.5 border border-amber-200 dark:border-amber-900">
                   <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
@@ -742,8 +742,6 @@ const AccountManagement = () => {
                   </Button>
                 </div>
               </div>
-            ) : (
-              <p className="text-xs text-sti-gray">They can sign in right away with their school Microsoft account.</p>
             )}
 
             <Button variant="primary" className="w-full" onClick={() => setCredentials(null)}>Done</Button>
