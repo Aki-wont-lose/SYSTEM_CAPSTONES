@@ -27,9 +27,9 @@ const statusStyles = {
 };
 
 const TABS = [
+  { key: 'ADMIN', label: 'Admins' },
   { key: 'SUPERVISOR', label: 'Supervisors' },
   { key: 'COORDINATOR', label: 'Coordinators' },
-  { key: 'ADMIN', label: 'Admins' },
   { key: 'STUDENT', label: 'Students' },
 ];
 
@@ -81,7 +81,8 @@ const AccountManagement = () => {
 
   const selectTab = (key) => {
     setActiveTab(key);
-    setSearchParams(key === 'SUPERVISOR' ? {} : { tab: key }, { replace: true });
+    // The first visible tab is the default, so it does not need a query param.
+    setSearchParams(key === allowedTabs[0]?.key ? {} : { tab: key }, { replace: true });
   };
 
   useEffect(() => {
