@@ -7,6 +7,10 @@ const prisma = new PrismaClient();
 // never recorded any more. (The database enum still accepts them for old rows.)
 export const AUDIT_ACTIONS = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGIN_FAILED', 'LOGOUT', 'REVIEW', 'SUBMIT', 'EXPORT'];
 
+// Account-type filter options for the audit log. Kept static so the UI never has
+// to expose (or enumerate) the individual user accounts.
+export const AUDIT_ROLES = ['ADMIN', 'COORDINATOR', 'SUPERVISOR', 'STUDENT'];
+
 // Never throws: a failed audit write must not break the action being audited.
 export const recordAudit = async ({
   userId = null,
@@ -46,6 +50,7 @@ export const getAuditLogs = async (filters = {}) => {
   if (filters.action && AUDIT_ACTIONS.includes(filters.action)) where.action = filters.action;
   if (filters.entity) where.entity = filters.entity;
   if (filters.userId) where.userId = filters.userId;
+  if (filters.role && AUDIT_ROLES.includes(filters.role)) where.userRole = filters.role;
   if (filters.search) {
     const term = String(filters.search).trim();
     where.OR = [
@@ -62,15 +67,12 @@ export const getAuditLogs = async (filters = {}) => {
     if (filters.to) where.createdAt.lte = new Date(`${filters.to}T23:59:59.999Z`);
   }
 
-  const [data, total, entities, actors] = await Promise.all([
+  // The actor list is intentionally NOT returned: it would enumerate every user
+  // account to anyone who can open the audit log. The Account Type filter above
+  // gives the same filtering power without exposing individual users.
+  const [data, total] = await Promise.all([
     prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
     prisma.auditLog.count({ where }),
-    prisma.auditLog.findMany({ where: { entity: { not: 'System' } }, distinct: ['entity'], select: { entity: true } }),
-    prisma.auditLog.findMany({
-      where: { userId: { not: null } },
-      distinct: ['userId'],
-      select: { userId: true, userEmail: true, userRole: true },
-    }),
   ]);
 
   return {
@@ -81,8 +83,6 @@ export const getAuditLogs = async (filters = {}) => {
     totalPages: Math.max(1, Math.ceil(total / limit)),
     facets: {
       actions: AUDIT_ACTIONS,
-      entities: entities.map((e) => e.entity).sort(),
-      actors: actors.filter((a) => a.userEmail).map((a) => ({ id: a.userId, email: a.userEmail, role: a.userRole })),
     },
   };
 };

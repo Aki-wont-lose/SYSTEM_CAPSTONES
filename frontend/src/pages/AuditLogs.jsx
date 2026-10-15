@@ -32,7 +32,7 @@ const AuditLogs = () => {
   const [logs, setLogs] = useState([]);
   const [facets, setFacets] = useState({ actions: [], entities: [], actors: [] });
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
-  const [filters, setFilters] = useState({ action: '', entity: '', actor: '', search: '', from: '', to: '' });
+  const [filters, setFilters] = useState({ action: '', role: '', search: '', from: '', to: '' });
   const [loading, setLoading] = useState(true);
 
   const load = async (targetPage = 1) => {
@@ -40,15 +40,14 @@ const AuditLogs = () => {
     try {
       const params = { page: targetPage, limit: 25 };
       if (filters.action) params.action = filters.action;
-      if (filters.entity) params.entity = filters.entity;
-      if (filters.actor) params.userId = filters.actor;
+      if (filters.role) params.role = filters.role;
       if (filters.search) params.search = filters.search;
       if (filters.from) params.from = filters.from;
       if (filters.to) params.to = filters.to;
 
       const res = await getAuditLogs(params);
       setLogs(res.data?.data || []);
-      setFacets(res.data?.facets || { actions: [], entities: [], actors: [] });
+      setFacets(res.data?.facets || { actions: [] });
       setMeta({ total: res.data?.total || 0, page: res.data?.page || 1, totalPages: res.data?.totalPages || 1 });
     } catch (err) {
       console.error(err);
@@ -60,7 +59,7 @@ const AuditLogs = () => {
   useEffect(() => {
     load(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.action, filters.entity, filters.actor, filters.from, filters.to]);
+  }, [filters.action, filters.role, filters.from, filters.to]);
 
   const update = (key, value) => setFilters((current) => ({ ...current, [key]: value }));
   const hasFilters = Object.values(filters).some(Boolean);
@@ -120,17 +119,12 @@ const AuditLogs = () => {
               ))}
             </select>
           </div>
-          <select value={filters.entity} onChange={(e) => update('entity', e.target.value)} className="input-field text-sm py-2.5">
-            <option value="">All areas</option>
-            {facets.entities.map((entity) => (
-              <option key={entity} value={entity}>{entity}</option>
-            ))}
-          </select>
-          <select value={filters.actor} onChange={(e) => update('actor', e.target.value)} className="input-field text-sm py-2.5">
-            <option value="">All users</option>
-            {facets.actors.map((actor) => (
-              <option key={actor.id} value={actor.id}>{actor.email}{actor.role ? ` (${actor.role.toLowerCase()})` : ''}</option>
-            ))}
+          <select value={filters.role} onChange={(e) => update('role', e.target.value)} className="input-field text-sm py-2.5">
+            <option value="">All account types</option>
+            <option value="ADMIN">Admin</option>
+            <option value="SUPERVISOR">Supervisor</option>
+            <option value="COORDINATOR">Coordinator</option>
+            <option value="STUDENT">Student</option>
           </select>
           <div>
             <label className="block text-[11px] font-medium text-sti-gray mb-1">From</label>
@@ -146,7 +140,7 @@ const AuditLogs = () => {
           {hasFilters && (
             <Button
               variant="secondary"
-              onClick={() => { setFilters({ action: '', entity: '', actor: '', search: '', from: '', to: '' }); }}
+              onClick={() => { setFilters({ action: '', role: '', search: '', from: '', to: '' }); }}
               className="text-sm px-4 py-2"
             >
               Clear filters
