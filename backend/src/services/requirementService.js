@@ -1,7 +1,7 @@
 // src/services/requirementService.js
 import { PrismaClient } from '@prisma/client';
 import { recordAudit } from './auditLogService.js';
-import { scopeWhere } from './accessScope.js';
+import { scopeWhere, assertStudentAccess } from './accessScope.js';
 const prisma = new PrismaClient();
 
 const startOfDay = (d) => new Date(new Date(d).setHours(0, 0, 0, 0));
@@ -184,11 +184,15 @@ export const getStudentSubmissions = async (studentId) => {
   });
 };
 
-// Admin view: all submissions, optionally filtered by requirement or status
-export const getAllSubmissions = async (filters = {}) => {
+// Staff review queue: submissions optionally filtered by requirement or status.
+// Restricted to the students the caller owns — an ADMIN sees all, a COORDINATOR
+// only their course, a SUPERVISOR only their assigned students. Without this the
+// endpoint handed every supervisor the entire institution's submissions.
+export const getAllSubmissions = async (filters = {}, user = null) => {
   const where = {};
   if (filters.requirementId) where.requirementId = filters.requirementId;
   if (filters.status) where.status = filters.status;
+  if (user) where.student = scopeWhere(user, {});
 
   return prisma.submission.findMany({
     where,
@@ -273,13 +277,22 @@ export const reviewSubmission = async (submissionId, status, remarks, score, rev
 
   const submission = await prisma.submission.findUnique({
     where: { id: submissionId },
-    include: { requirement: { select: { maxScore: true, autoGradeOnSubmit: true } } }
+    include: {
+      requirement: { select: { maxScore: true, autoGradeOnSubmit: true } },
+      student: { select: { id: true, course: true, companyId: true, supervisorEmail: true } }
+    }
   });
   if (!submission) {
     const error = new Error('Submission not found');
     error.status = 404;
     throw error;
   }
+
+  // Record-level authorization: a reviewer may only grade a submission that
+  // belongs to a student in their scope (admin: any; coordinator: own course;
+  // supervisor: own students). Without this, any supervisor could approve,
+  // reject or re-score any student's submission by id.
+  if (reviewer) assertStudentAccess(reviewer, submission.student);
 
   const data = { status, remarks, reviewedAt: new Date() };
 

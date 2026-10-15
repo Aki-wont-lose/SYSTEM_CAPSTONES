@@ -31,7 +31,7 @@ export const fetchMySubmissions = asyncHandler(async (req, res) => {
 
 export const fetchAllSubmissions = asyncHandler(async (req, res) => {
   const { requirementId, status } = req.query;
-  const data = await getAllSubmissions({ requirementId, status });
+  const data = await getAllSubmissions({ requirementId, status }, req.user);
   res.status(200).json({ success: true, data });
 });
 

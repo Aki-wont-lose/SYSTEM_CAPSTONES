@@ -22,8 +22,18 @@ const getMsalInstance = async () => {
 // Opens the Microsoft account picker popup, returns the ID token on success.
 export const signInWithMicrosoftPopup = async () => {
   const instance = await getMsalInstance();
-  const result = await instance.loginPopup(loginRequestScopes);
-  return result.idToken;
+  try {
+    const result = await instance.loginPopup(loginRequestScopes);
+    return result.idToken;
+  } catch (err) {
+    // Surface Microsoft's own error code/description (e.g. an Entra MFA block,
+    // error 399287) so the real cause is visible instead of a generic failure.
+    const code = err?.errorCode || err?.subError;
+    if (code && !String(err.message || '').includes(code)) {
+      err.message = `${err.message || 'Microsoft sign-in failed'} (${code})`;
+    }
+    throw err;
+  }
 };
 
 // Sends the Microsoft ID token to our backend, which verifies it and

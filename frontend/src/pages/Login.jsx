@@ -91,7 +91,10 @@ const StudentView = ({ onBack }) => {
           : '/dashboard';
       navigate(home);
     } catch (err) {
-      const cancelled = err?.errorCode === 'user_cancelled' || err?.name === 'BrowserAuthError';
+      // Only treat an explicit dismissal as "cancelled". Other BrowserAuthError
+      // codes (popup blocked, timeout) and Microsoft-side errors must be shown so
+      // the user can see what actually happened.
+      const cancelled = err?.errorCode === 'user_cancelled' || err?.errorCode === 'user_canceled';
       if (!cancelled) setError(err.response?.data?.message || err.message || 'Sign-in failed.');
     } finally {
       setLoading(false);

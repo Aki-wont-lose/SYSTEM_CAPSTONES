@@ -10,6 +10,11 @@ const badRequest = (message) => {
   return err;
 };
 
+// Emails are case-insensitive, so store one canonical form. Validated input that
+// passed with surrounding whitespace or mixed case is normalized before it is
+// persisted, otherwise Microsoft sign-in silently fails to match the account.
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
+
 export const getAllStudents = async (filters = {}) => {
   const where = {};
   
@@ -33,6 +38,14 @@ export const getAllStudents = async (filters = {}) => {
       { studentId: { contains: filters.search } },
       { email: { contains: filters.search } }
     ];
+  }
+
+  // scopeWhere() hands non-admins their restriction as an `AND` array (see
+  // accessScope.js). This used to be read as named keys only, so the whole `AND`
+  // clause was silently dropped and every coordinator/supervisor saw the entire
+  // roster. Preserve it here, combined with any explicit filters above.
+  if (filters.AND) {
+    where.AND = [...(Array.isArray(filters.AND) ? filters.AND : [filters.AND])];
   }
 
   return prisma.student.findMany({
@@ -94,7 +107,7 @@ export const createStudent = async (studentData, userData) => {
   // call (or a CSV batch row) can never create a student with a non-ELMS email
   // or an off-catalog section. Year level is derived from the section, so a
   // valid section is required.
-  const email = String(studentData.email || userData?.email || '').trim();
+  const email = normalizeEmail(studentData.email || userData?.email || '');
   if (!isValidStudentEmail(email)) {
     throw badRequest(ELMS_EMAIL_ERROR);
   }
@@ -106,7 +119,7 @@ export const createStudent = async (studentData, userData) => {
     // Students sign in with Microsoft only, so no password is stored for them.
     const user = await prisma.user.create({
       data: {
-        email: userData.email,
+        email,
         password: null,
         role: 'STUDENT',
         mustChangePassword: false
@@ -117,6 +130,7 @@ export const createStudent = async (studentData, userData) => {
     const student = await prisma.student.create({
       data: {
         ...studentData,
+        email,
         contactNumber: studentData.contactNumber ?? '',
         userId: user.id
       },
@@ -182,6 +196,7 @@ export const updateStudent = async (studentId, updateData) => {
     for (const field of STAFF_EDITABLE_STUDENT_FIELDS) {
       if (updateData[field] !== undefined) sanitized[field] = updateData[field];
     }
+    if (sanitized.email !== undefined) sanitized.email = normalizeEmail(sanitized.email);
 
     // Validate email/section only when they actually change, so legacy records
     // (e.g. section "IT-401") stay editable without forcing a data migration,

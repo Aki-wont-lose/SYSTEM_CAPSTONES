@@ -319,11 +319,21 @@ export const batchCreateStaffAccounts = async (accounts) => {
   return results;
 };
 
-export const resetAccountPassword = async (userId) => {
+export const resetAccountPassword = async (userId, { requesterIsSuperAdmin = false } = {}) => {
   const existing = await prisma.user.findUnique({ where: { id: userId } });
   if (!existing) {
     const error = new Error('Account not found');
     error.status = 404;
+    throw error;
+  }
+
+  // The super-admin is the top-level operator. A junior admin must not be able to
+  // mint a temporary password for an administrator account and take it over, so
+  // resetting any ADMIN account is reserved to the super-admin (mirrors
+  // deleteStaffAccount's rule).
+  if (existing.role === 'ADMIN' && !requesterIsSuperAdmin) {
+    const error = new Error('Administrator passwords can only be reset by the super-admin');
+    error.status = 403;
     throw error;
   }
 

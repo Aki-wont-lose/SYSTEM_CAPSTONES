@@ -51,7 +51,7 @@ export const editStaffAccount = asyncHandler(async (req, res) => {
 });
 
 export const regenerateAccountPassword = asyncHandler(async (req, res) => {
-  const result = await resetAccountPassword(req.params.id);
+  const result = await resetAccountPassword(req.params.id, { requesterIsSuperAdmin: !!req.user.isSuperAdmin });
   res.status(200).json({
     success: true,
     message: 'Temporary password generated',
