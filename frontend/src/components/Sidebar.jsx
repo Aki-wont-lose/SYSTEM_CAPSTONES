@@ -126,34 +126,30 @@ const Sidebar = ({ role, isOpen, onClose }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto space-y-5">
-          {sections.map(({ section, links }) => (
-            <div key={section}>
-              <div className="space-y-0.5">
-                {links.map(({ to, label, icon: Icon }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    onClick={onClose}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
-                      ${isActive
-                        ? 'bg-sti-yellow text-sti-blue-dark font-semibold shadow-sm'
-                        : 'text-white/60 hover:bg-white/10 hover:text-white'}`
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-sti-blue-dark' : 'text-white/50 group-hover:text-white'}`} strokeWidth={2} />
-                        <span className="flex-1">{label}</span>
-                        {isActive && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-60" />}
-                      </>
-                    )}
-                  </NavLink>
-                ))}
-              </div>
-            </div>
-          ))}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto">
+          <div className="space-y-0.5">
+            {sections.flatMap(({ links }) => links).map(({ to, label, icon: Icon }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
+                  ${isActive
+                    ? 'bg-sti-yellow text-sti-blue-dark font-semibold shadow-sm'
+                    : 'text-white/60 hover:bg-white/10 hover:text-white'}`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-sti-blue-dark' : 'text-white/50 group-hover:text-white'}`} strokeWidth={2} />
+                    <span className="flex-1">{label}</span>
+                    {isActive && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-60" />}
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
         </nav>
 
         {/* User Profile Card at bottom */}
