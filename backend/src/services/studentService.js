@@ -117,6 +117,7 @@ export const createStudent = async (studentData, userData) => {
     const student = await prisma.student.create({
       data: {
         ...studentData,
+        contactNumber: studentData.contactNumber ?? '',
         userId: user.id
       },
       include: {

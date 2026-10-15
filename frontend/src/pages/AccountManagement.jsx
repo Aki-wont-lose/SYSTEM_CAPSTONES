@@ -679,10 +679,12 @@ const AccountManagement = () => {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
-            <input value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
-          </div>
+          {modalMode === 'edit' && (
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
+              <input value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
+            </div>
+          )}
 
           {modalMode === 'edit' && (
             <div>
