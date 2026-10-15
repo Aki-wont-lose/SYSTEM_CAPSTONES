@@ -85,7 +85,7 @@ const linksByRole = {
 const Sidebar = ({ role, isOpen, onClose }) => {
   const { user } = useAuth();
   const sections = linksByRole[role] || linksByRole.STUDENT;
-  const roleLabel = role ? role.charAt(0) + role.slice(1).toLowerCase() : '';
+  const roleLabel = user?.isSuperAdmin ? 'Super Admin' : (role ? role.charAt(0) + role.slice(1).toLowerCase() : '');
 
   const displayName = user?.student
     ? `${user.student.firstName} ${user.student.lastName}`

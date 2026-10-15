@@ -35,6 +35,7 @@ const AdminProfile = () => {
   }, []);
 
   const fullName = [details.firstName, details.lastName].filter(Boolean).join(' ');
+  const roleLabel = user?.isSuperAdmin ? 'Super Admin' : (user?.role ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : 'Administrator');
 
   const handleSaveDetails = async (e) => {
     e.preventDefault();
@@ -110,10 +111,10 @@ const AdminProfile = () => {
           )}
         </div>
         <div className="text-center sm:text-left">
-          <h2 className="text-xl font-extrabold text-sti-gray-dark dark:text-white">{fullName || (user?.role ? user.role.charAt(0)+user.role.slice(1).toLowerCase() : 'Administrator')}</h2>
+          <h2 className="text-xl font-extrabold text-sti-gray-dark dark:text-white">{fullName || roleLabel}</h2>
           <p className="text-sti-gray text-sm">{user?.email}</p>
           <span className="inline-block mt-3 text-xs font-semibold px-3 py-1 rounded-full bg-sti-blue-50 text-sti-blue">
-            {user?.role ? user.role.charAt(0)+user.role.slice(1).toLowerCase() : 'Admin'} Account
+            {roleLabel} Account
           </span>
         </div>
       </Card>
@@ -182,7 +183,7 @@ const AdminProfile = () => {
               <Shield className="w-3.5 h-3.5" /> Role
             </label>
             <p className="text-sm font-medium text-sti-gray-dark dark:text-slate-200 py-2.5 flex items-center gap-2">
-              {user?.role ? user.role.charAt(0)+user.role.slice(1).toLowerCase() : 'Administrator'}
+              {roleLabel}
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sti-gray-light text-sti-gray dark:bg-white/10">Locked</span>
             </p>
           </div>
