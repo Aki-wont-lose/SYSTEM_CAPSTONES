@@ -520,7 +520,7 @@ const AccountManagement = () => {
                       <tr key={member.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
                         <td className="px-6 py-3.5">
                           <p className="font-medium text-sti-gray-dark dark:text-white">
-                            {[member.firstName, member.lastName].filter(Boolean).join(' ') || '—'}
+                            {member.isSuperAdmin ? 'Super Admin' : ([member.firstName, member.lastName].filter(Boolean).join(' ') || '—')}
                           </p>
                           {member.contactNumber && <p className="text-xs text-sti-gray">{member.contactNumber}</p>}
                         </td>
