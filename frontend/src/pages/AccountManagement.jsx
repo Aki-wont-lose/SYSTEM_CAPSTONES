@@ -445,35 +445,39 @@ const AccountManagement = () => {
                   <Button variant="primary" icon={Plus} onClick={openAddModal}>
                     Add {tabLabel.singular}
                   </Button>
-                  <Button
-                    variant="secondary"
-                    icon={FileSpreadsheet}
-                    onClick={downloadBatchTemplate}
-                    title={`Download the ${tabLabel.singular.toLowerCase()} import template`}
-                    aria-label={`Download the ${tabLabel.singular.toLowerCase()} import template`}
-                    className="!px-3"
-                  />
-                  <div
-                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={(e) => { e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]); }}
-                    className={dragOver ? 'ring-2 ring-sti-blue rounded-xl p-1' : ''}
-                  >
-                    <input
-                      type="file"
-                      accept=".csv,.xlsx,.xls"
-                      id="batch-staff-csv"
-                      className="hidden"
-                      onChange={(e) => { handleBatchFile(e.target.files[0]); e.target.value = ''; }}
-                    />
-                    <Button
-                      variant="secondary"
-                      icon={Upload}
-                      onClick={() => document.getElementById('batch-staff-csv').click()}
-                    >
-                      Batch Upload
-                    </Button>
-                  </div>
+                  {activeTab !== 'ADMIN' && (
+                    <>
+                      <Button
+                        variant="secondary"
+                        icon={FileSpreadsheet}
+                        onClick={downloadBatchTemplate}
+                        title={`Download the ${tabLabel.singular.toLowerCase()} import template`}
+                        aria-label={`Download the ${tabLabel.singular.toLowerCase()} import template`}
+                        className="!px-3"
+                      />
+                      <div
+                        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                        onDragLeave={() => setDragOver(false)}
+                        onDrop={(e) => { e.preventDefault(); setDragOver(false); handleBatchFile(e.dataTransfer.files[0]); }}
+                        className={dragOver ? 'ring-2 ring-sti-blue rounded-xl p-1' : ''}
+                      >
+                        <input
+                          type="file"
+                          accept=".csv,.xlsx,.xls"
+                          id="batch-staff-csv"
+                          className="hidden"
+                          onChange={(e) => { handleBatchFile(e.target.files[0]); e.target.value = ''; }}
+                        />
+                        <Button
+                          variant="secondary"
+                          icon={Upload}
+                          onClick={() => document.getElementById('batch-staff-csv').click()}
+                        >
+                          Batch Upload
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
               <label className="flex items-center gap-1.5 text-xs text-sti-gray">
