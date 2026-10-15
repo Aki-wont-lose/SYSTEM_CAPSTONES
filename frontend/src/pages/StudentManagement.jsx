@@ -22,7 +22,6 @@ import {
   isValidStudentEmail,
   isValidSection,
   generateSections,
-  ELMS_EMAIL_HELPER,
   ELMS_EMAIL_ERROR
 } from '../constants/studentRules';
 
@@ -527,9 +526,6 @@ const StudentManagement = () => {
                   <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                   <span>{ELMS_EMAIL_ERROR}</span>
                 </p>
-              )}
-              {modalMode === 'add' && !emailInvalid && form.email.trim() === '' && (
-                <p className="text-xs text-sti-gray mt-1.5">{ELMS_EMAIL_HELPER}</p>
               )}
             </div>
             <div>
