@@ -39,15 +39,7 @@ const ROLE_HOME = {
 };
 
 function App() {
-  const { isAuthenticated, user, loading, mustChangePassword } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-sti-gray-light dark:bg-slate-900">
-        <div className="w-10 h-10 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  const { isAuthenticated, user, mustChangePassword } = useAuth();
 
   const defaultRoute = mustChangePassword ? '/change-password' : isAuthenticated ? (ROLE_HOME[user?.role] || '/dashboard') : '/login';
 
