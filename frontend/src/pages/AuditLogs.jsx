@@ -28,6 +28,7 @@ const formatDateTime = (value) =>
 const AuditLogs = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
+  const isSuperAdmin = !!user?.isSuperAdmin;
   const [logs, setLogs] = useState([]);
   const [facets, setFacets] = useState({ actions: [], entities: [], actors: [] });
   const [meta, setMeta] = useState({ total: 0, page: 1, totalPages: 1 });
@@ -93,7 +94,7 @@ const AuditLogs = () => {
           </h1>
           <p className="text-sm text-sti-gray">Every account and academic change recorded in the system, newest first.</p>
         </div>
-        {isAdmin && (
+        {isSuperAdmin && (
           <Button variant="danger" icon={Trash2} onClick={handleClearAll}>Clear all logs</Button>
         )}
       </div>

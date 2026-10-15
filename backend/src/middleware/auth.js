@@ -150,6 +150,18 @@ export const verifyRole = (allowedRoles) => {
   };
 };
 
+export const verifySuperAdmin = (req, res, next) => {
+  // SUPER_ADMIN_EMAIL is the single top-level operator; only that account may
+  // perform destructive, institution-wide actions such as purging the audit log.
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  if (!req.user.isSuperAdmin) {
+    return res.status(403).json({ success: false, message: 'Forbidden: Only the super admin can do this' });
+  }
+  next();
+};
+
 export const generateToken = (userId, email, role, extra = {}) => {
   // `extra` used to be spread AFTER role, so an `extra` object containing a `role`
   // key silently overrode the caller's role. Reserve the identity fields.
