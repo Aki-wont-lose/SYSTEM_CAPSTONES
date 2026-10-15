@@ -527,7 +527,7 @@ const AccountManagement = () => {
                         <td className="px-6 py-3.5">
                           <p className="font-medium text-sti-gray-dark dark:text-white break-all">{member.email}</p>
                           <p className="text-xs text-sti-gray">
-                            {roleText(member.role)}
+                            {member.isSuperAdmin ? 'Super Admin' : roleText(member.role)}
                             {member.assignedStudents != null ? ` • ${member.assignedStudents} assigned` : ''}
                           </p>
                         </td>

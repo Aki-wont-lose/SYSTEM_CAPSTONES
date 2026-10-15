@@ -2,6 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword, generateTemporaryPassword } from '../../services/authService.js';
 import { isValidStaffEmail, STAFF_EMAIL_ERROR } from '../../utils/staffValidation.js';
+import { isSuperAdmin } from '../../middleware/auth.js';
 
 const prisma = new PrismaClient();
 
@@ -81,6 +82,7 @@ export const listStaff = async ({ role, search, includeInactive = true, requeste
 
   return staff.map((member) => ({
     ...member,
+    isSuperAdmin: isSuperAdmin(member),
     assignedStudents: member.role === 'SUPERVISOR' ? (countByEmail.get(member.email) || 0) : null
   }));
 };
