@@ -11,7 +11,6 @@ import {
   createStaffAccount,
   batchCreateStaffAccounts,
   updateStaffAccount,
-  regenerateAccountPassword,
   deleteStaffAccount
 } from '../services/accountService';
 import { getCompanies } from '../services/companyService';
@@ -258,20 +257,6 @@ const AccountManagement = () => {
       loadStaff();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not update the account.');
-    }
-  };
-
-  const handleRegenerate = async (account) => {
-    try {
-      const res = await regenerateAccountPassword(account.id);
-      setCredentials({
-        title: 'New temporary password generated',
-        email: res.data.user.email,
-        password: res.data.temporaryPassword
-      });
-      loadStaff();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Could not generate a password.');
     }
   };
 
@@ -561,9 +546,6 @@ const AccountManagement = () => {
                           <div className="flex items-center justify-end gap-1">
                             {isAdmin && (
                               <>
-                                <button onClick={() => handleRegenerate(member)} title="Generate new temporary password" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
-                                  <KeyRound className="w-4 h-4" />
-                                </button>
                                 <button onClick={() => handleToggleActive(member)} title={member.isActive ? 'Disable account' : 'Enable account'} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
                                   {member.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                                 </button>
