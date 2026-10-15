@@ -1,9 +1,9 @@
 // src/services/microsoftAuthService.js
 //
 // Verifies a Microsoft ID token (from the frontend's "Sign in with Microsoft"
-// popup) and logs the student in — no separate OTP step needed, since
-// Microsoft already handled password verification (and any MFA the school's
-// Office 365 tenant has turned on) before issuing this token.
+// popup) and logs the user in — no separate OTP step needed, since Microsoft
+// already handled password verification (and any MFA the school's Office 365
+// tenant has turned on, e.g. Authenticator or SMS) before issuing this token.
 //
 // Setup required (see README): a free Azure App Registration, whose Client ID
 // goes into MS_CLIENT_ID below and VITE_MS_CLIENT_ID on the frontend.
@@ -11,7 +11,7 @@
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
 import { PrismaClient } from '@prisma/client';
-import { generateToken } from '../middleware/auth.js';
+import { generateToken, isSuperAdmin } from '../middleware/auth.js';
 import { recordAudit } from './auditLogService.js';
 
 const prisma = new PrismaClient();
@@ -138,13 +138,10 @@ export const loginWithMicrosoft = async (idToken) => {
     throw error;
   }
 
-  if (user.role !== 'STUDENT') {
-    const error = new Error('Admin accounts sign in with email and password, not Microsoft. Use the "Log in with Admin" option.');
-    error.status = 403;
-    throw error;
-  }
-
-  const token = generateToken(user.id, user.email, user.role);
+  const token = generateToken(user.id, user.email, user.role, {
+    coordinatorCourse: user.coordinatorCourse,
+    supervisorCompanyId: user.supervisorCompanyId
+  });
 
   await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN', entity: 'Account', description: `Signed in with Microsoft (${identity.email})` });
 
@@ -155,11 +152,13 @@ export const loginWithMicrosoft = async (idToken) => {
       email: user.email,
       role: user.role,
       theme: user.theme,
-      // Students authenticate with Microsoft only, so a stored "change password"
-      // flag would trap them on a page they can never use.
+      // A Microsoft sign-in already proves ownership of the account, so we never
+      // trap the user on the change-password page (staff still keep their
+      // password and can keep signing in with it too).
       mustChangePassword: false,
       coordinatorCourse: user.coordinatorCourse,
       supervisorCompanyId: user.supervisorCompanyId,
+      isSuperAdmin: isSuperAdmin(user),
       student: user.student
     }
   };

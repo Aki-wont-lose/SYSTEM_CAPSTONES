@@ -76,7 +76,20 @@ const StudentView = ({ onBack }) => {
     setLoading(true);
     try {
       const userData = await loginWithMicrosoft();
-      navigate(userData?.mustChangePassword ? '/change-password' : '/dashboard');
+      if (userData?.mustChangePassword) {
+        navigate('/change-password');
+        return;
+      }
+      // Staff can sign in with Microsoft too, so send each role to its own home.
+      const home =
+        userData?.role === 'ADMIN'
+          ? '/admin/dashboard'
+          : userData?.role === 'COORDINATOR'
+          ? '/coordinator/dashboard'
+          : userData?.role === 'SUPERVISOR'
+          ? '/supervisor/dashboard'
+          : '/dashboard';
+      navigate(home);
     } catch (err) {
       const cancelled = err?.errorCode === 'user_cancelled' || err?.name === 'BrowserAuthError';
       if (!cancelled) setError(err.response?.data?.message || err.message || 'Sign-in failed.');
