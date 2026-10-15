@@ -17,6 +17,7 @@ import { getStudentAttendanceForStaff, getStudentSummaryForStaff } from '../serv
 import { PROGRAM_OPTIONS } from '../constants/programs';
 import {
   sectionsForProgram,
+  sectionLabel,
   deriveYearLevel,
   formatYearLevel,
   isValidStudentEmail,
@@ -403,7 +404,7 @@ const StudentManagement = () => {
                       <p className="font-medium text-sti-gray-dark dark:text-white">{s.firstName} {s.lastName}</p>
                       <p className="text-xs text-sti-gray">{s.studentId} • {s.email}</p>
                     </td>
-                    <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{s.course}<br /><span className="text-xs text-sti-gray">{s.section}</span></td>
+                    <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{s.course}<br /><span className="text-xs text-sti-gray">{sectionLabel(s.section, s.course)}</span></td>
                     <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{s.company?.name || '—'}</td>
                     <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
                       <span className="font-medium">{s.completedHours}/{s.requiredHours}h</span>
@@ -504,9 +505,9 @@ const StudentManagement = () => {
                 className="input-field disabled:bg-sti-gray-light"
               >
                 <option value="">{form.course ? 'Select a section' : 'Select a course first'}</option>
-                {showLegacySection && <option value={form.section}>{form.section}</option>}
+                {showLegacySection && <option value={form.section}>{sectionLabel(form.section, form.course)}</option>}
                 {sectionOptions.map((section) => (
-                  <option key={section} value={section}>{section}</option>
+                  <option key={section} value={section}>{sectionLabel(section, form.course)}</option>
                 ))}
               </select>
             </div>
@@ -566,7 +567,7 @@ const StudentManagement = () => {
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><p className="text-sti-gray text-xs mb-1">Course</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.course}</p></div>
-              <div><p className="text-sti-gray text-xs mb-1">Section</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.section}</p></div>
+              <div><p className="text-sti-gray text-xs mb-1">Section</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{sectionLabel(selectedStudent.section, selectedStudent.course)}</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Email</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.email}</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Contact</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.contactNumber}</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Company</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.company?.name || 'Not yet assigned'}</p></div>

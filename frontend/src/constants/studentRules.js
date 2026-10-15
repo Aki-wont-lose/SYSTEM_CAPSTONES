@@ -48,5 +48,16 @@ export const SECTIONS_BY_PROGRAM = SUPPORTED_PROGRAMS.reduce((acc, program) => {
 export const sectionsForProgram = (program) =>
   SECTIONS_BY_PROGRAM[String(program || '').trim().toUpperCase()] || [];
 
+// Sections are stored in the official "<PROGRAM> <year>-<block>" form - that is
+// what the backend validates and derives the year level from, and what the CSV
+// template ships. When the course is already on screen next to the section,
+// render only "<year>-<block>" so the program is not printed twice.
+export const sectionLabel = (section, program) => {
+  const value = String(section || '').trim();
+  const prefix = String(program || '').trim().toUpperCase();
+  if (prefix && value.toUpperCase().startsWith(`${prefix} `)) return value.slice(prefix.length).trim();
+  return value;
+};
+
 // Flat list of every official section (used by the CSV/XLSX import template).
 export const generateSections = () => SUPPORTED_PROGRAMS.flatMap((program) => SECTIONS_BY_PROGRAM[program]);

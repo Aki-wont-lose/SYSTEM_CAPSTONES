@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Mail, Phone, BookOpen, Users, Hash, Camera, Image as ImageIcon, Check } from 'lucide-react';
 import Card from '../components/Card';
 import { getMyProfile, updateMyProfile } from '../services/studentService';
+import { sectionLabel } from '../constants/studentRules';
 
 const statusStyles = {
   NOT_STARTED: 'bg-gray-100 text-sti-gray-dark',
@@ -78,7 +79,7 @@ const StudentProfile = () => {
   const infoFields = [
     { label: 'Student ID', value: profile.studentId, icon: Hash },
     { label: 'Course', value: profile.course, icon: BookOpen },
-    { label: 'Section', value: profile.section, icon: Users },
+    { label: 'Section', value: sectionLabel(profile.section, profile.course), icon: Users },
     { label: 'Email Address', value: profile.email, icon: Mail },
     { label: 'Contact Number', value: profile.contactNumber, icon: Phone },
   ];
@@ -131,7 +132,7 @@ const StudentProfile = () => {
           <h2 className="text-lg sm:text-xl font-extrabold text-sti-gray-dark dark:text-white truncate">
             {profile.firstName} {profile.lastName}
           </h2>
-          <p className="text-sti-gray text-xs sm:text-sm break-words">{profile.course} • {profile.section}</p>
+          <p className="text-sti-gray text-xs sm:text-sm break-words">{profile.course} • {sectionLabel(profile.section, profile.course)}</p>
           <div className="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
             <span className={`text-[11px] sm:text-xs font-semibold px-3 py-1 rounded-full ${statusStyles[profile.ojt_status]}`}>
               {profile.ojt_status.replace('_', ' ')}

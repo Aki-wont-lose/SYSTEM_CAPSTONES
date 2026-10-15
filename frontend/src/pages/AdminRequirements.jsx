@@ -13,6 +13,7 @@ import {
   getGradingSummary,
   reviewSubmission
 } from '../services/requirementService';
+import { sectionLabel } from '../constants/studentRules';
 
 const PROGRAMS = [
   { value: 'ALL', label: 'All programs' },
@@ -555,7 +556,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                           <p className="font-medium text-sti-gray-dark dark:text-white">{row.name}</p>
                           <p className="text-xs text-sti-gray">{row.studentNumber}</p>
                         </td>
-                        <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{row.course} {row.section}</td>
+                        <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{row.course} {sectionLabel(row.section, row.course)}</td>
                         <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{row.completed}/{row.totalRequirements}</td>
                         <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{row.pending}</td>
                         <td className="px-6 py-3.5">

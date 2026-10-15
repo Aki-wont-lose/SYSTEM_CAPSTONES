@@ -4,6 +4,7 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import { getAllStudents } from '../services/studentService';
 import { getStudentAttendanceForStaff, getStudentSummaryForStaff, getDtrReviewQueue, reviewDtr } from '../services/attendanceService';
+import { sectionLabel } from '../constants/studentRules';
 
 const reviewStyles = {
   DRAFT: 'bg-gray-100 text-sti-gray-dark',
@@ -157,7 +158,7 @@ const AttendanceMonitoring = () => {
                       {isOpen ? <ChevronDown className="w-4 h-4 text-sti-gray shrink-0" /> : <ChevronRight className="w-4 h-4 text-sti-gray shrink-0" />}
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{entry.name}</p>
-                        <p className="text-xs text-sti-gray">{entry.studentNumber} • {entry.course} {entry.section}</p>
+                        <p className="text-xs text-sti-gray">{entry.studentNumber} • {entry.course} {sectionLabel(entry.section, entry.course)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 text-xs">
