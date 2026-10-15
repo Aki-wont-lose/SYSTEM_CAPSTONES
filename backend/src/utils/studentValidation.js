@@ -15,24 +15,24 @@ export const INSTITUTIONAL_DOMAINS = ['stamaria.edu.ph', 'stamaria.sti.edu.ph'];
 // Supported academic programs. Official sections are generated from these.
 export const SUPPORTED_PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'];
 
-// Official ELMS student email: <name>.<02000 + exactly 6 digits>@<domain>
-//   valid:   Cruz.02000352467@stamaria.edu.ph
-//   invalid: Cruz@stamaria.edu.ph               (missing identifier)
-//            Cruz.352467@stamaria.edu.ph        (identifier missing the 02000 prefix)
-//            Cruz.0200035246@stamaria.edu.ph    (only 5 digits)
-//            Cruz.02000352467@gmail.com         (wrong domain)
-//            Cruz 02000352467@stamaria.edu.ph   (space)
-//            Cruz..02000352467@stamaria.edu.ph  (double dot)
+// Official ELMS student email: <name>.<6-digit student number>@<domain>
+//   valid:   Cruz.352467@stamaria.edu.ph
+//   invalid: Cruz@stamaria.edu.ph          (missing identifier)
+//            Cruz.35246@stamaria.edu.ph    (only 5 digits)
+//            Cruz.3524678@stamaria.edu.ph  (7 digits)
+//            Cruz.352467@gmail.com         (wrong domain)
+//            Cruz 352467@stamaria.edu.ph   (space)
+//            Cruz..352467@stamaria.edu.ph  (double dot)
 // The name portion is one or more letter groups joined by a single dot/hyphen.
 const DOMAIN_PATTERN = INSTITUTIONAL_DOMAINS.map((d) => d.replace(/\./g, '\\.')).join('|');
 const EMAIL_RE = new RegExp(
-  `^[A-Za-z]+(?:[.\\-][A-Za-z]+)*\\.02000\\d{6}@(?:${DOMAIN_PATTERN})$`,
+  `^[A-Za-z]+(?:[.\\-][A-Za-z]+)*\\.\\d{6}@(?:${DOMAIN_PATTERN})$`,
   'i'
 );
 
-export const ELMS_EMAIL_HELPER = 'Use your official ELMS email, e.g., Cruz.02000352467@stamaria.edu.ph.';
+export const ELMS_EMAIL_HELPER = 'Use your official ELMS email, e.g., Cruz.352467@stamaria.edu.ph.';
 export const ELMS_EMAIL_ERROR =
-  'Invalid ELMS email format. Please use your official school email, including your required student identifier (e.g., Cruz.02000352467@stamaria.edu.ph).';
+  'Invalid ELMS email format. Please use your official school email, including your 6-digit student number (e.g., Cruz.352467@stamaria.edu.ph).';
 
 export const isValidStudentEmail = (email) => EMAIL_RE.test(String(email || '').trim());
 

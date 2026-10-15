@@ -212,10 +212,10 @@ const StudentManagement = () => {
 
   const downloadBatchTemplate = () => {
     const sample = [{
-      studentId: '02000352467',
-      firstName: 'Juan',
-      lastName: 'Dela Cruz',
-      email: 'Juan.DelaCruz.02000352467@stamaria.edu.ph',
+      studentId: '352467',
+      firstName: 'Marvin',
+      lastName: 'Cruz',
+      email: 'Cruz.352467@stamaria.edu.ph',
       course: 'BSIT',
       section: 'BSIT 1-101',
       contactNumber: '09171234567'

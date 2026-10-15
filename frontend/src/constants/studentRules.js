@@ -12,13 +12,12 @@ export const SUPPORTED_PROGRAMS = PROGRAM_VALUES;
 
 const DOMAIN_PATTERN = INSTITUTIONAL_DOMAINS.map((d) => d.replace(/\./g, '\\.')).join('|');
 const EMAIL_RE = new RegExp(
-  `^[A-Za-z]+(?:[.\\-][A-Za-z]+)*\\.02000\\d{6}@(?:${DOMAIN_PATTERN})$`,
+  `^[A-Za-z]+(?:[.\\-][A-Za-z]+)*\\.\\d{6}@(?:${DOMAIN_PATTERN})$`,
   'i'
 );
 
-export const ELMS_EMAIL_HELPER = 'Use your official ELMS email, e.g., Cruz.02000352467@stamaria.edu.ph.';
 export const ELMS_EMAIL_ERROR =
-  'Invalid ELMS email format. Please use your official school email, including your required student identifier.';
+  'Invalid ELMS email format. Please use your official school email, including your 6-digit student number (e.g., Cruz.352467@stamaria.edu.ph).';
 
 export const isValidStudentEmail = (email) => EMAIL_RE.test(String(email || '').trim());
 
