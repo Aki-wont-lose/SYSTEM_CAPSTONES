@@ -1,20 +1,30 @@
-import { useEffect, useState } from 'react';
-import { Plus, ClipboardList, X, Pencil, Trash2, MessageSquare } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Plus, ClipboardList, X, Pencil, Trash2, MessageSquare, Paperclip, Download, Send, Upload } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { getMyLogs, addLogEntry, updateLogEntry, deleteLogEntry } from '../services/logEntryService';
+import { getMyLogs, addLogEntry, updateLogEntry, deleteLogEntry, submitAssignedTask } from '../services/logEntryService';
 
 const statusStyles = {
+  ASSIGNED: 'bg-purple-50 text-purple-600',
   PENDING: 'bg-yellow-50 text-sti-yellow-dark',
   APPROVED: 'bg-sti-blue-50 text-sti-blue',
   REVISION_REQUESTED: 'bg-red-50 text-red-600',
 };
 
 const statusLabels = {
+  ASSIGNED: 'Assigned',
   PENDING: 'Pending Review',
   APPROVED: 'Approved',
   REVISION_REQUESTED: 'Revision Requested',
 };
+
+// Read a picked file into a base64 data URL for upload
+const fileToBase64 = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
 
 // Format an ISO date string into a short weekday date
 const formatDate = (dateStr) =>
@@ -30,6 +40,9 @@ const MyLogs = () => {
   const [taskDescription, setTaskDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [submittingId, setSubmittingId] = useState(null);
+  const fileInputRef = useRef(null);
+  const activeTaskId = useRef(null);
 
   // Fetch the signed-in student's log entries
   const loadLogs = async () => {
@@ -46,6 +59,30 @@ const MyLogs = () => {
   useEffect(() => {
     loadLogs();
   }, []);
+
+  // Open the file picker for the task the student is working on
+  const triggerSubmit = (taskId) => {
+    activeTaskId.current = taskId;
+    fileInputRef.current?.click();
+  };
+
+  // Upload the student's file and send the assigned task for review
+  const handleSubmitFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { alert('File too large — max 3MB.'); return; }
+    setSubmittingId(activeTaskId.current);
+    try {
+      const fileData = await fileToBase64(file);
+      await submitAssignedTask(activeTaskId.current, file.name, fileData);
+      loadLogs();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to submit task');
+    } finally {
+      setSubmittingId(null);
+    }
+  };
 
   // Reset the form and open the modal for a new entry
   const openNew = () => {
@@ -114,6 +151,8 @@ const MyLogs = () => {
         <Button variant="primary" icon={Plus} onClick={openNew}>New Entry</Button>
       </div>
 
+      <input ref={fileInputRef} type="file" onChange={handleSubmitFile} className="hidden" />
+
       {logs.length === 0 ? (
         <Card className="text-center py-16">
           <ClipboardList className="w-10 h-10 text-sti-gray mx-auto mb-3" />
@@ -134,6 +173,22 @@ const MyLogs = () => {
                   )}
                 </div>
                 <p className="text-sm text-sti-gray-dark dark:text-slate-200 whitespace-pre-wrap">{log.taskDescription}</p>
+                <div className="flex items-center gap-3 mt-2 flex-wrap">
+                  {log.assignedFileName && (
+                    <button
+                      onClick={() => { const a = document.createElement('a'); a.href = log.assignedFile; a.download = log.assignedFileName; a.click(); }}
+                      className="flex items-center gap-1.5 text-xs font-semibold text-sti-blue hover:text-sti-blue-dark dark:hover:text-white"
+                      title="Download the attachment from your supervisor"
+                    >
+                      <Paperclip className="w-3.5 h-3.5" /> {log.assignedFileName}
+                    </button>
+                  )}
+                  {log.submissionFileName && (
+                    <span className="flex items-center gap-1.5 text-xs text-sti-gray" title="Your submitted file">
+                      <Upload className="w-3.5 h-3.5" /> {log.submissionFileName}
+                    </span>
+                  )}
+                </div>
                 {log.comment && (
                   <div className="mt-2 flex items-start gap-2 bg-sti-gray-light dark:bg-slate-700/50 rounded-lg px-3 py-2">
                     <MessageSquare className="w-3.5 h-3.5 text-sti-blue mt-0.5 shrink-0" />
@@ -141,16 +196,28 @@ const MyLogs = () => {
                   </div>
                 )}
               </div>
-              {log.status !== 'APPROVED' && (
-                <div className="flex gap-2 shrink-0">
-                  <button onClick={() => openEdit(log)} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => handleDelete(log.id)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+              <div className="flex gap-2 shrink-0">
+                {(log.status === 'ASSIGNED' || log.status === 'REVISION_REQUESTED') && (
+                  <Button
+                    variant="primary"
+                    icon={Send}
+                    loading={submittingId === log.id}
+                    onClick={() => triggerSubmit(log.id)}
+                  >
+                    {log.status === 'REVISION_REQUESTED' ? 'Re-submit' : 'Submit'}
+                  </Button>
+                )}
+                {log.status !== 'APPROVED' && !log.assignedBy && (
+                  <>
+                    <button onClick={() => openEdit(log)} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => handleDelete(log.id)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+              </div>
             </Card>
           ))}
         </div>

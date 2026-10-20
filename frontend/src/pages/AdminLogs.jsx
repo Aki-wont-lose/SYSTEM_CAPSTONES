@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ClipboardList, Check, RotateCcw, Plus, X, Filter, Trash2 } from 'lucide-react';
+import { ClipboardList, Check, RotateCcw, Plus, X, Filter, Trash2, Paperclip, Download } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { getAllLogs, reviewLogEntry, assignTaskToStudent, deleteLogEntryStaff } from '../services/logEntryService';
@@ -10,6 +10,20 @@ const statusStyles = {
   APPROVED: 'bg-sti-blue-50 text-sti-blue',
   REVISION_REQUESTED: 'bg-red-50 text-red-600',
 };
+
+const statusLabels = {
+  PENDING: 'Pending Review',
+  APPROVED: 'Approved',
+  REVISION_REQUESTED: 'Revision Requested',
+};
+
+// Read a picked file into a base64 data URL for upload
+const fileToBase64 = (file) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = reject;
+  reader.readAsDataURL(file);
+});
 
 // Format an ISO date string into a short readable date
 const formatDate = (dateStr) =>
@@ -25,6 +39,7 @@ const AdminLogs = () => {
   const [comment, setComment] = useState('');
   const [showAssign, setShowAssign] = useState(false);
   const [assignForm, setAssignForm] = useState({ studentId: '', date: new Date().toISOString().slice(0, 10), taskDescription: '' });
+  const [assignFile, setAssignFile] = useState({ data: null, name: null });
   const [saving, setSaving] = useState(false);
 
   // Fetch log entries (honoring the status filter) and the student list
@@ -73,14 +88,24 @@ const AdminLogs = () => {
     }
   };
 
+  // Read a picked attachment for an assigned task (max 3MB, deployed limit is 4.5MB)
+  const handleAssignFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { alert('Attachment too large — max 3MB.'); e.target.value = ''; return; }
+    const data = await fileToBase64(file);
+    setAssignFile({ data, name: file.name });
+  };
+
   // Create a task assignment for the chosen student
   const handleAssign = async (e) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await assignTaskToStudent(assignForm.studentId, assignForm.date, assignForm.taskDescription);
+      await assignTaskToStudent(assignForm.studentId, assignForm.date, assignForm.taskDescription, assignFile.data, assignFile.name);
       setShowAssign(false);
       setAssignForm({ studentId: '', date: new Date().toISOString().slice(0, 10), taskDescription: '' });
+      setAssignFile({ data: null, name: null });
       loadData();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to assign task');
@@ -136,10 +161,30 @@ const AdminLogs = () => {
                     <span className="text-xs text-sti-gray">#{log.student?.studentId}</span>
                     <span className="text-xs text-sti-gray">· {formatDate(log.date)}</span>
                     <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusStyles[log.status]}`}>
-                      {log.status.replace('_', ' ')}
+                      {statusLabels[log.status] || log.status.replace('_', ' ')}
                     </span>
                   </div>
                   <p className="text-sm text-sti-gray-dark dark:text-slate-200 whitespace-pre-wrap">{log.taskDescription}</p>
+                  <div className="flex items-center gap-3 mt-2 flex-wrap">
+                    {log.assignedFileName && (
+                      <button
+                        onClick={() => { const a = document.createElement('a'); a.href = log.assignedFile; a.download = log.assignedFileName; a.click(); }}
+                        className="flex items-center gap-1.5 text-xs font-medium text-sti-gray hover:text-sti-blue"
+                        title="Task attachment from staff"
+                      >
+                        <Paperclip className="w-3.5 h-3.5" /> {log.assignedFileName}
+                      </button>
+                    )}
+                    {log.submissionFileName && (
+                      <button
+                        onClick={() => { const a = document.createElement('a'); a.href = log.submissionFile; a.download = log.submissionFileName; a.click(); }}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-sti-blue hover:text-sti-blue-dark dark:hover:text-white"
+                        title="Student's submitted file"
+                      >
+                        <Download className="w-3.5 h-3.5" /> {log.submissionFileName}
+                      </button>
+                    )}
+                  </div>
                   {log.comment && (
                     <p className="mt-2 text-xs text-sti-gray italic">Feedback: {log.comment}</p>
                   )}
@@ -221,6 +266,21 @@ const AdminLogs = () => {
                   onChange={(e) => setAssignForm({ ...assignForm, taskDescription: e.target.value })}
                   className="input-field resize-none"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Attachment (optional)</label>
+                <input
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+                  onChange={handleAssignFile}
+                  className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white hover:file:bg-sti-blue-dark file:text-xs file:font-semibold"
+                />
+                {assignFile.name && (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-sti-blue">
+                    <Paperclip className="w-3.5 h-3.5" /> {assignFile.name}
+                    <button type="button" onClick={() => setAssignFile({ data: null, name: null })} className="text-red-600 hover:underline">Remove</button>
+                  </div>
+                )}
               </div>
               <Button type="submit" variant="primary" className="w-full" loading={saving}>Assign Task</Button>
             </form>

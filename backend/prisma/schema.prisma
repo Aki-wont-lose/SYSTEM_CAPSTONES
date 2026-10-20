@@ -301,6 +301,12 @@ model LogEntry {
   assignedBy      String?   // admin/supervisor who assigned the task
   status          LogStatus @default(PENDING)
   comment         String?   @db.Text   // admin/supervisor feedback
+  // Staff attachment sent with an assigned task (staff file in)
+  assignedFile     String?  @db.Text
+  assignedFileName String?
+  // Student's deliverable uploaded when they submit the task (student file out)
+  submissionFile     String? @db.Text
+  submissionFileName String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -372,6 +378,7 @@ enum SubmissionStatus {
 }
 
 enum LogStatus {
+  ASSIGNED
   PENDING
   APPROVED
   REVISION_REQUESTED

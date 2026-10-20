@@ -18,9 +18,15 @@ export const addLogEntry = async (date, taskDescription) => {
   return response.data;
 };
 
-// Assign a task to a student's logbook
-export const assignTaskToStudent = async (studentId, date, taskDescription) => {
-  const response = await api.post('/logs/assign', { studentId, date, taskDescription });
+// Assign a task to a student's logbook, optionally with an attachment
+export const assignTaskToStudent = async (studentId, date, taskDescription, assignedFile, assignedFileName) => {
+  const response = await api.post('/logs/assign', { studentId, date, taskDescription, assignedFile, assignedFileName });
+  return response.data;
+};
+
+// Student submits their file for an assigned task
+export const submitAssignedTask = async (id, fileName, fileData) => {
+  const response = await api.post(`/logs/${id}/submit`, { fileName, fileData });
   return response.data;
 };
 

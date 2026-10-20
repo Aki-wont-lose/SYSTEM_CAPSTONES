@@ -14,6 +14,7 @@ export const getStudentLogs = async (studentId) => {
 export const getAllLogs = async (filters = {}, user = null) => {
   const where = {};
   if (filters.status) where.status = filters.status;
+  else where.status = { not: 'ASSIGNED' }; // assigned-but-not-submitted tasks stay with the student
   if (filters.studentId) where.studentId = filters.studentId;
 
   // Object-level scoping: a coordinator/supervisor must not be able to read every
@@ -76,10 +77,59 @@ const assertStudentInScope = async (studentId, user) => {
 // Staff assigns a task to a student (creates a log entry on their behalf).
 // The target student must be inside the caller's scope, otherwise a supervisor
 // could create log entries for any student in the institution by id.
-export const assignTask = async (studentId, date, taskDescription, assignedBy, user = null) => {
+// The entry starts as ASSIGNED so it lives with the student until they submit it.
+export const assignTask = async (studentId, date, taskDescription, assignedBy, user = null, file = {}) => {
+  if (!taskDescription) {
+    const error = new Error('Task description is required');
+    error.status = 400;
+    throw error;
+  }
   if (user) await assertStudentInScope(studentId, user);
   return prisma.logEntry.create({
-    data: { studentId, date: new Date(date), taskDescription, assignedBy, status: 'PENDING' }
+    data: {
+      studentId,
+      date: new Date(date),
+      taskDescription,
+      assignedBy,
+      status: 'ASSIGNED',
+      assignedFile: file.assignedFile ?? null,
+      assignedFileName: file.assignedFileName ?? null
+    }
+  });
+};
+
+// Student submits their deliverable for an assigned task (or re-submits after a revision).
+// Moves the entry into the reviewer's queue as PENDING and stores the student's file.
+export const submitAssignedTask = async (id, studentId, fileName, fileData) => {
+  if (!fileName || !fileData) {
+    const error = new Error('A file is required to submit this task');
+    error.status = 400;
+    throw error;
+  }
+  const log = await prisma.logEntry.findUnique({ where: { id } });
+  if (!log) {
+    const error = new Error('Log entry not found');
+    error.status = 404;
+    throw error;
+  }
+  if (log.studentId !== studentId) {
+    const error = new Error('Not authorized to submit this task');
+    error.status = 403;
+    throw error;
+  }
+  if (!['ASSIGNED', 'REVISION_REQUESTED', 'PENDING'].includes(log.status)) {
+    const error = new Error('This task cannot be submitted in its current state');
+    error.status = 400;
+    throw error;
+  }
+  return prisma.logEntry.update({
+    where: { id },
+    data: {
+      status: 'PENDING',
+      submissionFile: fileData,
+      submissionFileName: fileName,
+      comment: null
+    }
   });
 };
 

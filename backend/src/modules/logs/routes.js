@@ -1,7 +1,7 @@
 // modules/logs/routes.js — student logs + DTR unified
 // Same UI for all, limited by role: STUDENT owns, COORDINATOR/SUPERVISOR review, ADMIN full
 import express from 'express';
-import { fetchMyLogs, fetchAllLogs, addLog, addAssignedTask, editLog, reviewLogEntry, removeLog, removeLogAsStaff } from '../../controllers/logEntryController.js';
+import { fetchMyLogs, fetchAllLogs, addLog, addAssignedTask, submitMyTask, editLog, reviewLogEntry, removeLog, removeLogAsStaff } from '../../controllers/logEntryController.js';
 import { fetchAttendanceHistory, timeIn, timeOut, fetchMonthlyAttendance, fetchStudentSummary, updateAttendance } from '../../controllers/attendanceController.js';
 import { verifyRole } from '../../middleware/auth.js';
 
@@ -14,6 +14,8 @@ router.get('/', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), fetchAllLogs);
 router.post('/', addLog);
 // ADMIN + COORDINATOR + SUPERVISOR can assign tasks
 router.post('/assign', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), addAssignedTask);
+// Student submits their file for an assigned task
+router.post('/:id/submit', submitMyTask);
 router.put('/:id', editLog);
 // ADMIN + COORDINATOR + SUPERVISOR can review
 router.put('/:id/review', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), reviewLogEntry);
