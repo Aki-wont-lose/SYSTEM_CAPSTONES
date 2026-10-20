@@ -168,7 +168,7 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
   return { user, temporaryPassword, fullName: `${normalizedFirstName} ${normalizedLastName}`, contactNumber: normalizedContact };
 };
 
-export const updateStaffAccount = async (userId, updateData, { requesterIsSuperAdmin = false } = {}) => {
+export const updateStaffAccount = async (userId, updateData, { requesterIsSuperAdmin = false, requesterId = null, requesterEmail = null } = {}) => {
   const existing = await prisma.user.findUnique({ where: { id: userId } });
   if (!existing) {
     const error = new Error('Account not found');
@@ -180,6 +180,39 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
     error.status = 400;
     throw error;
   }
+
+  const isSelf = (requesterId && existing.id === requesterId) ||
+    (requesterEmail && String(existing.email || '').toLowerCase() === String(requesterEmail).toLowerCase());
+
+  // The super-admin is the top-level account: nobody - not even the super-admin
+  // themselves - may disable, demote, rename or lock it out, or the system would
+  // be left with no operator able to manage it. This is the "you cannot act on an
+  // account ranked above (or equal to) your own" rule, enforced at the top.
+  if (isSuperAdmin(existing)) {
+    const blockedFields = ['role', 'isActive', 'email'].filter((field) => updateData[field] !== undefined);
+    if (blockedFields.length) {
+      const error = new Error('The super-admin account cannot be disabled, demoted or renamed');
+      error.status = 403;
+      throw error;
+    }
+  }
+
+  // An administrator must never be able to deactivate its own account, or it would
+  // be locked out of every route the moment the update commits (verifyToken refuses
+  // an inactive account). Covers disabling and self-demotion.
+  if (isSelf) {
+    if (updateData.isActive !== undefined && !updateData.isActive) {
+      const error = new Error('You cannot disable your own account');
+      error.status = 400;
+      throw error;
+    }
+    if (updateData.role !== undefined && String(updateData.role).toUpperCase() !== existing.role) {
+      const error = new Error('You cannot change your own role');
+      error.status = 400;
+      throw error;
+    }
+  }
+
   // Administrator accounts are managed by the super-admin only, so a co-admin
   // cannot disable, demote or rename them.
   if (existing.role === 'ADMIN' && !requesterIsSuperAdmin) {
@@ -359,7 +392,7 @@ export const resetAccountPassword = async (userId, { requesterIsSuperAdmin = fal
   return { user, temporaryPassword };
 };
 
-export const deleteStaffAccount = async (userId, { requesterIsSuperAdmin = false, requesterId = null } = {}) => {
+export const deleteStaffAccount = async (userId, { requesterIsSuperAdmin = false, requesterId = null, requesterEmail = null } = {}) => {
   const existing = await prisma.user.findUnique({
     where: { id: userId },
     include: { _count: { select: { sentMessages: true, receivedMessages: true } } }
@@ -369,6 +402,25 @@ export const deleteStaffAccount = async (userId, { requesterIsSuperAdmin = false
     error.status = 404;
     throw error;
   }
+
+  const isSelf = (requesterId && existing.id === requesterId) ||
+    (requesterEmail && String(existing.email || '').toLowerCase() === String(requesterEmail).toLowerCase());
+
+  // The super-admin is the top-level account: it can never be removed, not even
+  // by itself, so the system always keeps a top-level operator.
+  if (isSuperAdmin(existing)) {
+    const error = new Error('The super-admin account cannot be removed');
+    error.status = 400;
+    throw error;
+  }
+
+  // Nobody can delete their own account through Account Management.
+  if (isSelf) {
+    const error = new Error('You cannot remove your own account');
+    error.status = 400;
+    throw error;
+  }
+
   // Administrator accounts are private to the super-admin. The super-admin may
   // remove the admins it created, but never its own account, so the system
   // always keeps a top-level administrator able to manage it.

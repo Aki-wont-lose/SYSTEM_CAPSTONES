@@ -1,0 +1,66 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI, Arial, sans-serif','fontSize':'15px','primaryColor':'#EAF1FF','primaryTextColor':'#132A5E','primaryBorderColor':'#1B4DB1','lineColor':'#334155'}}}%%
+flowchart LR
+    STU["Student"]:::actor
+    SUP["Supervisor"]:::actor
+    COO["Coordinator"]:::actor
+    ADM["Administrator"]:::actor
+    MS["Microsoft<br/>Entra ID"]:::idp
+
+    subgraph SYS["SIMES"]
+        UC1(["Log in via Microsoft SSO"]):::uc
+        UC2(["Record Time In / Out (DTR)"]):::uc
+        UC3(["Write Daily Log"]):::uc
+        UC4(["Submit Requirement"]):::uc
+        UC5(["View Weekly Tasks"]):::uc
+        UC6(["View Announcements"]):::uc
+        UC7(["Receive Notifications"]):::uc
+        UC8(["Send / Receive Message"]):::uc
+        UC9(["Review / Approve DTR"]):::uc
+        UC10(["Grade Submission"]):::uc
+        UC11(["Give Log Feedback"]):::uc
+        UC12(["Create Student Account"]):::uc
+        UC13(["Manage Requirements"]):::uc
+        UC14(["Manage User Accounts"]):::uc
+        UC15(["Manage Companies"]):::uc
+        UC16(["View Audit Logs"]):::uc
+        UC17(["Generate Reports"]):::uc
+    end
+
+    STU --- UC1
+    STU --- UC2
+    STU --- UC3
+    STU --- UC4
+    STU --- UC5
+    STU --- UC6
+    STU --- UC7
+    STU --- UC8
+
+    SUP --- UC1
+    SUP --- UC9
+    SUP --- UC10
+    SUP --- UC11
+    SUP --- UC6
+    SUP --- UC7
+    SUP --- UC8
+
+    COO --- UC1
+    COO --- UC12
+    COO --- UC13
+    COO --- UC15
+    COO --- UC10
+    COO --- UC16
+    COO --- UC17
+    COO --- UC8
+
+    ADM --- UC1
+    ADM --- UC14
+    ADM --- UC15
+    ADM --- UC6
+    ADM --- UC16
+    ADM --- UC17
+
+    MS -.->|"include"| UC1
+
+    classDef actor fill:#EAF1FF,stroke:#1B4DB1,stroke-width:2px,color:#132A5E;
+    classDef uc fill:#FFFFFF,stroke:#1B4DB1,stroke-width:1.8px,color:#132A5E;
+    classDef idp fill:#DCFCE7,stroke:#15803D,stroke-width:2px,color:#14532D;

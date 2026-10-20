@@ -1,0 +1,27 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI, Arial, sans-serif','fontSize':'16px','primaryColor':'#EAF1FF','primaryTextColor':'#132A5E','primaryBorderColor':'#1B4DB1','lineColor':'#334155','tertiaryColor':'#FFF7E6'}}}%%
+flowchart LR
+    STU(["Student<br/>OJT Intern"]):::ext
+    SUP(["Supervisor<br/>Company Trainer"]):::ext
+    COO(["Coordinator<br/>OJT Coordinator"]):::ext
+    ADM(["Administrator<br/>System Admin"]):::ext
+    MS(["Microsoft Entra ID<br/>Identity Provider"]):::idp
+
+    SYS["<b>SIMES</b><br/>Student Internship<br/>Monitoring and<br/>Evaluation System"]:::sys
+
+    STU -->|"DTR entries, daily logs,<br/>requirement submissions"| SYS
+    SYS -->|"tasks, announcements,<br/>notifications, grades"| STU
+
+    SUP -->|"DTR approvals, log feedback,<br/>submission grades"| SYS
+    SYS -->|"assigned interns,<br/>trainee records"| SUP
+
+    COO -->|"requirements, company records,<br/>student assignments"| SYS
+    SYS -->|"submissions, progress<br/>reports"| COO
+
+    ADM -->|"accounts, policy,<br/>announcements"| SYS
+    SYS -->|"audit logs,<br/>system reports"| ADM
+
+    MS -->|"identity token<br/>(SSO verification)"| SYS
+
+    classDef ext fill:#EAF1FF,stroke:#1B4DB1,stroke-width:2px,color:#132A5E;
+    classDef sys fill:#1B4DB1,stroke:#132A5E,stroke-width:3px,color:#FFFFFF;
+    classDef idp fill:#DCFCE7,stroke:#15803D,stroke-width:2px,color:#14532D;

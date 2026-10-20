@@ -544,7 +544,7 @@ const AccountManagement = () => {
                         </td>
                         <td className="px-6 py-3.5">
                           <div className="flex items-center justify-end gap-1">
-                            {isAdmin && (
+                            {isAdmin && !member.isSuperAdmin && member.email !== user?.email && (
                               <>
                                 <button onClick={() => handleToggleActive(member)} title={member.isActive ? 'Disable account' : 'Enable account'} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
                                   {member.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
@@ -552,12 +552,17 @@ const AccountManagement = () => {
                                 <button onClick={() => openEditModal(member)} title="Edit account" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
                                   <Pencil className="w-4 h-4" />
                                 </button>
-                                {(member.role !== 'ADMIN' || (isSuperAdmin && member.email !== user.email)) && (
+                                {(member.role !== 'ADMIN' || isSuperAdmin) && (
                                   <button onClick={() => setDeleteTarget(member)} title="Remove account" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 )}
                               </>
+                            )}
+                            {(member.isSuperAdmin || member.email === user?.email) && (
+                              <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-sti-gray-light text-sti-gray dark:bg-white/10" title="This account cannot be modified here">
+                                Protected
+                              </span>
                             )}
                           </div>
                         </td>

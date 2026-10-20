@@ -1,0 +1,140 @@
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI, Arial, sans-serif','fontSize':'14px','primaryColor':'#EAF1FF','primaryTextColor':'#132A5E','primaryBorderColor':'#1B4DB1','lineColor':'#334155'}}}%%
+erDiagram
+    USER ||--o| STUDENT : "has profile"
+    USER ||--o{ MESSAGE : "sends"
+    USER ||--o{ MESSAGE : "receives"
+    USER ||--o{ CONNECTION : "requests"
+    USER ||--o{ CONNECTION : "receives"
+    USER ||--o{ NOTIFICATION : "receives"
+    USER ||--o{ LINKEDACCOUNT : "links"
+    USER }o--|| COMPANY : "supervises"
+    COMPANY ||--o{ STUDENT : "hosts"
+    STUDENT ||--o{ ATTENDANCE : "records"
+    STUDENT ||--o{ LOGENTRY : "writes"
+    STUDENT ||--o{ SUBMISSION : "uploads"
+    STUDENT ||--o{ WEEKLYTASK : "owns"
+    REQUIREMENT ||--o{ SUBMISSION : "receives"
+    REQUIREMENT ||--o{ WEEKLYTASK : "generates"
+
+    USER {
+        string id PK
+        string email UK
+        string password
+        enum role
+        string firstName
+        string lastName
+        string contactNumber
+        boolean isActive
+        enum theme
+    }
+    STUDENT {
+        string id PK
+        string userId FK
+        string studentId UK
+        string firstName
+        string lastName
+        string course
+        string section
+        string email
+        enum ojt_status
+        int requiredHours
+        int completedHours
+        string companyId FK
+    }
+    COMPANY {
+        string id PK
+        string name
+        string address
+        float latitude
+        float longitude
+        string contactPerson
+        string programs
+        int availableSlots
+        enum status
+    }
+    ATTENDANCE {
+        string id PK
+        string studentId FK
+        datetime date
+        datetime timeIn
+        datetime timeOut
+        float renderedHours
+        enum status
+        enum reviewStatus
+    }
+    LOGENTRY {
+        string id PK
+        string studentId FK
+        datetime date
+        string taskDescription
+        enum status
+        string comment
+    }
+    SUBMISSION {
+        string id PK
+        string requirementId FK
+        string studentId FK
+        string fileName
+        enum status
+        int score
+    }
+    REQUIREMENT {
+        string id PK
+        string title
+        string program
+        string category
+        datetime dueDate
+        int maxScore
+    }
+    WEEKLYTASK {
+        string id PK
+        string studentId FK
+        string requirementId FK
+        datetime weekOf
+        datetime dueDate
+        string status
+    }
+    ANNOUNCEMENT {
+        string id PK
+        string title
+        string content
+        string category
+        enum priority
+        boolean isActive
+    }
+    MESSAGE {
+        string id PK
+        string senderId FK
+        string receiverId FK
+        string content
+        boolean isRead
+    }
+    CONNECTION {
+        string id PK
+        string requesterId FK
+        string addresseeId FK
+        enum status
+    }
+    NOTIFICATION {
+        string id PK
+        string userId FK
+        string title
+        string content
+        boolean isRead
+    }
+    LINKEDACCOUNT {
+        string id PK
+        string userId FK
+        enum provider
+        string providerId
+        string email
+    }
+    AUDITLOG {
+        string id PK
+        string userId
+        string userEmail
+        enum action
+        string entity
+        string description
+        datetime createdAt
+    }
