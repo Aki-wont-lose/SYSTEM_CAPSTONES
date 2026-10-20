@@ -17,6 +17,7 @@ import { asyncHandler } from '../middleware/errorHandler.js';
 
 const prisma = new PrismaClient();
 
+// GET /attendance/history - fetch the signed-in student's attendance history
 export const fetchAttendanceHistory = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
 
@@ -37,6 +38,7 @@ export const fetchAttendanceHistory = asyncHandler(async (req, res) => {
   });
 });
 
+// POST /attendance/time-in - record a student's time in with a photo
 export const timeIn = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
 
@@ -57,6 +59,7 @@ export const timeIn = asyncHandler(async (req, res) => {
   });
 });
 
+// POST /attendance/time-out - record a student's time out with a photo
 export const timeOut = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
 
@@ -77,6 +80,7 @@ export const timeOut = asyncHandler(async (req, res) => {
   });
 });
 
+// GET /attendance/monthly - fetch a student's attendance for a given month
 export const fetchMonthlyAttendance = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
 
@@ -105,6 +109,7 @@ export const fetchMonthlyAttendance = asyncHandler(async (req, res) => {
   });
 });
 
+// GET /attendance/summary - fetch the student's attendance summary
 export const fetchStudentSummary = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
 
@@ -124,6 +129,7 @@ export const fetchStudentSummary = asyncHandler(async (req, res) => {
   });
 });
 
+// PUT /attendance/:id - update an attendance record (staff, or student on their own draft)
 export const updateAttendance = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -177,6 +183,7 @@ const requireStudentInScope = async (user, studentId) => {
   return student;
 };
 
+// GET /attendance/student/:studentId/history - fetch a student's attendance for staff
 export const fetchStudentAttendanceForStaff = asyncHandler(async (req, res) => {
   const { studentId } = req.params;
   const { limit = 30 } = req.query;
@@ -187,6 +194,7 @@ export const fetchStudentAttendanceForStaff = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: attendance });
 });
 
+// GET /attendance/student/:studentId/summary - fetch a student's attendance summary for staff
 export const fetchStudentSummaryForStaff = asyncHandler(async (req, res) => {
   const { studentId } = req.params;
   await requireStudentInScope(req.user, studentId);
@@ -194,6 +202,7 @@ export const fetchStudentSummaryForStaff = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: summary });
 });
 
+// POST /attendance/:id/submit - submit a finished DTR for supervisor approval
 export const submitForReview = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
   if (!student) {
@@ -204,6 +213,7 @@ export const submitForReview = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'DTR submitted for approval', data: record });
 });
 
+// PUT /attendance/review/:id - approve or reject a submitted DTR
 export const reviewDtrRecord = asyncHandler(async (req, res) => {
   const { status, remarks } = req.body;
   // Scope check before approving/rejecting: without this any supervisor could act
@@ -225,6 +235,7 @@ export const reviewDtrRecord = asyncHandler(async (req, res) => {
   });
 });
 
+// GET /attendance/review-queue - fetch the DTR review queue with filters
 export const fetchReviewQueue = asyncHandler(async (req, res) => {
   const { status, course, studentId, from, to, limit } = req.query;
   const data = await getDtrReviewQueue({ status, course, studentId, from, to, limit });

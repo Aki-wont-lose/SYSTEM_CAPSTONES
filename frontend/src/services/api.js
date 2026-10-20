@@ -5,6 +5,7 @@ import { getToken, clearSession } from './session';
 // same-origin under /api. Local development keeps using the dev backend.
 const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000/api' : '/api');
 
+// Shared axios instance used by every service module
 const api = axios.create({
   baseURL: API_URL,
   headers: {

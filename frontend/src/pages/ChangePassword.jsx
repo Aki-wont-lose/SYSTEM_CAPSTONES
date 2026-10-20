@@ -4,6 +4,7 @@ import { KeyRound, Lock, Eye, EyeOff, AlertCircle, CheckCircle2, LogOut, ShieldC
 import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
 
+// Let a user replace their temporary password with a new one
 const ChangePassword = () => {
   const { user, changePassword, logout, mustChangePassword, roleHome } = useAuth();
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const ChangePassword = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Score the new password out of 5 based on length and character variety
   const passwordScore = (() => {
     let score = 0;
     if (newPassword.length >= 8) score += 1;
@@ -25,6 +27,7 @@ const ChangePassword = () => {
     return score;
   })();
 
+  // Validate the inputs and submit the password change
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -39,6 +42,7 @@ const ChangePassword = () => {
       return;
     }
     if (newPassword === currentPassword) {
+      // Block reusing the temporary password
       setError('New password must be different from your temporary password.');
       return;
     }

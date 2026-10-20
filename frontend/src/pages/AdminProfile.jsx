@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
 
+// Let an admin view and update their profile, photo, and email
 const AdminProfile = () => {
   const { user, updateUser } = useAuth();
   const [showPicker, setShowPicker] = useState(false);
@@ -16,8 +17,10 @@ const AdminProfile = () => {
   const fileRef = useRef(null);
   const defaults = [{bg:'bg-sti-blue'},{bg:'bg-sti-yellow'},{bg:'bg-emerald-500'}];
   const isImg = user?.profilePicture?.startsWith('data:image');
+  // Pull the stored default color out of the "DEFAULT:<color>" marker, if that's the current picture
   const bg = user?.profilePicture?.startsWith('DEFAULT:') ? user.profilePicture.split(':')[1] : 'bg-sti-blue';
 
+  // Load the current profile details from the API on mount
   useEffect(() => {
     const load = async () => {
       try {
@@ -35,8 +38,10 @@ const AdminProfile = () => {
   }, []);
 
   const fullName = [details.firstName, details.lastName].filter(Boolean).join(' ');
+  // Friendlier label for the user's role
   const roleLabel = user?.isSuperAdmin ? 'Super Admin' : (user?.role ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : 'Administrator');
 
+  // Save the name and contact number changes
   const handleSaveDetails = async (e) => {
     e.preventDefault();
     setSavingDetails(true);
@@ -58,6 +63,7 @@ const AdminProfile = () => {
     }
   };
 
+  // Save the sign-in email address
   const handleSaveEmail = async (e) => {
     e.preventDefault();
     setSavingEmail(true);
@@ -75,6 +81,7 @@ const AdminProfile = () => {
     }
   };
 
+  // Read a chosen image, reject oversized files, and upload it as the profile picture
   const handleGallery = (e) => {
     const file = e.target.files?.[0]; if(!file) return;
     if (file.size > 4*1024*1024) { alert('Max 4MB'); return; }
@@ -83,6 +90,7 @@ const AdminProfile = () => {
       try { const res = await api.put('/profile', { profilePicture: r.result }); updateUser({ profilePicture: r.result, ...res.data.user || {} }); } catch{} finally{setSaving(false); setShowPicker(false);}
     }; r.readAsDataURL(file); e.target.value='';
   };
+  // Apply a preset solid-color avatar
   const handleDefault = async (b) => {
     setSaving(true);
     try { const res = await api.put('/profile', { profilePicture: `DEFAULT:${b}` }); updateUser({ profilePicture: `DEFAULT:${b}`, ...res.data.user || {} }); } catch{} finally{setSaving(false); setShowPicker(false);}

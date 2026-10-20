@@ -12,6 +12,7 @@ import {
 import { getStudentByUserId } from '../services/studentService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
+// GET /logs/mine - fetch the signed-in student's own log entries
 export const fetchMyLogs = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
   if (!student) return res.status(404).json({ success: false, message: 'Student profile not found' });
@@ -19,12 +20,14 @@ export const fetchMyLogs = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: logs });
 });
 
+// GET /logs - fetch all log entries with optional status/student filters (staff)
 export const fetchAllLogs = asyncHandler(async (req, res) => {
   const { status, studentId } = req.query;
   const logs = await getAllLogs({ status, studentId }, req.user);
   res.status(200).json({ success: true, data: logs });
 });
 
+// POST /logs - add a daily task log entry
 export const addLog = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
   if (!student) return res.status(404).json({ success: false, message: 'Student profile not found' });
@@ -33,6 +36,7 @@ export const addLog = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, message: 'Log entry added', data: log });
 });
 
+// POST /logs/assign - assign a task to a student (staff)
 export const addAssignedTask = asyncHandler(async (req, res) => {
   const { studentId, date, taskDescription } = req.body;
   // The target student must be inside the caller's scope; assignTask enforces it.
@@ -40,6 +44,7 @@ export const addAssignedTask = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, message: 'Task assigned', data: log });
 });
 
+// PUT /logs/:id - edit the student's own log entry
 export const editLog = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
   if (!student) return res.status(404).json({ success: false, message: 'Student profile not found' });
@@ -47,12 +52,14 @@ export const editLog = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Log updated', data: log });
 });
 
+// PUT /logs/:id/review - approve or reject a log entry (staff)
 export const reviewLogEntry = asyncHandler(async (req, res) => {
   const { status, comment } = req.body;
   const log = await reviewLog(req.params.id, status, comment, req.user);
   res.status(200).json({ success: true, message: 'Log reviewed', data: log });
 });
 
+// DELETE /logs/:id - delete the student's own log entry
 export const removeLog = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
   if (!student) return res.status(404).json({ success: false, message: 'Student profile not found' });
@@ -60,6 +67,7 @@ export const removeLog = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Log deleted' });
 });
 
+// DELETE /logs/:id/staff - delete any log entry (staff)
 export const removeLogAsStaff = asyncHandler(async (req, res) => {
   await deleteLogAsStaff(req.params.id, req.user);
   res.status(200).json({ success: true, message: 'Log deleted' });

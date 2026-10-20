@@ -11,9 +11,11 @@ const statusStyles = {
   REVISION_REQUESTED: 'bg-red-50 text-red-600',
 };
 
+// Format an ISO date string into a short readable date
 const formatDate = (dateStr) =>
   new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+// Show all student log entries for staff to review, score, or assign
 const AdminLogs = () => {
   const [logs, setLogs] = useState([]);
   const [students, setStudents] = useState([]);
@@ -25,6 +27,7 @@ const AdminLogs = () => {
   const [assignForm, setAssignForm] = useState({ studentId: '', date: new Date().toISOString().slice(0, 10), taskDescription: '' });
   const [saving, setSaving] = useState(false);
 
+  // Fetch log entries (honoring the status filter) and the student list
   const loadData = async () => {
     setLoading(true);
     try {
@@ -46,6 +49,7 @@ const AdminLogs = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
 
+  // Delete a log entry after asking for confirmation
   const handleDelete = async (log) => {
     const name = `${log.student?.firstName ?? ''} ${log.student?.lastName ?? ''}`.trim();
     if (!window.confirm(`Delete this log entry${name ? ` from ${name}` : ''}? This cannot be undone.`)) return;
@@ -57,6 +61,7 @@ const AdminLogs = () => {
     }
   };
 
+  // Approve a log or request a revision, passing the comment only for revisions
   const handleReview = async (id, status) => {
     try {
       await reviewLogEntry(id, status, status === 'REVISION_REQUESTED' ? comment : undefined);
@@ -68,6 +73,7 @@ const AdminLogs = () => {
     }
   };
 
+  // Create a task assignment for the chosen student
   const handleAssign = async (e) => {
     e.preventDefault();
     setSaving(true);

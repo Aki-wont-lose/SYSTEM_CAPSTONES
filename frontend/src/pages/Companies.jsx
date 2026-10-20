@@ -10,6 +10,7 @@ const PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'];
 
 const emptyForm = { name: '', address: '', latitude: '', longitude: '', contactPerson: '', contactNumber: '', email: '', industryType: '', programs: [], availableSlots: 0, status: 'ACTIVE' };
 
+// Manage partner companies, their slots, and accepted programs
 const Companies = () => {
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +22,7 @@ const Companies = () => {
   const [batchResult, setBatchResult] = useState(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [programFilter, setProgramFilter] = useState('');
+  // Build and download an Excel template (with a courses sheet) for company imports
   const downloadTemplate = () => {
     const columns = ['name', 'address', 'contactPerson', 'contactNumber', 'email', 'industryType', 'availableSlots', 'course'];
     const sample = [{
@@ -41,6 +43,7 @@ const Companies = () => {
     XLSX.writeFile(workbook, 'Partner_Company_Templates.xlsx');
   };
 
+  // Parse a CSV/Excel file and bulk-create companies, reporting created and failed rows
   const handleBatchFile = async (file) => {
     if (!file) return;
     const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
@@ -104,6 +107,7 @@ const Companies = () => {
     finally { setBatchLoading(false); }
   };
 
+  // Fetch companies, optionally filtered by program
   const loadData = async () => {
     setLoading(true);
     try {
@@ -118,12 +122,14 @@ const Companies = () => {
 
   useEffect(() => { loadData(); }, [programFilter]);
 
+  // Open the modal with an empty form for adding a company
   const openNew = () => {
     setEditing(null);
     setForm(emptyForm);
     setShowModal(true);
   };
 
+  // Fill the form with a company's data for editing
   const openEdit = (company) => {
     setEditing(company);
     setForm({
@@ -142,6 +148,7 @@ const Companies = () => {
     setShowModal(true);
   };
 
+  // Coerce the form values and create or update the company
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -166,6 +173,7 @@ const Companies = () => {
     }
   };
 
+  // Delete a company after confirmation
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this partner company?')) return;
     try {

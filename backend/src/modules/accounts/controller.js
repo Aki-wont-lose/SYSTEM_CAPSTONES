@@ -11,11 +11,13 @@ import {
   batchCreateStaffAccounts
 } from './service.js';
 
+// GET /accounts/counts - fetch staff account counts by role
 export const fetchAccountCounts = asyncHandler(async (req, res) => {
   const counts = await getAccountCounts(req.user.role);
   res.status(200).json({ success: true, message: 'Account counts retrieved', data: counts });
 });
 
+// GET /accounts - list staff accounts with optional filters
 export const fetchStaff = asyncHandler(async (req, res) => {
   const { role, search, includeInactive } = req.query;
   const staff = await listStaff({
@@ -28,6 +30,7 @@ export const fetchStaff = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Accounts retrieved', data: staff });
 });
 
+// GET /accounts/:id - fetch a single staff account
 export const fetchAccount = asyncHandler(async (req, res) => {
   const account = await getAccountById(req.params.id);
   res.status(200).json({ success: true, message: 'Account retrieved', data: account });
@@ -36,6 +39,7 @@ export const fetchAccount = asyncHandler(async (req, res) => {
 const roleLabel = (role) =>
   role === 'COORDINATOR' ? 'Coordinator' : role === 'ADMIN' ? 'Admin' : 'Supervisor';
 
+// POST /accounts - create a staff account
 export const addStaffAccount = asyncHandler(async (req, res) => {
   const result = await createStaffAccount({ ...req.body, requesterIsSuperAdmin: !!req.user.isSuperAdmin });
   res.status(201).json({
@@ -45,6 +49,7 @@ export const addStaffAccount = asyncHandler(async (req, res) => {
   });
 });
 
+// PUT /accounts/:id - update a staff account
 export const editStaffAccount = asyncHandler(async (req, res) => {
   const account = await updateStaffAccount(req.params.id, req.body, {
     requesterIsSuperAdmin: !!req.user.isSuperAdmin,
@@ -54,6 +59,7 @@ export const editStaffAccount = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Account updated', data: account });
 });
 
+// POST /accounts/:id/reset-password - generate a new temporary password
 export const regenerateAccountPassword = asyncHandler(async (req, res) => {
   const result = await resetAccountPassword(req.params.id, { requesterIsSuperAdmin: !!req.user.isSuperAdmin });
   res.status(200).json({
@@ -63,6 +69,7 @@ export const regenerateAccountPassword = asyncHandler(async (req, res) => {
   });
 });
 
+// DELETE /accounts/:id - remove a staff account
 export const removeStaffAccount = asyncHandler(async (req, res) => {
   const result = await deleteStaffAccount(req.params.id, {
     requesterIsSuperAdmin: !!req.user.isSuperAdmin,
@@ -72,6 +79,7 @@ export const removeStaffAccount = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Account removed', data: result });
 });
 
+// POST /accounts/batch - create many staff accounts from a batch upload
 export const batchAddStaffAccounts = asyncHandler(async (req, res) => {
   const { accounts } = req.body;
   if (!Array.isArray(accounts) || accounts.length === 0) {

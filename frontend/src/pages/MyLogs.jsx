@@ -16,9 +16,11 @@ const statusLabels = {
   REVISION_REQUESTED: 'Revision Requested',
 };
 
+// Format an ISO date string into a short weekday date
 const formatDate = (dateStr) =>
   new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
+// Let a student add, edit, and delete their daily task log entries
 const MyLogs = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +31,7 @@ const MyLogs = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Fetch the signed-in student's log entries
   const loadLogs = async () => {
     try {
       const res = await getMyLogs();
@@ -44,6 +47,7 @@ const MyLogs = () => {
     loadLogs();
   }, []);
 
+  // Reset the form and open the modal for a new entry
   const openNew = () => {
     setEditingLog(null);
     setDate(new Date().toISOString().slice(0, 10));
@@ -52,6 +56,7 @@ const MyLogs = () => {
     setShowModal(true);
   };
 
+  // Load an existing entry into the form for editing
   const openEdit = (log) => {
     setEditingLog(log);
     setDate(new Date(log.date).toISOString().slice(0, 10));
@@ -60,6 +65,7 @@ const MyLogs = () => {
     setShowModal(true);
   };
 
+  // Create a new log entry or save edits to the one being edited
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -79,6 +85,7 @@ const MyLogs = () => {
     }
   };
 
+  // Delete a log entry after confirmation
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this log entry?')) return;
     try {

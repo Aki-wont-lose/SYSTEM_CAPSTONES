@@ -26,6 +26,7 @@ export const login = asyncHandler(async (req, res) => {
   });
 });
 
+// POST /auth/microsoft - sign in with a Microsoft ID token
 export const microsoftLogin = asyncHandler(async (req, res) => {
   const { idToken } = req.body;
   if (!idToken) {
@@ -35,6 +36,7 @@ export const microsoftLogin = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Signed in with Microsoft', data: result });
 });
 
+// POST /auth/forgot-password - send a password reset email
 export const forgotPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
   if (!email) {
@@ -44,6 +46,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: result.message, data: result });
 });
 
+// POST /auth/reset-password - reset a password using a reset token
 export const doResetPassword = asyncHandler(async (req, res) => {
   const { resetToken, newPassword } = req.body;
   if (!resetToken || !newPassword) {
@@ -56,6 +59,7 @@ export const doResetPassword = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: result.message });
 });
 
+// POST /auth/theme - save the user's LIGHT/DARK theme preference
 export const setTheme = asyncHandler(async (req, res) => {
   const { theme } = req.body;
   if (!['LIGHT', 'DARK'].includes(theme)) {
@@ -65,10 +69,12 @@ export const setTheme = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Theme updated', data: { theme: user.theme } });
 });
 
+// GET /auth/validate - confirm the current token is still valid
 export const validateToken = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Token is valid', data: req.user });
 });
 
+// POST /auth/change-password - change the signed-in user's password
 export const doChangePassword = asyncHandler(async (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
 

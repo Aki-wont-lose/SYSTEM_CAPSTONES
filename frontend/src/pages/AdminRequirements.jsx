@@ -43,6 +43,7 @@ const emptyForm = {
 
 const BATCH_COLUMNS = ['title', 'description', 'program', 'category', 'cadence', 'dueInDays', 'maxScore', 'autoGradeOnSubmit', 'isRequired'];
 
+// Manage requirement templates, student submissions, and automated grading
 const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = false, hideSubmissions = false, hideBatchUpload = false, hideGrading = false }) => {
   const [tab, setTab] = useState(defaultTab);
   const [requirements, setRequirements] = useState([]);
@@ -64,6 +65,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   const [dragOver, setDragOver] = useState(false);
   const [batchResult, setBatchResult] = useState(null);
 
+  // Convert an uploaded file into a base64 string for storage
   const fileToBase64 = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
@@ -71,6 +73,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     reader.readAsDataURL(file);
   });
 
+  // Fetch requirements and submissions in parallel, applying active filters
   const loadData = async () => {
     setLoading(true);
     try {
@@ -87,6 +90,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     }
   };
 
+  // Fetch the per-student grading summary, optionally filtered by program
   const loadGrading = async () => {
     setLoading(true);
     try {
@@ -109,6 +113,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, courseFilter]);
 
+  // Open the modal with a blank form, defaulting the program to the active filter
   const openNew = () => {
     setEditing(null);
     setForm({ ...emptyForm, program: programFilter === 'ALL' ? 'ALL' : programFilter });
@@ -116,6 +121,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     setShowModal(true);
   };
 
+  // Prefill the form with an existing requirement for editing
   const openEdit = (req) => {
     setEditing(req);
     setForm({
@@ -136,6 +142,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     setShowModal(true);
   };
 
+  // Read the picked template file and store it as base64 (max 10MB)
   const handleTemplateChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -144,6 +151,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     setForm({ ...form, templateFile: b64, templateFileName: file.name });
   };
 
+  // Trigger a download of the requirement's template file
   const downloadTemplate = (req) => {
     const link = document.createElement('a');
     link.href = req.templateFile;
@@ -151,6 +159,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     link.click();
   };
 
+  // Build and download an Excel template for bulk requirement imports
   const downloadBatchTemplate = () => {
     const sample = [{
       title: 'Week 1 Report',
@@ -169,6 +178,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     XLSX.writeFile(workbook, 'requirements_batch_template.xlsx');
   };
 
+  // Export the grading summary rows to an Excel file
   const downloadGradingExcel = () => {
     if (!grading) return;
     const rows = grading.rows.map((row) => ({
@@ -193,6 +203,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     XLSX.writeFile(workbook, 'requirements_grading_summary.xlsx');
   };
 
+  // Normalize the form into an API payload and create or update the requirement
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -219,6 +230,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     }
   };
 
+  // Delete a requirement after confirmation
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this requirement? All related submissions will also be removed.')) return;
     try {
@@ -229,6 +241,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     }
   };
 
+  // Approve a submission, passing an optional numeric score
   const handleApprove = async (id, score) => {
     setActionError('');
     try {
@@ -241,6 +254,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     }
   };
 
+  // Reject a submission with the entered remarks
   const handleReject = async (id) => {
     setActionError('');
     try {
@@ -253,6 +267,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     }
   };
 
+  // Trigger a download of the submitted file
   const downloadFile = (submission) => {
     const link = document.createElement('a');
     link.href = submission.fileData;
@@ -260,12 +275,14 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     link.click();
   };
 
+  // Interpret spreadsheet truthy values (true/1/yes/required/y) as booleans
   const parseBoolean = (value, fallback = true) => {
     const raw = String(value || '').toLowerCase().trim();
     if (!raw) return fallback;
     return ['true', '1', 'yes', 'required', 'y'].includes(raw);
   };
 
+  // Parse an uploaded CSV/Excel file and bulk-create requirements, collecting errors
   const handleBatchFile = async (file) => {
     if (!file) return;
     setActionError('');
@@ -337,6 +354,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     } catch(e){ setBatchResult({ created:0, failed:1, errors:[e.message||'Batch failed'] }); }
   };
 
+  // Heading text for the currently selected tab
   const tabTitle = tab === 'requirements' ? 'Templates' : tab === 'grading' ? 'Automated Grading' : 'Submissions';
 
   return (

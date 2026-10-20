@@ -14,6 +14,7 @@ import { compressImage } from '../services/imageService';
 
 const emptyForm = { title: '', content: '', image: null, images: null, isActive: true };
 
+// Create, edit, and delete announcements shown on student dashboards
 const AnnouncementManagement = () => {
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,8 +26,10 @@ const AnnouncementManagement = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Get the photo list from either the single or multiple photo fields
   const photos = parseAnnouncementPhotos(form);
 
+  // Fetch all announcements
   const loadAnnouncements = async () => {
     setLoading(true);
     try {
@@ -43,6 +46,7 @@ const AnnouncementManagement = () => {
     loadAnnouncements();
   }, []);
 
+  // Reset the form and open the modal for a new announcement
   const openAddModal = () => {
     setForm(emptyForm);
     setEditTarget(null);
@@ -50,6 +54,7 @@ const AnnouncementManagement = () => {
     setModalOpen(true);
   };
 
+  // Load an existing announcement into the form for editing
   const openEditModal = (announcement) => {
     setForm({
       title: announcement.title,
@@ -63,6 +68,7 @@ const AnnouncementManagement = () => {
     setModalOpen(true);
   };
 
+  // Compress and stage up to three picked photos for the announcement
   const handlePhotoPick = async (e) => {
     const picked = Array.from(e.target.files || []);
     // Clear the input straight away, otherwise re-picking the same file fires no change event
@@ -84,6 +90,7 @@ const AnnouncementManagement = () => {
     }));
   };
 
+  // Create a new announcement or save edits to the one being edited
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -103,6 +110,7 @@ const AnnouncementManagement = () => {
     }
   };
 
+  // Delete the announcement the user confirmed
   const handleDelete = async () => {
     setDeleting(true);
     try {

@@ -7,6 +7,7 @@ import { getStudentSummary } from '../services/attendanceService';
 
 const PROGRAM_LABELS = { BSIT: 'BSIT', BSCS: 'BSCS', BSCPE: 'BSCPE', BSACT: 'BSACT', BSHM: 'BSHM', BSTM: 'BSTM', BSAIS: 'BSAIS' };
 
+// Let students browse partner companies that currently have open slots
 const FindCompany = () => {
   const { user } = useAuth();
   const [companies, setCompanies] = useState([]);
@@ -16,6 +17,7 @@ const FindCompany = () => {
   const [program, setProgram] = useState('');
   const [myProgram, setMyProgram] = useState('');
 
+  // Load active companies with open slots and select the first one
   useEffect(() => {
     getCompanies({ status: 'ACTIVE', hasSlots: 'true' })
       .then((res) => {
@@ -26,6 +28,7 @@ const FindCompany = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  // Look up the signed-in student's own program for the quick filter button
   useEffect(() => {
     if (user?.role !== 'STUDENT') return;
     getStudentSummary()
@@ -33,8 +36,10 @@ const FindCompany = () => {
       .catch(() => setMyProgram(''));
   }, [user]);
 
+  // A company counts as matching if it targets the program or is open to all
   const matchesProgram = (c, target) => !target || (c.programs || []).length === 0 || (c.programs || []).includes(target);
 
+  // Filter companies by the search term and selected program
   const filtered = useMemo(
     () => companies.filter((c) => {
       const term = search.toLowerCase();

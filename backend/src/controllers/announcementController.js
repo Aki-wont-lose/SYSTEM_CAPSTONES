@@ -11,6 +11,7 @@ import {
 } from '../services/announcementService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
+// GET /announcements/active - fetch active announcements for display
 export const fetchActiveAnnouncements = asyncHandler(async (req, res) => {
   const { limit = 10 } = req.query;
   const announcements = await getActiveAnnouncements(parseInt(limit));
@@ -22,6 +23,7 @@ export const fetchActiveAnnouncements = asyncHandler(async (req, res) => {
   });
 });
 
+// GET /announcements - fetch all announcements with optional filters
 export const fetchAllAnnouncements = asyncHandler(async (req, res) => {
   const { priority, category, isActive } = req.query;
   
@@ -39,6 +41,7 @@ export const fetchAllAnnouncements = asyncHandler(async (req, res) => {
   });
 });
 
+// GET /announcements/:id - fetch a single announcement by id
 export const fetchAnnouncementById = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const announcement = await getAnnouncementById(id);
@@ -57,6 +60,7 @@ export const fetchAnnouncementById = asyncHandler(async (req, res) => {
   });
 });
 
+// POST /announcements - create a new announcement (admin)
 export const addAnnouncement = asyncHandler(async (req, res) => {
   const { title, content, category, priority, isActive } = req.body;
 
@@ -75,6 +79,7 @@ export const addAnnouncement = asyncHandler(async (req, res) => {
   });
 });
 
+// PUT /announcements/:id - update an announcement
 export const updateAnnouncementData = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const updateData = req.body;
@@ -88,6 +93,7 @@ export const updateAnnouncementData = asyncHandler(async (req, res) => {
   });
 });
 
+// DELETE /announcements/:id - delete an announcement
 export const removeAnnouncement = asyncHandler(async (req, res) => {
   const { id } = req.params;
   await deleteAnnouncement(id);
@@ -98,6 +104,7 @@ export const removeAnnouncement = asyncHandler(async (req, res) => {
   });
 });
 
+// POST /announcements/:id/publish - publish an announcement
 export const publishAnnouncementData = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const announcement = await publishAnnouncement(id);
@@ -109,6 +116,7 @@ export const publishAnnouncementData = asyncHandler(async (req, res) => {
   });
 });
 
+// POST /announcements/:id/unpublish - unpublish an announcement
 export const unpublishAnnouncementData = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const announcement = await unpublishAnnouncement(id);

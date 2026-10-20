@@ -5,6 +5,7 @@ import Button from '../components/Button';
 import { getContacts, getConversation, sendMessage, deleteMessage } from '../services/messageService';
 import { useAuth } from '../hooks/useAuth';
 
+// Safely read a JSON array from localStorage, falling back to an empty array
 const readList = (key) => {
   try {
     const value = JSON.parse(localStorage.getItem(key) || '[]');
@@ -14,6 +15,7 @@ const readList = (key) => {
   }
 };
 
+// Chat interface for messaging anyone in the system
 const Messages = () => {
   const { user } = useAuth();
   const currentUserId = user?.id || user?.userId;
@@ -31,8 +33,10 @@ const Messages = () => {
   const bottomRef = useRef(null);
   const fileRef = useRef(null);
 
+  // Briefly display a toast message
   const showToast = (msg) => { setToast(msg); setTimeout(()=>setToast(''), 3000); };
 
+  // Fetch the contact list
   const loadContacts = async () => {
     try {
       const res = await getContacts();
@@ -40,6 +44,7 @@ const Messages = () => {
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
+  // Fetch the conversation with a contact, clear its unread count, and scroll to the bottom
   const loadConversation = async (contactId) => {
     const id = contactId || selected?.id;
     if (!id) return;
@@ -53,17 +58,21 @@ const Messages = () => {
 
   useEffect(() => {
     loadContacts();
+    // Poll contacts every 5s so new messages and unread counts stay fresh
     const interval = setInterval(() => { loadContacts(); }, 5000);
     return () => clearInterval(interval);
   }, []);
   useEffect(() => {
     setMessages([]);
     if (selected) loadConversation(selected.id);
+    // Poll the open conversation every 3s for new messages
     const interval = setInterval(() => { if (selected) loadConversation(selected.id); }, 3000);
     return () => clearInterval(interval);
   }, [selected]);
 
+  // Turn an uppercase role into a readable label
   const formatRole = (r) => r ? r.charAt(0) + r.slice(1).toLowerCase() : '';
+  // Match contacts against the search text by email, name, student id, or role
   const filteredContacts = contacts.filter(c => {
     const q = search.toLowerCase();
     if (!q) return false;
@@ -79,12 +88,15 @@ const Messages = () => {
   // Show every user by default so anyone can be messaged without searching first
   const displayContacts = search ? filteredContacts : [...visibleContacts, ...everyoneElse];
 
+  // Detect whether a message body is an inline image
   const isImage = (content) => content && content.startsWith('data:image');
 
+  // Persist a list back to localStorage
   const updateStoredList = (key, value) => {
     localStorage.setItem(key, JSON.stringify(value));
   };
 
+  // Open a chat, un-hiding it and moving it to the top of the recent list
   const openContact = (contact) => {
     setSelected(contact);
     setSearch('');
@@ -100,6 +112,7 @@ const Messages = () => {
     });
   };
 
+  // Hide a contact from this user's chat list (messages are kept)
   const removeContact = (contact) => {
     const name = contact.displayName || contact.email;
     if (!confirm(`Remove ${name} from your chat list?\n\nOnly for you. All messages are kept — search for ${name} any time to chat again.`)) return;
@@ -117,6 +130,7 @@ const Messages = () => {
     showToast('Contact removed from your chat list');
   };
 
+  // Render a single contact row with unread badge and remove button
   const renderContact = (contact) => {
     const isSelected = selected?.id === contact.id;
     return (
@@ -131,6 +145,7 @@ const Messages = () => {
     );
   };
 
+  // Send the typed text or the staged image to the selected contact
   const handleSend = async (e) => {
     e.preventDefault();
     if ((!text.trim() && !previewImg) || !selected) return;
@@ -144,11 +159,13 @@ const Messages = () => {
     } catch (err) { showToast(err.response?.data?.message || 'Failed to send'); } finally { setSending(false); }
   };
 
+  // Delete a sent message after confirmation
   const handleDelete = async (msgId) => {
     if (!confirm('Delete this message?')) return;
     try { await deleteMessage(msgId); loadConversation(); } catch (e) { showToast('Failed to delete'); }
   };
 
+  // Read a picked image into state as a preview before sending
   const handlePickImage = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;

@@ -6,11 +6,13 @@ import WelcomeCarousel from '../components/WelcomeCarousel';
 
 const PROGRAM_ORDER = ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'];
 
+// Show the admin dashboard with announcements, program stats, and status counts
 const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Load dashboard stats and the latest announcements together on mount
   useEffect(() => {
     Promise.all([
       import('../services/studentService').then(m=>m.getDashboardStats().then(r=>r.data)),
@@ -30,12 +32,14 @@ const AdminDashboard = () => {
   }
 
   const byCourse = stats?.byCourse || {};
+  // Build the program rows, known programs first then any extras
   const programRows = [
     ...PROGRAM_ORDER.filter((p) => byCourse[p] != null).map((p) => ({ label: p, value: byCourse[p] })),
     ...Object.entries(byCourse)
       .filter(([key]) => !PROGRAM_ORDER.includes(key))
       .map(([label, value]) => ({ label, value }))
   ];
+  // Largest program count so bars can be scaled to 100%
   const maxProgram = Math.max(1, ...programRows.map((r) => r.value));
 
   return (
