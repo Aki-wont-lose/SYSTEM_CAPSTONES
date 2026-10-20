@@ -44,8 +44,8 @@ const emptyForm = {
 const BATCH_COLUMNS = ['title', 'description', 'program', 'category', 'cadence', 'dueInDays', 'maxScore', 'autoGradeOnSubmit', 'isRequired'];
 
 // Pick a lucide icon that matches the template file extension
-const templateIconFor = (name = '') => {
-  const ext = name.split('.').pop()?.toLowerCase();
+const templateIconFor = (name) => {
+  const ext = String(name || '').split('.').pop()?.toLowerCase();
   if (['pdf'].includes(ext)) return FileText;
   if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) return FileType2;
   if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return FileImage;
@@ -163,11 +163,13 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     setShowModal(true);
   };
 
-  // Read the picked template file and store it as base64 (max 10MB)
+  // Read the picked template file and store it as base64.
+  // Capped at 3MB: the base64 payload is ~1.4x the file size and the deployed
+  // serverless request limit is 4.5MB, so anything larger is rejected upstream.
   const handleTemplateChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { setActionError('Template too large (max 10MB)'); return; }
+    if (file.size > 3 * 1024 * 1024) { setActionError('Template too large — max 3MB. Please compress the file and try again.'); e.target.value = ''; return; }
     const b64 = await fileToBase64(file);
     setForm({ ...form, templateFile: b64, templateFileName: file.name });
   };
@@ -811,15 +813,6 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   className="input-field"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Description</label>
-                <textarea
-                  rows={3}
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="input-field resize-none"
                 />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

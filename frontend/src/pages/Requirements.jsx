@@ -32,8 +32,8 @@ const fileToBase64 = (file) =>
 const formatDate = (value) => (value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null);
 
 // Pick a lucide icon that matches the template file extension
-const templateIconFor = (name = '') => {
-  const ext = name.split('.').pop()?.toLowerCase();
+const templateIconFor = (name) => {
+  const ext = String(name || '').split('.').pop()?.toLowerCase();
   if (['pdf'].includes(ext)) return FileText;
   if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) return FileType2;
   if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return FileImage;
