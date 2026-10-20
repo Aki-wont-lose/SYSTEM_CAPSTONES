@@ -44,11 +44,15 @@ const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
     navigate('/login');
   };
 
-  const displayName = user?.student
+  const displayName = user?.isSuperAdmin
+    ? 'Super Admin'
+    : user?.student
     ? `${user.student.firstName} ${user.student.lastName}`
-    : user?.email;
+    : user?.email?.split('@')[0] || 'User';
 
-  const initials = user?.student
+  const initials = user?.isSuperAdmin
+    ? 'SA'
+    : user?.student
     ? `${user.student.firstName[0]}${user.student.lastName[0]}`
     : user?.email?.[0]?.toUpperCase() || 'U';
 

@@ -87,11 +87,15 @@ const Sidebar = ({ role, isOpen, onClose }) => {
   const sections = linksByRole[role] || linksByRole.STUDENT;
   const roleLabel = user?.isSuperAdmin ? 'Super Admin' : (role ? role.charAt(0) + role.slice(1).toLowerCase() : '');
 
-  const displayName = user?.student
+  const displayName = user?.isSuperAdmin
+    ? 'Super Admin'
+    : user?.student
     ? `${user.student.firstName} ${user.student.lastName}`
     : user?.email?.split('@')[0] || 'User';
 
-  const initials = user?.student
+  const initials = user?.isSuperAdmin
+    ? 'SA'
+    : user?.student
     ? `${user.student.firstName[0]}${user.student.lastName[0]}`
     : user?.email?.[0]?.toUpperCase() || 'U';
 
