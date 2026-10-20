@@ -15,37 +15,54 @@ const badRequest = (message) => {
 // persisted, otherwise Microsoft sign-in silently fails to match the account.
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 
+// An empty query string (`?search=&status=`) arrives as `''`, not undefined. A
+// blank enum field (e.g. `ojt_status: ''`) makes Prisma throw, which surfaced as a
+// 500 for coordinators/supervisors whose scope is carried inside `AND`. Drop every
+// blank/undefined key so only real filters reach the database.
+const dropBlank = (obj) =>
+  Object.fromEntries(
+    Object.entries(obj || {}).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  );
+
 export const getAllStudents = async (filters = {}) => {
   const where = {};
-  
-  if (filters.ojt_status) {
-    where.ojt_status = filters.ojt_status;
+
+  const clean = dropBlank(filters);
+  if (clean.ojt_status) {
+    where.ojt_status = clean.ojt_status;
   }
-  if (filters.course) {
-    where.course = filters.course;
+  if (clean.course) {
+    where.course = clean.course;
   }
-  if (filters.companyId) {
-    where.companyId = filters.companyId;
+  if (clean.companyId) {
+    where.companyId = clean.companyId;
   }
-  if (filters.supervisorEmail) {
-    where.supervisorEmail = filters.supervisorEmail;
+  if (clean.supervisorEmail) {
+    where.supervisorEmail = clean.supervisorEmail;
   }
-  
-  if (filters.search) {
+
+  if (clean.search) {
     where.OR = [
-      { firstName: { contains: filters.search } },
-      { lastName: { contains: filters.search } },
-      { studentId: { contains: filters.search } },
-      { email: { contains: filters.search } }
+      { firstName: { contains: clean.search } },
+      { lastName: { contains: clean.search } },
+      { studentId: { contains: clean.search } },
+      { email: { contains: clean.search } }
     ];
   }
 
   // scopeWhere() hands non-admins their restriction as an `AND` array (see
   // accessScope.js). This used to be read as named keys only, so the whole `AND`
   // clause was silently dropped and every coordinator/supervisor saw the entire
-  // roster. Preserve it here, combined with any explicit filters above.
+  // roster. Preserve it here, combined with any explicit filters above. Each entry
+  // is blank-stripped as well: an empty `ojt_status` inside the AND array was what
+  // turned the coordinator list into a 500.
   if (filters.AND) {
-    where.AND = [...(Array.isArray(filters.AND) ? filters.AND : [filters.AND])];
+    const andClauses = (Array.isArray(filters.AND) ? filters.AND : [filters.AND])
+      .map((clause) => dropBlank(clause))
+      .filter((clause) => Object.keys(clause).length > 0);
+    if (andClauses.length) {
+      where.AND = andClauses;
+    }
   }
 
   return prisma.student.findMany({
