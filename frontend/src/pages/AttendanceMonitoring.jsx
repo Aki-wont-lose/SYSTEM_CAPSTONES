@@ -144,7 +144,6 @@ const AttendanceMonitoring = () => {
                 { value: 'SUBMITTED', label: 'Awaiting' },
                 { value: 'APPROVED', label: 'Approved' },
                 { value: 'REJECTED', label: 'Rejected' },
-                { value: 'DRAFT', label: 'Not submitted' },
               ].map((tab) => (
                 <button
                   key={tab.value}
