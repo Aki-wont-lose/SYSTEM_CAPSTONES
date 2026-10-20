@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { Clock, CalendarDays, Search, Image as ImageIcon, X, ShieldCheck, Check, XCircle, Filter, ChevronDown, ChevronRight, Hourglass, CheckCircle2 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import { useAuth } from '../hooks/useAuth';
 import { getAllStudents } from '../services/studentService';
 import { getStudentAttendanceForStaff, getStudentSummaryForStaff, getDtrReviewQueue, reviewDtr } from '../services/attendanceService';
 import { sectionLabel } from '../constants/studentRules';
+import { PROGRAM_OPTIONS } from '../constants/programs';
 
 const reviewStyles = {
   DRAFT: 'bg-gray-100 text-sti-gray-dark',
@@ -41,6 +43,12 @@ const formatDate = (dateStr) =>
   dateStr ? new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 
 const AttendanceMonitoring = () => {
+  const { user } = useAuth();
+  // A coordinator owns exactly one program, so the backend already restricts
+  // every record to that course. Offering them a program picker would suggest a
+  // choice that does not exist. Admins span every program and supervisors span
+  // every program at their company, so both keep the course filter.
+  const canPickProgram = user?.role !== 'COORDINATOR';
   const [students, setStudents] = useState([]);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
@@ -121,7 +129,9 @@ const AttendanceMonitoring = () => {
       <div>
         <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white flex items-center gap-2"><Clock className="w-5 h-5 text-sti-blue" /> Daily Time Record Monitoring</h1>
         <p className="text-sm text-sti-gray">
-          Review and approve the daily time records of the students assigned to you.
+          {canPickProgram
+            ? 'Review and approve the daily time records of all students.'
+            : `Review and approve the daily time records of the ${user?.coordinatorCourse || ''} students assigned to you.`.trim()}
         </p>
       </div>
 
@@ -158,19 +168,22 @@ const AttendanceMonitoring = () => {
                 </button>
               ))}
             </div>
-            <div className="relative sm:w-44">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
-              <select value={queueCourse} onChange={e=>setQueueCourse(e.target.value)} className="input-field pl-9 py-2">
-                <option value="">All programs</option>
-                <option value="BSIT">BSIT</option>
-                <option value="BSCS">BSCS</option>
-                <option value="BSCPE">BSCPE</option>
-                <option value="BSACT">BSACT</option>
-                <option value="BSHM">BSHM</option>
-                <option value="BSTM">BSTM</option>
-                <option value="BSAIS">BSAIS</option>
-              </select>
-            </div>
+            {canPickProgram ? (
+              <div className="relative sm:w-44">
+                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+                <select value={queueCourse} onChange={e=>setQueueCourse(e.target.value)} className="input-field pl-9 py-2">
+                  <option value="">All programs</option>
+                  {PROGRAM_OPTIONS.map((program) => (
+                    <option key={program.value} value={program.value}>{program.label}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sti-blue-50 dark:bg-sti-blue/20 text-sti-blue text-xs font-semibold whitespace-nowrap">
+                <Filter className="w-3.5 h-3.5" />
+                {user?.coordinatorCourse || 'My program'} students only
+              </div>
+            )}
           </div>
         </div>
 
