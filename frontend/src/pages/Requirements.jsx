@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { FileCheck2, Upload, CheckCircle2, XCircle, Clock3, X, Download, AlertTriangle, Search } from 'lucide-react';
+import { FileCheck2, Upload, CheckCircle2, XCircle, Clock3, X, Download, AlertTriangle, Search, FileText, FileType2, FileImage, FileSpreadsheet, File as FileIcon } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import WeeklyToDo from '../components/WeeklyToDo';
@@ -30,6 +30,26 @@ const fileToBase64 = (file) =>
   });
 
 const formatDate = (value) => (value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null);
+
+// Pick a lucide icon that matches the template file extension
+const templateIconFor = (name = '') => {
+  const ext = name.split('.').pop()?.toLowerCase();
+  if (['pdf'].includes(ext)) return FileText;
+  if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) return FileType2;
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return FileImage;
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return FileSpreadsheet;
+  return FileIcon;
+};
+
+// Human-readable file size from a base64 data URL
+const templateSizeLabel = (dataUrl) => {
+  if (typeof dataUrl !== 'string' || !dataUrl.includes(',')) return '';
+  const bytes = Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 const PAGE_SIZES = [10, 25, 50, 100, 'ALL'];
 
@@ -181,6 +201,64 @@ const Requirements = ({ mode = 'all' }) => {
             </label>
           </Card>
 
+          {isTemplates ? (
+            paginatedItems.length === 0 ? (
+              <Card className="text-center py-16">
+                <Search className="w-10 h-10 text-sti-gray mx-auto mb-3" />
+                <p className="text-sti-gray text-sm">No templates match your search.</p>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {paginatedItems.map((req) => {
+                  const TplIcon = templateIconFor(req.templateFileName);
+                  const sizeLabel = templateSizeLabel(req.templateFile);
+                  return (
+                    <Card key={req.id} className="flex flex-col">
+                      <div className="flex items-start gap-3">
+                        <div className="w-11 h-11 rounded-xl bg-sti-blue-50 text-sti-blue flex items-center justify-center shrink-0">
+                          <TplIcon className="w-5 h-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-sti-gray-dark dark:text-white truncate">{req.title}</h3>
+                          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                            {req.program && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sti-blue-50 text-sti-blue">{req.program}</span>
+                            )}
+                            {req.cadence === 'WEEKLY' && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">Weekly</span>
+                            )}
+                            {req.dueDate && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                                Due {formatDate(req.dueDate)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {req.category && <p className="text-xs font-medium text-sti-gray mt-3">{req.category}</p>}
+                      {req.description && <p className="text-xs text-sti-gray mt-1 line-clamp-2">{req.description}</p>}
+
+                      <div className="mt-3 pt-3 border-t border-black/5 dark:border-white/10">
+                        {req.templateFile ? (
+                          <>
+                            <p className="text-[11px] text-sti-gray truncate mb-2">
+                              {req.templateFileName || 'template.pdf'}{sizeLabel ? ` • ${sizeLabel}` : ''}
+                            </p>
+                            <Button variant="primary" icon={Download} onClick={() => downloadTemplate(req)} className="w-full justify-center">
+                              Download Template
+                            </Button>
+                          </>
+                        ) : (
+                          <p className="text-[11px] text-sti-gray italic text-center py-2">No file provided — see description for instructions</p>
+                        )}
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            )
+          ) : (
           <Card className="p-0 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -303,6 +381,7 @@ const Requirements = ({ mode = 'all' }) => {
               </div>
             </div>
           </Card>
+          )}
         </>
       )}
     </div>

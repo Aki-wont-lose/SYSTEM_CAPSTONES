@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, FileCheck2, Check, XCircle, Download, Filter, FileSpreadsheet, BarChart3, Award, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, FileCheck2, Check, XCircle, Download, Filter, FileSpreadsheet, BarChart3, Award, AlertTriangle, FileText, FileType2, FileImage, File as FileIcon, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -43,6 +43,26 @@ const emptyForm = {
 
 const BATCH_COLUMNS = ['title', 'description', 'program', 'category', 'cadence', 'dueInDays', 'maxScore', 'autoGradeOnSubmit', 'isRequired'];
 
+// Pick a lucide icon that matches the template file extension
+const templateIconFor = (name = '') => {
+  const ext = name.split('.').pop()?.toLowerCase();
+  if (['pdf'].includes(ext)) return FileText;
+  if (['doc', 'docx', 'txt', 'rtf'].includes(ext)) return FileType2;
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext)) return FileImage;
+  if (['xls', 'xlsx', 'csv'].includes(ext)) return FileSpreadsheet;
+  return FileIcon;
+};
+
+// Human-readable file size from a base64 data URL
+const templateSizeLabel = (dataUrl) => {
+  if (typeof dataUrl !== 'string' || !dataUrl.includes(',')) return '';
+  const bytes = Math.floor((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 // Manage requirement templates, student submissions, and automated grading
 const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = false, hideSubmissions = false, hideBatchUpload = false, hideGrading = false }) => {
   const [tab, setTab] = useState(defaultTab);
@@ -52,6 +72,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [programFilter, setProgramFilter] = useState('ALL');
+  const [templateSearch, setTemplateSearch] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -357,6 +378,12 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   // Heading text for the currently selected tab
   const tabTitle = tab === 'requirements' ? 'Templates' : tab === 'grading' ? 'Automated Grading' : 'Submissions';
 
+  // Apply the free-text template search across title, category, program, and description
+  const templateQuery = templateSearch.trim().toLowerCase();
+  const visibleRequirements = templateQuery
+    ? requirements.filter((r) => [r.title, r.category, r.program, r.description].filter(Boolean).join(' ').toLowerCase().includes(templateQuery))
+    : requirements;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -437,6 +464,16 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
 
       {tab === 'requirements' && (
         <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+            <input
+              type="text"
+              placeholder="Search templates..."
+              value={templateSearch}
+              onChange={(e) => setTemplateSearch(e.target.value)}
+              className="input-field pl-10"
+            />
+          </div>
           <div className="relative sm:w-56">
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
             <select value={programFilter} onChange={(e) => setProgramFilter(e.target.value)} className="input-field pl-9">
@@ -458,58 +495,90 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
             <FileCheck2 className="w-10 h-10 text-sti-gray mx-auto mb-3" />
             <p className="text-sti-gray text-sm">No requirements yet. Add the first one.</p>
           </Card>
+        ) : visibleRequirements.length === 0 ? (
+          <Card className="text-center py-16">
+            <Search className="w-10 h-10 text-sti-gray mx-auto mb-3" />
+            <p className="text-sti-gray text-sm">No templates match "{templateSearch}".</p>
+          </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {requirements.map((req) => (
-              <Card key={req.id}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-bold text-sti-gray-dark dark:text-white">{req.title}</h3>
-                      {req.isRequired && (
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-red-500 bg-red-50 px-1.5 py-0.5 rounded">Required</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sti-blue-50 text-sti-blue">
-                        {req.program || 'All programs'}
-                      </span>
-                      {req.cadence === 'WEEKLY' && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">Weekly</span>
-                      )}
-                      {req.maxScore > 0 && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-600">
-                          {req.autoGradeOnSubmit ? 'Auto-graded' : 'Graded'} • {req.maxScore} pts
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {visibleRequirements.map((req) => {
+              const TplIcon = templateIconFor(req.templateFileName);
+              const sizeLabel = templateSizeLabel(req.templateFile);
+              return (
+                <Card key={req.id} className="flex flex-col">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-bold text-sti-gray-dark dark:text-white truncate">{req.title}</h3>
+                        {req.isRequired && (
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-red-500 bg-red-50 dark:bg-red-950/40 px-1.5 py-0.5 rounded shrink-0">Required</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sti-blue-50 text-sti-blue">
+                          {req.program || 'All programs'}
                         </span>
-                      )}
-                      {req.dueDate && (
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
-                          Due {new Date(req.dueDate).toLocaleDateString()}
-                        </span>
-                      )}
+                        {req.cadence === 'WEEKLY' && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">Weekly</span>
+                        )}
+                        {req.maxScore > 0 && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-600">
+                            {req.autoGradeOnSubmit ? 'Auto-graded' : 'Graded'} • {req.maxScore} pts
+                          </span>
+                        )}
+                        {req.dueDate && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                            Due {new Date(req.dueDate).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    {req.category && <p className="text-xs text-sti-gray mt-1">{req.category}</p>}
-                    {req.description && <p className="text-xs text-sti-gray mt-1">{req.description}</p>}
-                    {req.templateFile && (
-                      <button onClick={() => downloadTemplate(req)} className="mt-2 flex items-center gap-1.5 text-xs font-medium text-sti-blue hover:text-sti-blue-dark dark:hover:text-white">
-                        <Download className="w-3.5 h-3.5" /> Download template: {req.templateFileName || 'template.pdf'}
+                    <div className="flex gap-1 shrink-0">
+                      <button onClick={() => openEdit(req)} title="Edit template" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
+                        <Pencil className="w-4 h-4" />
                       </button>
+                      <button onClick={() => handleDelete(req.id)} title="Delete template" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {req.category && (
+                    <p className="text-xs font-medium text-sti-gray mt-2">{req.category}</p>
+                  )}
+                  {req.description && (
+                    <p className="text-xs text-sti-gray mt-1 line-clamp-2">{req.description}</p>
+                  )}
+
+                  <div className="mt-3 pt-3 border-t border-black/5 dark:border-white/10 flex items-center justify-between gap-2">
+                    {req.templateFile ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-9 h-9 rounded-lg bg-sti-blue-50 text-sti-blue flex items-center justify-center shrink-0">
+                          <TplIcon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-sti-gray-dark dark:text-slate-200 truncate">{req.templateFileName || 'template.pdf'}</p>
+                          {sizeLabel && <p className="text-[10px] text-sti-gray">{sizeLabel}</p>}
+                        </div>
+                        <button
+                          onClick={() => downloadTemplate(req)}
+                          title="Download template"
+                          className="p-1.5 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-blue shrink-0"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[11px] text-sti-gray italic">No template file attached</span>
                     )}
                     {req._count?.submissions > 0 && (
-                      <p className="text-[11px] text-sti-gray mt-1">{req._count.submissions} submission{req._count.submissions === 1 ? '' : 's'}</p>
+                      <span className="text-[11px] text-sti-gray shrink-0">{req._count.submissions} submission{req._count.submissions === 1 ? '' : 's'}</span>
                     )}
                   </div>
-                  <div className="flex gap-1 shrink-0">
-                    <button onClick={() => openEdit(req)} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => handleDelete(req.id)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )
       ) : tab === 'grading' ? (

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Mail, Phone, BookOpen, Users, Hash, Camera, Image as ImageIcon, Check } from 'lucide-react';
+import { Mail, User, BookOpen, Users, Hash, Camera, Image as ImageIcon, Check } from 'lucide-react';
 import Card from '../components/Card';
 import { getMyProfile, updateMyProfile } from '../services/studentService';
 import { sectionLabel } from '../constants/studentRules';
@@ -73,15 +73,17 @@ const StudentProfile = () => {
     );
   }
 
-  const initials = `${profile.firstName[0]}${profile.lastName[0]}`;
+  // Build safe initials, tolerating missing first or last name
+  const initials = `${(profile.firstName || '?')[0]}${(profile.lastName || '?')[0]}`.toUpperCase();
+  const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || 'Unnamed Student';
 
   // Read-only profile - no editing, no generated company/supervisor placeholders (admin assigns via Companies)
   const infoFields = [
+    { label: 'Name', value: fullName, icon: User },
     { label: 'Student ID', value: profile.studentId, icon: Hash },
     { label: 'Course', value: profile.course, icon: BookOpen },
     { label: 'Section', value: sectionLabel(profile.section, profile.course), icon: Users },
     { label: 'Email Address', value: profile.email, icon: Mail },
-    { label: 'Contact Number', value: profile.contactNumber, icon: Phone },
   ];
 
   const getAvatarBg = () => {
@@ -130,7 +132,7 @@ const StudentProfile = () => {
         </div>
         <div className="flex-1 text-center sm:text-left min-w-0">
           <h2 className="text-lg sm:text-xl font-extrabold text-sti-gray-dark dark:text-white truncate">
-            {profile.firstName} {profile.lastName}
+            {fullName}
           </h2>
           <p className="text-sti-gray text-xs sm:text-sm break-words">{profile.course} • {sectionLabel(profile.section, profile.course)}</p>
           <div className="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-2">
