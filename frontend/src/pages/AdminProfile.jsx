@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { Mail, Shield, Camera, Image as ImageIcon, Phone, User, Save } from 'lucide-react';
+import { Mail, Shield, Camera, Image as ImageIcon, User, Save } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
@@ -10,7 +10,7 @@ const AdminProfile = () => {
   const { user, updateUser } = useAuth();
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [details, setDetails] = useState({ firstName: '', lastName: '', contactNumber: '', email: '' });
+  const [details, setDetails] = useState({ firstName: '', lastName: '', email: '' });
   const [savingDetails, setSavingDetails] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
   const [toast, setToast] = useState(null);
@@ -29,7 +29,6 @@ const AdminProfile = () => {
         setDetails({
           firstName: profileUser.firstName || '',
           lastName: profileUser.lastName || '',
-          contactNumber: profileUser.contactNumber || '',
           email: profileUser.email || ''
         });
       } catch {}
@@ -41,19 +40,18 @@ const AdminProfile = () => {
   // Friendlier label for the user's role
   const roleLabel = user?.isSuperAdmin ? 'Super Admin' : (user?.role ? user.role.charAt(0) + user.role.slice(1).toLowerCase() : 'Administrator');
 
-  // Save the name and contact number changes
+  // Save the name changes
   const handleSaveDetails = async (e) => {
     e.preventDefault();
     setSavingDetails(true);
     try {
       const res = await api.put('/profile', {
         firstName: details.firstName,
-        lastName: details.lastName,
-        contactNumber: details.contactNumber
+        lastName: details.lastName
       });
       const updated = res.data?.data || {};
-      setDetails(d => ({ ...d, firstName: updated.firstName ?? d.firstName, lastName: updated.lastName ?? d.lastName, contactNumber: updated.contactNumber ?? d.contactNumber }));
-      updateUser({ firstName: updated.firstName, lastName: updated.lastName, contactNumber: updated.contactNumber });
+      setDetails(d => ({ ...d, firstName: updated.firstName ?? d.firstName, lastName: updated.lastName ?? d.lastName }));
+      updateUser({ firstName: updated.firstName, lastName: updated.lastName });
       setToast({ tone: 'success', msg: 'Profile details saved' });
     } catch (err) {
       setToast({ tone: 'error', msg: err.response?.data?.message || 'Could not save your details' });
@@ -150,17 +148,6 @@ const AdminProfile = () => {
               onChange={(e) => setDetails({ ...details, lastName: e.target.value })}
               className="input-field"
               placeholder="Your last name"
-            />
-          </div>
-          <div className="sm:col-span-2">
-            <label className="flex items-center gap-1.5 text-xs font-medium text-sti-gray mb-1.5">
-              <Phone className="w-3.5 h-3.5" /> Contact Number
-            </label>
-            <input
-              value={details.contactNumber}
-              onChange={(e) => setDetails({ ...details, contactNumber: e.target.value })}
-              className="input-field"
-              placeholder="09xx xxx xxxx"
             />
           </div>
           <div className="sm:col-span-2 flex items-center gap-3">

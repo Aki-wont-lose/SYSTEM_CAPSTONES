@@ -13,8 +13,9 @@ export const getStudentLogs = async (studentId) => {
 
 export const getAllLogs = async (filters = {}, user = null) => {
   const where = {};
+  // No status filter means staff want the full picture, including tasks they
+  // have assigned but the student has not submitted yet.
   if (filters.status) where.status = filters.status;
-  else where.status = { not: 'ASSIGNED' }; // assigned-but-not-submitted tasks stay with the student
   if (filters.studentId) where.studentId = filters.studentId;
 
   // Object-level scoping: a coordinator/supervisor must not be able to read every

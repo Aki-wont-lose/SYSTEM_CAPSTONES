@@ -6,12 +6,14 @@ import { getAllLogs, reviewLogEntry, assignTaskToStudent, deleteLogEntryStaff } 
 import { getAllStudents } from '../services/studentService';
 
 const statusStyles = {
+  ASSIGNED: 'bg-purple-50 text-purple-600',
   PENDING: 'bg-yellow-50 text-sti-yellow-dark',
   APPROVED: 'bg-sti-blue-50 text-sti-blue',
   REVISION_REQUESTED: 'bg-red-50 text-red-600',
 };
 
 const statusLabels = {
+  ASSIGNED: 'Assigned',
   PENDING: 'Pending Review',
   APPROVED: 'Approved',
   REVISION_REQUESTED: 'Revision Requested',
@@ -130,6 +132,7 @@ const AdminLogs = () => {
               className="input-field pl-9 pr-8 py-2 w-44"
             >
               <option value="">All statuses</option>
+              <option value="ASSIGNED">Assigned</option>
               <option value="PENDING">Pending Review</option>
               <option value="APPROVED">Approved</option>
               <option value="REVISION_REQUESTED">Revision Requested</option>

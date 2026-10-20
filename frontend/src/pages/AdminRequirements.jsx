@@ -815,24 +815,13 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                   className="input-field"
                 />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Program</label>
-                  <select value={form.program} onChange={(e) => setForm({ ...form, program: e.target.value })} className="input-field">
-                    {PROGRAMS.map((p) => (
-                      <option key={p.value} value={p.value}>{p.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Category</label>
-                  <input
-                    value={form.category}
-                    onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    className="input-field"
-                    placeholder="Weekly Report"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Program</label>
+                <select value={form.program} onChange={(e) => setForm({ ...form, program: e.target.value })} className="input-field">
+                  {PROGRAMS.map((p) => (
+                    <option key={p.value} value={p.value}>{p.label}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Recurrence</label>
