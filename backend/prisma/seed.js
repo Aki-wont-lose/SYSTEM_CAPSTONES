@@ -24,7 +24,7 @@ async function main() {
   // Admin
   await prisma.user.create({
     data: {
-      email: 'admin@stamaria.sti.edu.ph',
+      email: 'mccruz1230@gmail.com',
       password: adminPassword,
       role: 'ADMIN',
       isActive: true
@@ -141,7 +141,7 @@ async function main() {
 
   console.log('\n✅ Database seeded successfully!');
   console.log('\n📝 Accounts (4 levels):');
-  console.log('Admin:       admin@stamaria.sti.edu.ph / Admin123! ');
+  console.log('Admin:       mccruz1230@gmail.com (Microsoft super-admin)');
   console.log('Coordinator: coordinator@stamaria.sti.edu.ph / Coordinator123!');
   console.log('Supervisor:  supervisor@stamaria.sti.edu.ph / Supervisor123!');
   console.log('Student1: cruz.352467@stamaria.sti.edu.ph (Microsoft-only, no password)');
