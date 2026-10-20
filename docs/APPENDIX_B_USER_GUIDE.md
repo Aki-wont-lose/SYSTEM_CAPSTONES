@@ -1,335 +1,263 @@
-# APPENDIX B — USER GUIDE
+# APPENDIX B. USER'S GUIDE
 
-## Student Internship Monitoring and Evaluation System (SIMES)
+## SIMES: A Web-Based Student Internship Monitoring and Evaluation System for STI College Sta. Maria
 
-**STI College Sta. Maria**
+**Student Internship Monitoring and Evaluation System**
 
-This guide covers the three end-user roles: **Coordinator**, **Supervisor**, and **Student**. It begins with how to sign in and then walks through each screen in the sidebar, from top to bottom.
+This guide shows how to use SIMES, the internship monitoring system of STI College Sta. Maria. Each screen is shown as it appears in the system. The red numbered markers on a figure match the numbered items written below it, which explain what each part of the screen does.
 
-> **Note on sign-in:** Coordinators, Supervisors, and Students all sign in with their **Microsoft (Office 365) school account**. The password-based Admin login is used by the system administrator only and is **not** part of this guide.
+The system has three end-user roles. A **Coordinator** manages the internship records of the students in a single assigned program. A **Supervisor** oversees the interns deployed to their partner company. A **Student** logs internship hours, submits requirements, finds a company and communicates with staff. Each part of this guide states which roles can use it.
 
----
-
-## 1. Getting Started
-
-### 1.1 Opening the system
-
-1. Open a web browser (Google Chrome, Microsoft Edge, or any modern browser).
-2. Go to the SIMES web address provided by your school:
-   **https://system-capstones.vercel.app**
-3. The landing page of STI College Sta. Maria appears. Click the **Log in** button at the top-right corner.
-
-### 1.2 Choosing the sign-in method
-
-A **Log in** dialog opens with two buttons:
-
-| Button | Who uses it |
-| --- | --- |
-| **Log in with Office 365** | Coordinators, Supervisors, and Students |
-| **Admin Log in** | System Administrator only |
-
-Select **Log in with Office 365** to continue.
-
-> **Reminder:** You must use your official school account. Coordinators and Supervisors use the format `firstname.lastname@stamaria.sti.edu.ph`. Students use their STI student email (for example, `juan.delacruz.123456@stamaria.edu.ph`).
-
-### 1.3 Signing in with Microsoft
-
-1. After clicking **Log in with Office 365**, a Microsoft sign-in window appears.
-2. Enter your **school email address**, then click **Next**.
-3. Enter your **password**, then click **Sign in**.
-4. If prompted, complete **Multi-Factor Authentication (MFA)** using the Microsoft Authenticator app or the code sent to your device.
-5. Click **Yes** to stay signed in (optional).
-6. You are redirected automatically to the home page for your role:
-   - **Coordinator** → Coordinator Dashboard
-   - **Supervisor** → Supervisor Dashboard
-   - **Student** → Student Dashboard
-
-> **If sign-in fails:** Make sure you typed your full school email, and that you are not signed into a different personal Microsoft account in the same browser. If the problem continues, contact your school's IT administrator.
-
-### 1.4 Changing your temporary password
-
-If your account was created with a temporary password, the system automatically opens the **Change Password** page after your first Microsoft sign-in.
-
-1. Enter your **new password**.
-2. Re-enter it in the **Confirm Password** field.
-3. Click **Save**.
-4. You are taken to your dashboard.
-
-### 1.5 Basic navigation
-
-- **Sidebar** — the main menu on the left, grouped into sections (Main, Management, Academic, System).
-- **Hamburger icon** — on smaller screens, tap the menu icon to open or close the sidebar.
-- **Theme toggle** — switch between light and dark mode from the sidebar footer.
-- **Log out** — at the bottom of the sidebar.
-- **Profile** — your name, photo, and account details are under the **Profile** link.
+> **Signing in.** Coordinators, Supervisors and Students all sign in with their **Microsoft (Office 365) school account**. The password-based **Admin Log in** button is for the system administrator only and is not covered in this guide.
 
 ---
 
-## 2. Coordinator User Guide
+## Signing In
 
-A **Coordinator** manages the internship records of the students in a **single assigned program** (for example, BSIT). All student data you see is automatically limited to your program.
+Every person who uses SIMES has an account created by the administrator. There is no self-registration. Coordinators and Supervisors use a school staff email in the form `firstname.lastname@stamaria.sti.edu.ph`; Students use their STI student email.
 
-### 2.1 Dashboard
+On the STI College Sta. Maria landing page, click the **Log in** button at the top-right. A **Log in** dialog opens with two choices: **Log in with Office 365** and **Admin Log in**. Coordinators, Supervisors and Students choose **Log in with Office 365**.
 
-The Dashboard is your landing page. It summarizes the state of your program at a glance:
+### Microsoft Sign-In
 
-- Total students under your program.
-- Pending DTR (Daily Time Record) approvals.
-- Submitted requirements.
-- Recent activity and announcements.
+1. **School email:** Type your full school email address, then click **Next**.
+2. **Password:** Type your Microsoft password, then click **Sign in**.
+3. **Multi-Factor Authentication:** If prompted, approve the request in the Microsoft Authenticator app or enter the code sent to your device.
+4. **Stay signed in?** Choose **Yes** to reduce future prompts, or **No** on a shared computer.
 
-Use the cards to spot items that need your attention, then jump to the relevant page from the sidebar.
+After a successful sign-in you are taken straight to the home page for your role: the **Coordinator Dashboard**, the **Supervisor Dashboard**, or the **Student Dashboard**.
 
-### 2.2 Account Management
+> **If your account was created with a temporary password,** the system automatically opens the **Change Password** page on your first sign-in. Type your new password twice and click **Save** before continuing.
 
-The **Account Management** page lets you manage student accounts in your program.
+### Trouble Signing In
 
-- **Students tab** — view, create, edit, and disable student accounts.
-- **Staff/Accounts tab** — view staff accounts.
-- Use the **search** box and filters to find a student quickly.
-- When creating a student, the email must follow the STI student email format; the **program and year level** determine the student's section.
-
-> You can only manage students within your assigned program. Records outside your program are hidden.
-
-### 2.3 Attendance (DTR Monitoring)
-
-The **Attendance** page is where you review the Daily Time Records submitted by your students.
-
-1. At the top, choose a **status tab**:
-   - **Awaiting** — DTRs submitted and waiting for your review.
-   - **Approved** — DTRs you have already approved.
-   - **Rejected** — DTRs you have returned to the student.
-2. Because you are assigned to one program, the page shows a **"My program students only"** indicator instead of a program selector.
-3. Click a student/record to expand it. Each record shows the **date, time in, time out, and the camera-verified photo** captured at time-in.
-4. Take an action:
-   - **Approve** — accepts the record.
-   - **Reject** — opens a **Remarks** field. Type the reason, then click **Confirm rejection**.
-5. The record moves to the corresponding tab once processed.
-
-> A student's DTR photo is captured automatically at time-in, so you can verify the attendance against the actual person.
-
-### 2.4 Partner Companies
-
-The **Partner Companies** page manages the companies where students may be deployed.
-
-- View the list of partner companies and their details (name, address, contact person).
-- Add or edit company information.
-- View which students are assigned to each company.
-
-### 2.5 Announcements
-
-The **Announcements** page lets you post notices for your students.
-
-1. Click **New Announcement**.
-2. Enter a **title** and **message**.
-3. Set the **audience** and any schedule, if required.
-4. Click **Publish**.
-
-Students see announcements on their dashboard.
-
-### 2.6 Templates
-
-The **Templates** page manages the requirement templates (for example, weekly report formats, forms, and PDF guides) that students must follow.
-
-- **Upload** a template file and give it a title and description.
-- **Edit** or **remove** existing templates.
-- Templates appear on the student's **Templates** page.
-
-### 2.7 Submissions
-
-The **Submissions** page shows the requirements students have submitted for grading.
-
-- Filter by **student**, **requirement**, or **status**.
-- Open a submission to view the uploaded file.
-- **Grade** or **comment** on the submission and mark it as reviewed.
-
-### 2.8 Student Logs
-
-**Student Logs** shows the detailed activity logs of students in your program.
-
-- Review daily entries, hours rendered, and tasks accomplished.
-- Use this page to monitor progress and verify completed hours.
-
-### 2.9 Messages
-
-The **Messages** page is an in-system chat.
-
-- Start a conversation with a student, supervisor, or fellow staff member.
-- Unread conversations are marked with a badge.
-- Type in the message box and press **Enter** to send.
-
-### 2.10 Profile
-
-The **Profile** page shows and lets you update your account details.
-
-- Your **name, program, and email** are shown.
-- You may update allowed fields (such as contact details) and change your profile photo.
-- Some fields are controlled by the administrator and cannot be edited.
+- **Wrong email or personal account.** Make sure you typed your full school email and that the browser is not already signed into a personal Microsoft account.
+- **Login failed (AADSTS50011).** The sign-in address does not match the one registered for the school. Use **https://system-capstones.vercel.app**.
+- **"Not authorized" or a blank page after login.** Your account may be disabled or not yet activated. Contact the administrator.
 
 ---
 
-## 3. Supervisor User Guide
+## Getting Around the System
 
-A **Supervisor** is the on-site company mentor who oversees the students deployed to their company. You see the students assigned to **your company only**.
+Every page uses the same layout, so once you know the parts of one page you can find your way around all of them.
 
-### 3.1 Dashboard
+1. **SIMES logo:** Click it to return to your dashboard.
+2. **Sidebar menu:** The main modules of the system, grouped into sections — Main, Management, Academic and System. The list only shows what your role is allowed to use, so a Supervisor and a Student see fewer items than a Coordinator.
+3. **Collapse button:** Hides the sidebar to give the page more room. The menu button at the top-left brings it back. On a phone, the sidebar opens over the page.
+4. **Page header:** Shows the title of the current page and a one-line description of what you can do there.
+5. **Theme toggle:** Switches between light and dark mode. Your choice is remembered.
+6. **User area:** Shows who is signed in and opens the account menu described next.
 
-The Supervisor Dashboard gives a summary of your students:
+### User Menu
 
-- Number of interns assigned to your company.
-- Pending DTR approvals.
-- Pending submissions.
-- Recent activity and announcements.
-
-### 3.2 Students
-
-The **Students** page lists the interns assigned to your company.
-
-- View each student's **name, program, section, and contact details**.
-- Click a student to view their profile and internship details.
-- You can monitor the students under your supervision but cannot modify their academic records.
-
-### 3.3 Attendance (DTR Monitoring)
-
-The **Attendance** page works the same way as for the Coordinator (Section 2.3):
-
-1. Choose a status tab: **Awaiting**, **Approved**, or **Rejected**.
-2. Use the **program filter** if you supervise students from more than one program.
-3. Expand a record to view the **date, time in, time out, and camera-verified photo**.
-4. Click **Approve**, or **Reject** with **Remarks** and **Confirm rejection**.
-
-### 3.4 Submissions
-
-The **Submissions** page shows the requirements submitted by your students.
-
-- Open a submission to review the uploaded file.
-- Add comments and mark submissions as reviewed.
-
-### 3.5 Student Logs
-
-**Student Logs** shows the daily logs of your students.
-
-- Review hours rendered and tasks accomplished.
-- Use this to confirm the students are meeting their required hours.
-
-### 3.6 Messages
-
-Use **Messages** to communicate with your students and their coordinator.
-
-- Start a new conversation or reply to an existing one.
-- Press **Enter** to send.
-
-### 3.7 Profile
-
-The **Profile** page displays your company, position, and contact information. You may update the editable fields and your photo.
+1. **Your name and role:** Click to open or close the menu.
+2. **Profile:** Opens the page where you can review your details and change your photo.
+3. **Messages:** Opens the in-system chat with a badge when there are unread replies.
+4. **Logout:** Signs you out. Always log out when using a shared computer.
 
 ---
 
-## 4. Student User Guide
+## Dashboard
 
-A **Student** uses SIMES to log internship hours, submit requirements, find a company, and communicate with the coordinator and supervisor.
+The dashboard is the first page after signing in. It gives a quick summary of your internship activity and shortcuts to the most common tasks. The Coordinator and Supervisor share the **Staff Dashboard**; the Student sees a **Student Dashboard**.
 
-### 4.1 Dashboard
+### Staff Dashboard
+*Available to: Coordinator and Supervisor.*
 
-The Student Dashboard is your home page. It shows:
+1. **Summary cards:** Quick counts such as the number of students under your care, DTRs waiting for approval, submissions received and hours rendered.
+2. **Recent activity:** The latest events in your scope, such as newly submitted DTRs and requirements.
+3. **Quick shortcuts:** Buttons that jump to the pages you use most, such as Attendance and Submissions.
+4. **Announcements:** Notices posted by the coordinator or the school.
 
-- Your **assigned company** and supervisor.
-- **Total hours completed** versus required hours.
-- **Pending DTR approvals**.
-- **Requirements still due**.
-- Latest **announcements**.
+### Student Dashboard
+*Available to: Student.*
 
-### 4.2 My DTR
-
-**My DTR** is where you record your daily attendance.
-
-1. Click **Time In** when you arrive at your workstation. The system captures the **current time** and takes a **camera photo** for verification.
-2. Click **Time Out** when you leave.
-3. Your record appears in the list with its status: **Awaiting approval**, **Approved**, or **Rejected**.
-4. If a record is **rejected**, read the coordinator's/supervisor's **remarks**, correct the issue, and coordinate through **Messages**.
-
-> Make sure your camera is working and your face is clearly visible at time-in, because the photo is used by staff to verify your attendance.
-
-### 4.3 My Logs
-
-**My Logs** contains the narrative entries of your daily tasks.
-
-- Add an entry describing the **tasks accomplished** and hours for the day.
-- Edit entries that are still pending.
-- Your **total rendered hours** are computed from these logs.
-
-### 4.4 Schedule
-
-The **Schedule** page shows your internship timetable and any important dates set by the coordinator, such as start and end dates or deadlines.
-
-### 4.5 Find Company
-
-**Find Company** helps you locate and select an internship company.
-
-- Browse the list of **partner companies** on a map and in a list.
-- View each company's address, contact person, and available slots.
-- Follow the coordinator's instructions to request or confirm a company assignment.
-
-### 4.6 Templates
-
-The **Templates** page lists the requirement templates provided by the coordinator.
-
-- View or download the file for each requirement.
-- Use these as the correct format for your submissions.
-
-### 4.7 My Submissions
-
-**My Submissions** is where you upload your completed requirements.
-
-1. Click **Submit Requirement**.
-2. Choose the **requirement** and **attach your file**.
-3. Add any notes, then click **Submit**.
-4. The status shows **Pending**, **Reviewed**, or **Graded** once staff responds.
-
-### 4.8 Messages
-
-Use **Messages** to contact your **coordinator** and **supervisor**, or classmates.
-
-- Start a conversation from the **+** button.
-- Press **Enter** to send.
-- Check the badge for unread replies.
-
-### 4.9 Profile
-
-The **Profile** page shows your personal and academic details.
-
-- Verify your **name, student number, program, section, and email**.
-- Update allowed fields such as contact number and photo.
-- Report any incorrect information to your coordinator.
+1. **Internship details:** Your assigned company and supervisor, and your internship period.
+2. **Hours progress:** Total hours completed against the hours required for the subject.
+3. **Pending DTR approvals:** How many of your daily records are still waiting for a decision.
+4. **Requirements still due:** The submissions you have not completed yet.
+5. **Announcements:** The latest notices from your coordinator and supervisor.
 
 ---
 
-## 5. Common Tasks at a Glance
+## Attendance and DTR Monitoring
+
+### DTR Review Queue
+*Available to: Coordinator and Supervisor.*
+
+The **Attendance** page is where staff review the Daily Time Records submitted by students. Each record carries a camera-verified photo taken at time-in, so it can be checked against the actual person.
+
+1. **Status tabs:** Choose **Awaiting** for records waiting for a decision, **Approved** for records you have accepted, or **Rejected** for records you returned to the student.
+2. **Count badge:** Shows how many records are in the selected tab.
+3. **Program filter:** A Coordinator is assigned to one program, so the page shows a **"my program students only"** indicator instead of a selector. A Supervisor, who may handle students from several programs, sees an **All programs** dropdown.
+4. **Student row:** Shows the student's name with an avatar, their program and section, and chips summarising how many records are pending, approved or rejected.
+5. **Record row:** Shows the date, time in, time out and rendered hours of one day.
+6. **Photo preview:** Click the photo thumbnail to enlarge the verification image.
+7. **Approve:** Accepts the record and moves it to the **Approved** tab.
+8. **Reject:** Opens a **Remarks** field. Type the reason, then click **Confirm rejection**. The record moves to the **Rejected** tab and the remark is shown to the student.
+
+### My DTR
+*Available to: Student.*
+
+**My DTR** is where you record your daily attendance. The system captures the current time and a camera photo for each entry.
+
+1. **Time In:** Click when you arrive at your workstation. A camera window opens; take the photo to register your arrival time.
+2. **Time Out:** Click when you leave. Your rendered hours for the day are computed from the time in and time out.
+3. **Summary cards:** Total rendered hours, required hours and remaining hours.
+4. **Submit for Review:** Sends the day's record to your coordinator and supervisor for approval.
+5. **Attendance History table:** Every recorded day, showing the date, time in, time out, rendered hours, attendance status, approval status and photo.
+6. **Approval status:** **Not Submitted**, **Awaiting Approval**, **Approved**, or **Rejected**. A rejected record shows the remark so you can correct the issue.
+7. **Photo:** Click to view the captured verification image.
+
+> **Make sure your face is clearly visible at time-in,** because the supervisor and coordinator use the photo to verify that the recorded attendance is genuine.
+
+---
+
+## Student Logs
+*Available to: Coordinator, Supervisor and Student.*
+
+**Student Logs** (shown as **My Logs** for a Student) contains the narrative entries of daily tasks.
+
+1. **New entry:** Adds a log entry for a day.
+2. **Task description:** What was accomplished during the day.
+3. **Hours:** The number of hours rendered, which feeds the total in the dashboard.
+4. **Edit:** Changes an entry that is still pending. Approved logs cannot be changed.
+5. **Log list:** The recorded entries with their dates and hours. A Coordinator or Supervisor sees the logs of the students in their scope; a Student sees only their own.
+
+---
+
+## Requirements and Submissions
+
+The requirements feature has two sides: the **Templates** that define what must be submitted, and the **Submissions** themselves.
+
+### Templates
+*Available to: Coordinator (manage), Student (view).*
+
+1. **Template list:** The requirement templates provided for the internship, such as weekly report formats and forms.
+2. **Upload / New Template:** *(Coordinator)* Adds a template file with a title and description.
+3. **View or Download:** Opens the file so it can be read or downloaded. A Student uses these as the correct format for submissions.
+4. **Edit or Remove:** *(Coordinator)* Updates or deletes an existing template.
+
+### Submissions
+*Available to: Coordinator, Supervisor and Student.*
+
+1. **Filter:** Narrows the list by student, requirement or status.
+2. **Submit Requirement:** *(Student)* Opens the form to upload a completed requirement.
+3. **Choose requirement:** *(Student)* Selects which requirement the file is for.
+4. **Attach file:** *(Student)* Uploads the finished document.
+5. **Submission row:** Shows the student, the requirement and the current status.
+6. **Open:** Views the uploaded file.
+7. **Grade or Comment:** *(Coordinator and Supervisor)* Records a grade or a remark and marks the submission as reviewed.
+
+---
+
+## Account Management
+*Available to: Coordinator.*
+
+**Account Management** lets a Coordinator manage the student accounts in their assigned program.
+
+1. **Students tab:** Lists the students under the coordinator's program.
+2. **Search and filters:** Find a student by name, section or status.
+3. **Add Student:** Opens the form to create a student account. The email must follow the STI student format, and the program and year level set the student's section.
+4. **Student row:** Shows the student's name, email, program, section and account status.
+5. **Edit:** Updates the student's details.
+6. **Disable:** Stops the student from signing in without deleting the record, and can be reversed later.
+
+> A Coordinator only sees and manages students within the assigned program. Records outside that program are hidden.
+
+---
+
+## Partner Companies
+*Available to: Coordinator, Supervisor (view).*
+
+1. **Company list:** The partner companies where students may be deployed.
+2. **Company details:** The name, address and contact person of each company.
+3. **Add or Edit:** *(Coordinator)* Creates or updates a company record.
+4. **Assigned students:** Shows which students are deployed to each company.
+
+---
+
+## Find Company
+*Available to: Student.*
+
+1. **Map view:** Shows the partner companies on a map.
+2. **Company list:** The same companies as a list, with their address and contact person.
+3. **Company details:** Opens a company to see its information and available slots.
+4. **Request / Confirm:** Follows the coordinator's instructions to request or confirm a company assignment.
+
+---
+
+## Schedule
+*Available to: Student.*
+
+1. **Calendar:** Shows the internship timetable and important dates such as the start and end of the internship.
+2. **Deadlines:** Marks the due dates set by the coordinator.
+3. **Event details:** Click a date to see what is scheduled for it.
+
+---
+
+## Announcements
+*Available to: Coordinator (post), Supervisor and Student (view).*
+
+1. **New Announcement:** *(Coordinator)* Opens the form to post a notice.
+2. **Title and message:** The heading and body of the announcement.
+3. **Audience:** Chooses who should receive the announcement.
+4. **Publish:** Posts the announcement. It then appears on the students' and supervisors' dashboards.
+5. **Announcement list:** The posted notices, which can be edited or removed by the coordinator.
+
+---
+
+## Messages
+*Available to: Coordinator, Supervisor and Student.*
+
+**Messages** is the in-system chat used to coordinate internship concerns.
+
+1. **Conversation list:** Your chats, with a badge on those that have unread replies.
+2. **New conversation:** Starts a chat with a student, supervisor or staff member you are allowed to contact.
+3. **Message thread:** The back-and-forth of the selected conversation.
+4. **Message box:** Type here and press **Enter** to send. Use **Shift + Enter** for a new line.
+
+---
+
+## Profile
+*Available to: Coordinator, Supervisor and Student.*
+
+1. **Photo:** Your profile picture, which can be changed from the allowed file types.
+2. **Name and email:** Your account details. Your email follows the school rule and is normally controlled by the administrator.
+3. **Program or company:** For a Coordinator, the assigned program; for a Supervisor, the assigned company; for a Student, the program, section and student number.
+4. **Editable fields:** Update the details you are allowed to change, such as contact number.
+5. **Save:** Stores your changes.
+
+---
+
+## Common Tasks at a Glance
 
 | Task | Role | Where |
 | --- | --- | --- |
 | Sign in | All | **Log in** → **Log in with Office 365** |
-| Review and approve DTRs | Coordinator, Supervisor | **Attendance** |
 | Record daily attendance | Student | **My DTR** |
-| Post a notice | Coordinator | **Announcements** |
-| Submit a requirement | Student | **My Submissions** |
+| Review and approve DTRs | Coordinator, Supervisor | **Attendance** |
+| Submit a requirement | Student | **Submissions** |
 | Grade a submission | Coordinator, Supervisor | **Submissions** |
-| Manage students | Coordinator | **Account Management** |
-| View interns at your company | Supervisor | **Students** |
+| Add a student account | Coordinator | **Account Management** |
+| Post a notice | Coordinator | **Announcements** |
+| Browse partner companies | Coordinator, Supervisor | **Partner Companies** |
+| Request a company | Student | **Find Company** |
 | Send a message | All | **Messages** |
 
 ---
 
-## 6. Troubleshooting
+## Troubleshooting
 
 | Problem | Solution |
 | --- | --- |
-| Cannot sign in with Microsoft | Confirm you typed your full school email and are not using a personal Microsoft account. Complete MFA when prompted. |
-| "Not authorized" / blank page after login | Your account may be disabled or not yet activated. Contact the administrator. |
-| Camera does not capture on Time In | Allow camera permission in the browser, make sure no other app is using the camera, then reload the page. |
-| DTR shows "Rejected" | Open the record to read the remarks, correct the issue, and message your coordinator/supervisor. |
-| File will not upload | Check that the file type and size are allowed, then try again. |
+| Cannot sign in with Microsoft | Confirm you typed your full school email and are not using a personal Microsoft account. Complete the MFA prompt when it appears. |
+| Login failed (AADSTS50011) | You are on the wrong address. Open **https://system-capstones.vercel.app** and sign in there. |
+| "Not authorized" after login | Your account may be disabled or not yet activated. Contact the administrator. |
+| Camera does not capture on Time In | Allow camera permission in the browser, close any other app using the camera, then reload the page. |
+| DTR shows "Rejected" | Open the record to read the remark, correct the issue, and message your coordinator or supervisor. |
+| A file will not upload | Confirm the file type and size are allowed, then try again. |
 
 ---
 
-*End of Appendix B — User Guide.*
+*End of Appendix B — User's Guide.*
