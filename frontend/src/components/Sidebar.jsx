@@ -113,7 +113,7 @@ const Sidebar = ({ role, isOpen, onClose }) => {
         <div className="flex items-center justify-between px-5 h-20 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-white/10 flex items-center justify-center">
-              <img src="/sti-logo.png" alt="STI" className="w-full h-full object-cover" onError={(e) => { e.target.style.display = 'none'; }} />
+              <img src="/simes-logo.png" alt="SIMES" className="w-full h-full object-contain p-0.5" onError={(e) => { e.target.style.display = 'none'; }} />
             </div>
             <div>
               <p className="text-white font-bold text-base leading-tight">SIMES</p>
