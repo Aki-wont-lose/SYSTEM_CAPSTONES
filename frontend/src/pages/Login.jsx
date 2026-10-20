@@ -385,7 +385,9 @@ const Login = () => {
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-950 px-4 sm:px-6 lg:px-8">
         <div className="w-full flex items-center justify-between py-3 gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <img src="/simes-logo.png" alt="SIMES - STI College Sta. Maria" className="block h-8 sm:h-11 w-auto shrink-0" />
+            <div className="h-9 w-9 sm:h-12 sm:w-12 rounded-xl bg-sti-blue-dark/5 dark:bg-white/10 flex items-center justify-center shrink-0 overflow-hidden">
+              <img src="/simes-logo.png" alt="SIMES - STI College Sta. Maria" className="block w-full h-full object-contain p-0.5" />
+            </div>
             <div className="min-w-0 leading-tight">
               <p className="font-extrabold text-black dark:text-white text-sm sm:text-base lg:text-lg truncate">
                 STI College Sta. Maria
