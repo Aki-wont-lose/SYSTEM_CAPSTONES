@@ -155,7 +155,6 @@ const AdminProfile = () => {
             {toast && <p className={`text-xs ${toast.tone === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>{toast.msg}</p>}
           </div>
         </form>
-        <p className="text-[11px] text-sti-gray mt-4">Interns see this name when they message or connect with you.</p>
       </Card>
 
       <Card>
@@ -187,7 +186,6 @@ const AdminProfile = () => {
             {toast && <p className={`text-xs ${toast.tone === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>{toast.msg}</p>}
           </div>
         </form>
-        <p className="text-[11px] text-sti-gray mt-4">This is the email you sign in with. You keep your current session after changing it.</p>
       </Card>
     </div>
   );
