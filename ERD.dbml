@@ -1,0 +1,429 @@
+// SIMES — Entity Relationship Diagram (dbdiagram.io / DBML)
+// Paste this whole file at https://dbdiagram.io/d, then Export → PNG/SVG.
+// Auto-layout keeps the tables spaced out; drag any table to adjust.
+
+Enum Role {
+  ADMIN
+  COORDINATOR
+  SUPERVISOR
+  STUDENT
+}
+
+Enum Theme {
+  LIGHT
+  DARK
+}
+
+Enum OJTStatus {
+  NOT_STARTED
+  ONGOING
+  COMPLETED
+  ON_HOLD
+  FAILED
+}
+
+Enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+Enum DtrReviewStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+Enum CompanyStatus {
+  ACTIVE
+  INACTIVE
+}
+
+Enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+Enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+Enum LogStatus {
+  ASSIGNED
+  PENDING
+  APPROVED
+  REVISION_REQUESTED
+}
+
+Enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+Enum LinkedAccountProvider {
+  MICROSOFT
+  GOOGLE
+}
+
+Enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  REVIEW
+  SUBMIT
+  EXPORT
+  LINK
+  UNLINK
+}
+
+// ── Accounts & access ────────────────────────────────────────────────
+
+Table User {
+  id                varchar   [pk]
+  email             varchar   [unique]
+  password          varchar   [note: 'Null for Microsoft-only accounts']
+  role              Role      [default: 'STUDENT']
+  isActive          boolean   [default: true]
+  firstName         varchar
+  lastName          varchar
+  contactNumber     varchar
+  mustChangePassword boolean  [default: false]
+  theme             Theme     [default: 'LIGHT']
+  coordinatorCourse varchar   [note: 'Program a COORDINATOR owns, e.g. BSIT']
+  supervisorCompanyId varchar [ref: > Company.id, note: 'Company a SUPERVISOR is tied to']
+  resetToken        varchar
+  resetTokenExpiresAt timestamp
+  createdAt         timestamp [default: `now()`]
+  updatedAt         timestamp
+  isArchived        boolean   [default: false]
+  archivedAt        timestamp
+
+  indexes {
+    role
+  }
+}
+
+Table Student {
+  id                varchar   [pk]
+  userId            varchar   [unique, ref: - User.id]
+  studentId         varchar   [unique]
+  firstName         varchar
+  lastName          varchar
+  course            varchar   [note: 'BSIT, BSCS, BSCPE, BSACT, BSHM, BSTM, BSAIS']
+  section           varchar
+  email             varchar
+  contactNumber     varchar
+  profilePicture    text
+  ojt_status        OJTStatus [default: 'NOT_STARTED']
+  requiredHours     int       [default: 486]
+  completedHours    int       [default: 0]
+  companyId         varchar   [ref: > Company.id]
+  supervisorName    varchar
+  supervisorEmail   varchar
+  supervisorContact varchar
+  workingDays       varchar
+  workingHours      varchar
+  createdAt         timestamp [default: `now()`]
+  updatedAt         timestamp
+  isArchived        boolean   [default: false]
+  archivedAt        timestamp
+
+  indexes {
+    ojt_status
+    companyId
+  }
+}
+
+Table LinkedAccount {
+  id         varchar   [pk]
+  userId     varchar   [ref: > User.id]
+  provider   LinkedAccountProvider
+  providerId varchar
+  email      varchar
+  createdAt  timestamp [default: `now()`]
+  updatedAt  timestamp
+
+  indexes {
+    (provider, providerId) [unique]
+    userId
+  }
+}
+
+Table Connection {
+  id          varchar   [pk]
+  requesterId varchar   [ref: > User.id]
+  addresseeId varchar   [ref: > User.id]
+  status      ConnectionStatus [default: 'PENDING']
+  respondedAt timestamp
+  createdAt   timestamp [default: `now()`]
+  updatedAt   timestamp
+
+  indexes {
+    (requesterId, addresseeId) [unique]
+    (requesterId, status)
+    (addresseeId, status)
+  }
+}
+
+// ── OJT records ──────────────────────────────────────────────────────
+
+Table Company {
+  id             varchar   [pk]
+  name           varchar
+  address        varchar
+  latitude       float
+  longitude      float
+  contactPerson  varchar
+  contactNumber  varchar
+  email          varchar
+  industryType   varchar
+  programs       varchar[] [note: 'Accepted programs; empty = open to all']
+  availableSlots int       [default: 0]
+  status         CompanyStatus [default: 'ACTIVE']
+  isArchived     boolean   [default: false]
+  archivedAt     timestamp
+  createdAt      timestamp [default: `now()`]
+  updatedAt      timestamp
+
+  indexes {
+    status
+    isArchived
+  }
+}
+
+Table OjtHoursConfig {
+  id            varchar   [pk]
+  course        varchar   [unique, note: 'One row per program']
+  requiredHours int
+  createdAt     timestamp [default: `now()`]
+  updatedAt     timestamp
+}
+
+Table Attendance {
+  id            varchar   [pk]
+  studentId     varchar   [ref: > Student.id]
+  date          timestamp
+  timeIn        timestamp
+  timeOut       timestamp
+  timeInPhoto   text      [note: 'Base64 camera capture']
+  timeOutPhoto  text      [note: 'Base64 camera capture']
+  renderedHours float     [default: 0]
+  status        AttendanceStatus [default: 'PRESENT']
+  notes         varchar
+  reviewStatus  DtrReviewStatus  [default: 'DRAFT']
+  reviewRemarks text
+  reviewedById  varchar
+  reviewedByName varchar
+  submittedAt   timestamp
+  reviewedAt    timestamp
+  createdAt     timestamp [default: `now()`]
+  updatedAt     timestamp
+
+  indexes {
+    (studentId, date) [unique]
+    date
+    status
+    reviewStatus
+  }
+}
+
+Table Requirement {
+  id                 varchar   [pk]
+  title              varchar
+  description        text
+  isRequired         boolean   [default: true]
+  program            varchar   [note: 'Null = applies to all programs']
+  category           varchar
+  cadence            varchar   [default: 'ONCE', note: 'ONCE or WEEKLY']
+  dueInDays          int
+  dueDate            timestamp
+  maxScore           int       [default: 0]
+  autoGradeOnSubmit  boolean   [default: false]
+  sortOrder          int       [default: 0]
+  templateFile       text      [note: 'Base64 PDF template']
+  templateFileName   varchar
+  createdAt          timestamp [default: `now()`]
+  updatedAt          timestamp
+
+  indexes {
+    isRequired
+    program
+    dueDate
+  }
+}
+
+Table Submission {
+  id            varchar   [pk]
+  requirementId varchar   [ref: > Requirement.id]
+  studentId     varchar   [ref: > Student.id]
+  fileName      varchar
+  fileData      text      [note: 'Base64 file content']
+  status        SubmissionStatus [default: 'PENDING']
+  remarks       text
+  score         int
+  isAutoGraded  boolean   [default: false]
+  submittedAt   timestamp [default: `now()`]
+  reviewedAt    timestamp
+
+  indexes {
+    requirementId
+    studentId
+    status
+  }
+}
+
+Table WeeklyTask {
+  id            varchar   [pk]
+  studentId     varchar   [ref: > Student.id]
+  requirementId varchar   [ref: > Requirement.id]
+  title         varchar
+  description   text
+  weekOf        timestamp
+  dueDate       timestamp
+  status        varchar   [default: 'PENDING', note: 'PENDING, COMPLETED, MISSING']
+  completedAt   timestamp
+  createdAt     timestamp [default: `now()`]
+  updatedAt     timestamp
+
+  indexes {
+    (studentId, requirementId, weekOf) [unique]
+    weekOf
+    status
+  }
+}
+
+Table LogEntry {
+  id                 varchar   [pk]
+  studentId          varchar   [ref: > Student.id]
+  date               timestamp
+  taskDescription    text
+  assignedBy         varchar   [note: 'Staff member who assigned the task']
+  status             LogStatus [default: 'PENDING']
+  comment            text
+  assignedFile       text      [note: 'Staff attachment (base64)']
+  assignedFileName   varchar
+  submissionFile     text      [note: 'Student deliverable (base64)']
+  submissionFileName varchar
+  createdAt          timestamp [default: `now()`]
+  updatedAt          timestamp
+
+  indexes {
+    studentId
+    date
+    status
+  }
+}
+
+// ── Communication & announcements ────────────────────────────────────
+
+Table Message {
+  id         varchar   [pk]
+  senderId   varchar   [ref: > User.id]
+  receiverId varchar   [ref: > User.id]
+  content    text
+  isRead     boolean   [default: false]
+  createdAt  timestamp [default: `now()`]
+
+  indexes {
+    senderId
+    receiverId
+    createdAt
+    isRead
+  }
+}
+
+Table Notification {
+  id        varchar   [pk]
+  userId    varchar   [ref: > User.id]
+  title     varchar
+  content   text
+  image     text
+  isRead    boolean   [default: false]
+  createdAt timestamp [default: `now()`]
+
+  indexes {
+    userId
+    isRead
+    createdAt
+  }
+}
+
+Table Announcement {
+  id          varchar   [pk]
+  title       varchar
+  content     text
+  category    varchar   [default: 'General']
+  priority    Priority  [default: 'NORMAL']
+  isActive    boolean   [default: true]
+  image       text      [note: 'Base64 photo']
+  images      text      [note: 'JSON array of carousel photos']
+  createdAt   timestamp [default: `now()`]
+  updatedAt   timestamp
+  publishedAt timestamp
+
+  indexes {
+    isActive
+    publishedAt
+    priority
+  }
+}
+
+// ── Audit trail (append-only) ────────────────────────────────────────
+
+Table AuditLog {
+  id          varchar   [pk]
+  userId      varchar   [note: 'No FK so the trail survives account deletion']
+  userEmail   varchar
+  userRole    varchar
+  action      AuditAction
+  entity      varchar
+  entityId    varchar
+  description text
+  metadata    json
+  ipAddress   varchar
+  createdAt   timestamp [default: `now()`]
+
+  indexes {
+    createdAt
+    userId
+    action
+    entity
+  }
+}
+
+TableGroup "Accounts & Access" {
+  User
+  Student
+  LinkedAccount
+  Connection
+}
+
+TableGroup "OJT Records" {
+  Company
+  OjtHoursConfig
+  Attendance
+  Requirement
+  Submission
+  WeeklyTask
+  LogEntry
+}
+
+TableGroup "Communication" {
+  Message
+  Notification
+  Announcement
+}
+
+TableGroup "Audit" {
+  AuditLog
+}
