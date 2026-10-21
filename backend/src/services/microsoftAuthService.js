@@ -56,12 +56,12 @@ const verifyMicrosoftIdToken = (idToken) =>
       {
         algorithms: ['RS256'],
         audience: MS_CLIENT_ID,
-        // Microsoft issues tokens under the specific tenant GUID even for
-        // "common" apps, so we don't pin the issuer strictly here — the
-        // signature + audience check is what actually proves authenticity.
       },
       (err, decoded) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error('JWT verify error:', err.message, 'audience:', MS_CLIENT_ID);
+          return reject(err);
+        }
         resolve(decoded);
       }
     );
@@ -80,6 +80,7 @@ export const getMicrosoftIdentity = async (idToken) => {
   try {
     decoded = await verifyMicrosoftIdToken(idToken);
   } catch (err) {
+    console.error('Microsoft token verification failed:', err.message);
     const error = new Error('Could not verify Microsoft sign-in. Please try again.');
     error.status = 401;
     throw error;
