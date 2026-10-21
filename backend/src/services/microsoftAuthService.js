@@ -19,7 +19,7 @@ const prisma = new PrismaClient();
 // A Client ID is a public identifier (it ships in the browser bundle), so the
 // fallback below keeps Microsoft sign-in working on hosts where no environment
 // variable has been set. MS_CLIENT_ID still overrides it when present.
-const BAKED_MS_CLIENT_ID = '3de575a3-45c7-43a5-b934-30bdcb4b2e0b';
+const BAKED_MS_CLIENT_ID = 'df253f7d-abd6-47c3-90a8-40f1987f9c75';
 
 const MS_CLIENT_ID = process.env.MS_CLIENT_ID || BAKED_MS_CLIENT_ID;
 // "common" accepts both personal Microsoft accounts and any organization's

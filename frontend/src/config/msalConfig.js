@@ -7,7 +7,7 @@
 // where no environment variable has been set. A Client ID is a public value:
 // it ships inside the browser bundle and is not a secret.
 
-const BAKED_MS_CLIENT_ID = '3de575a3-45c7-43a5-b934-30bdcb4b2e0b';
+const BAKED_MS_CLIENT_ID = 'df253f7d-abd6-47c3-90a8-40f1987f9c75';
 
 export const MS_CLIENT_ID = import.meta.env.VITE_MS_CLIENT_ID || BAKED_MS_CLIENT_ID;
 const MS_TENANT = import.meta.env.VITE_MS_TENANT || 'common';
