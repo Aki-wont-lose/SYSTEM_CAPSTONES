@@ -138,7 +138,7 @@ export const createStudent = async (studentData, userData) => {
   // Look up required OJT hours for this course from the admin-maintained config
   let requiredHours = null;
   if (studentData.course) {
-    const hoursCfg = await prisma.oJtHoursConfig.findUnique({
+    const hoursCfg = await prisma.ojtHoursConfig.findUnique({
       where: { course: studentData.course },
       select: { requiredHours: true }
     });
@@ -246,7 +246,7 @@ export const updateStudent = async (studentId, updateData) => {
     // Moving a student to another course also moves them to that course's
     // required OJT hours, unless the caller set requiredHours explicitly.
     if (sanitized.course !== undefined && sanitized.requiredHours === undefined) {
-      const hoursCfg = await prisma.oJtHoursConfig.findUnique({
+      const hoursCfg = await prisma.ojtHoursConfig.findUnique({
         where: { course: sanitized.course },
         select: { requiredHours: true }
       });

@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const getOjtHours = async () => {
-  return prisma.oJtHoursConfig.findMany({
+  return prisma.ojtHoursConfig.findMany({
     orderBy: { course: 'asc' },
     select: { id: true, course: true, requiredHours: true, createdAt: true, updatedAt: true }
   });
@@ -21,7 +21,7 @@ export const updateOjtHours = async (course, requiredHours) => {
     e.status = 400;
     throw e;
   }
-  return prisma.oJtHoursConfig.upsert({
+  return prisma.ojtHoursConfig.upsert({
     where: { course },
     update: { requiredHours: hours },
     create: { course, requiredHours: hours },
@@ -30,7 +30,7 @@ export const updateOjtHours = async (course, requiredHours) => {
 };
 
 export const getOjtHoursByCourse = async (course) => {
-  return prisma.oJtHoursConfig.findUnique({
+  return prisma.ojtHoursConfig.findUnique({
     where: { course },
     select: { requiredHours: true }
   });

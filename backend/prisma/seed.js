@@ -16,7 +16,7 @@ async function main() {
   await prisma.company.deleteMany();
   await prisma.user.deleteMany();
   await prisma.announcement.deleteMany();
-  await prisma.oJtHoursConfig.deleteMany();
+  await prisma.ojtHoursConfig.deleteMany();
 
   const adminPassword = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD || 'Admin123!', 10);
   // Students sign in ONLY via "Sign in with Microsoft" (their school account), so
@@ -119,7 +119,7 @@ const defaultHours = [
   { course: 'BSAIS', requiredHours: 400 }
 ];
 for (const h of defaultHours) {
-  await prisma.oJtHoursConfig.create({ data: h });
+  await prisma.ojtHoursConfig.create({ data: h });
 }
 console.log('OJT hours config created');
 

@@ -48,7 +48,9 @@ const AdminProfile = () => {
     if (!canManageHours) return;
     getOjtHours()
       .then((res) => setHours(res.data || []))
-      .catch(() => {});
+      .catch((err) =>
+        setHoursToast({ tone: 'error', msg: err.response?.data?.message || 'Could not load OJT hours' })
+      );
   }, [canManageHours]);
 
   // Save every course's required hours in one go
