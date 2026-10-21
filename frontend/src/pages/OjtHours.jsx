@@ -41,9 +41,6 @@ const OjtHours = () => {
         <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white flex items-center gap-2">
           <Clock className="w-5 h-5 text-sti-blue" /> OJT Required Hours
         </h1>
-        <p className="text-sm text-sti-gray">
-          Applied automatically when a student is created or moved to a course.
-        </p>
       </div>
 
       <Card>
