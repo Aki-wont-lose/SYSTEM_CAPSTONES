@@ -40,9 +40,9 @@ export const getAccountCounts = async (user) => {
   }
 
   const [supervisors, coordinators, admins] = await Promise.all([
-    prisma.user.count({ where: { role: 'SUPERVISOR' } }),
-    prisma.user.count({ where: { role: 'COORDINATOR' } }),
-    prisma.user.count({ where: { role: 'ADMIN' } })
+    prisma.user.count({ where: { role: 'SUPERVISOR', isArchived: false } }),
+    prisma.user.count({ where: { role: 'COORDINATOR', isArchived: false } }),
+    prisma.user.count({ where: { role: 'ADMIN', isArchived: false } })
   ]);
 
   return { students, supervisors, coordinators, admins };

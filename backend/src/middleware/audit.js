@@ -24,6 +24,7 @@ const ENTITIES = [
   [/^\/api\/announcements/, 'Announcement'],
   [/^\/api\/connections/, 'Connection'],
   [/^\/api\/messages/, 'Message'],
+  [/^\/api\/archive/, 'Archive'],
   [/^\/api\/profile/, 'Profile'],
   [/^\/api\/dashboard/, 'Dashboard'],
 ];
@@ -89,9 +90,13 @@ export const auditTrail = (req, res, next) => {
   }
 
   res.on('finish', () => {
-    const action = actionFor(req);
     const entity = identify(req.path);
-    const verb = VERBS[action] || 'Changed';
+    // These DELETE endpoints are soft-archives, and POST /restore reverses one.
+    // Recording them as "Deleted" made the audit trail look like rows were lost.
+    const isArchiveDelete = req.method === 'DELETE' && ['Student', 'Account', 'Company'].includes(entity);
+    const isRestore = req.method === 'POST' && /\/restore$/.test(req.path);
+    const action = isArchiveDelete || isRestore ? 'UPDATE' : actionFor(req);
+    const verb = isArchiveDelete ? 'Archived' : isRestore ? 'Restored' : (VERBS[action] || 'Changed');
     const resource = req.originalUrl.split('?')[0];
 
     recordAudit({

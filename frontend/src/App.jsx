@@ -30,6 +30,7 @@ import AdminProfile from './pages/AdminProfile';
 import Messages from './pages/Messages';
 import AttendanceMonitoring from './pages/AttendanceMonitoring';
 import AuditLogs from './pages/AuditLogs';
+import Archive from './pages/Archive';
 
 const ROLE_HOME = {
   ADMIN: '/admin/dashboard',
@@ -97,6 +98,7 @@ function App() {
         <Route path="/admin/companies" element={<Companies />} />
         <Route path="/admin/logs" element={<AdminLogs />} />
         <Route path="/admin/audit-logs" element={<AuditLogs />} />
+        <Route path="/admin/archive" element={<Archive />} />
         <Route path="/admin/announcements" element={<AnnouncementManagement />} />
         <Route path="/admin/messages" element={<Messages />} />
         <Route path="/admin/profile" element={<AdminProfile />} />
@@ -120,6 +122,7 @@ function App() {
         <Route path="/coordinator/grading" element={<Navigate to="/coordinator/submissions" replace />} />
         <Route path="/coordinator/companies" element={<Companies />} />
         <Route path="/coordinator/logs" element={<AdminLogs />} />
+        <Route path="/coordinator/archive" element={<Archive />} />
         <Route path="/coordinator/announcements" element={<AnnouncementManagement />} />
         <Route path="/coordinator/messages" element={<Messages />} />
         <Route path="/coordinator/profile" element={<AdminProfile />} />

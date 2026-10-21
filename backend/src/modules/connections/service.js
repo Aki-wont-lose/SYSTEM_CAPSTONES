@@ -84,6 +84,7 @@ export const searchUsers = async (currentUserId, search) => {
   const users = await prisma.user.findMany({
     where: {
       isActive: true,
+      isArchived: false,
       id: { not: currentUserId },
       email: { notIn: BLOCKED_EMAILS },
       ...(term

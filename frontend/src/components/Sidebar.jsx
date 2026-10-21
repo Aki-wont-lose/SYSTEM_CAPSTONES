@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, UserCircle, Users, Megaphone, X, FileCheck2, CalendarDays, Building2, Clock, MapPinned, MessageCircle, ScrollText, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, UserCircle, Users, Megaphone, X, FileCheck2, CalendarDays, Building2, Clock, MapPinned, MessageCircle, ScrollText, Archive, ChevronRight } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 // Single UI for all 4 roles — each role sees a limited subset (same components, filtered links)
@@ -20,6 +20,7 @@ const linksByRole = {
     ]},
     { section: 'System', links: [
       { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
+      { to: '/admin/archive', label: 'Archive', icon: Archive },
       { to: '/admin/messages', label: 'Messages', icon: MessageCircle },
       { to: '/admin/profile', label: 'Profile', icon: UserCircle },
     ]},
@@ -40,6 +41,7 @@ const linksByRole = {
       { to: '/coordinator/logs', label: 'Student Logs', icon: ClipboardList },
     ]},
     { section: 'System', links: [
+      { to: '/coordinator/archive', label: 'Archive', icon: Archive },
       { to: '/coordinator/messages', label: 'Messages', icon: MessageCircle },
       { to: '/coordinator/profile', label: 'Profile', icon: UserCircle },
     ]},

@@ -42,11 +42,13 @@ const AuditLogs = () => {
       if (filters.to) params.to = filters.to;
 
       const res = await getAuditLogs(params);
-      setLogs(res.data?.data || []);
-      setFacets(res.data?.facets || { actions: [] });
-      setMeta({ total: res.data?.total || 0, page: res.data?.page || 1, totalPages: res.data?.totalPages || 1 });
+      setLogs(res?.data || []);
+      setFacets(res?.facets || { actions: [] });
+      setMeta({ total: res?.total || 0, page: res?.page || 1, totalPages: res?.totalPages || 1 });
     } catch (err) {
       console.error(err);
+      setLogs([]);
+      setMeta({ total: 0, page: 1, totalPages: 1 });
     } finally {
       setLoading(false);
     }

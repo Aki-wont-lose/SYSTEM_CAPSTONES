@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, X, Building2, Users, Upload, Filter, GraduationCap, FileSpreadsheet } from 'lucide-react';
+import { Plus, Pencil, Archive, X, Building2, Users, Upload, Filter, GraduationCap, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -245,8 +245,8 @@ const Companies = () => {
                     <button onClick={() => openEdit(c)} className="p-1.5 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
                       <Pencil className="w-4 h-4" />
                     </button>
-                    <button onClick={() => handleDelete(c.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
-                      <Trash2 className="w-4 h-4" />
+                    <button onClick={() => handleDelete(c.id)} title="Archive company" className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
+                      <Archive className="w-4 h-4" />
                     </button>
                   </div>
                 </div>

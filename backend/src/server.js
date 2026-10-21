@@ -19,6 +19,7 @@ import messagingRoutes from './modules/messaging/routes.js';
 import notificationRoutes from './modules/notifications/routes.js';
 import connectionRoutes from './modules/connections/routes.js';
 import auditLogRoutes from './modules/auditLogs/routes.js';
+import archiveRoutes from './modules/archive/routes.js';
 import ojtHoursRoutes from './modules/ojtHours/routes.js';
 
 // Import middleware
@@ -98,6 +99,7 @@ app.use('/api/messages', verifyToken, messagingRoutes); // Coordinator ↔ Super
 app.use('/api/notifications', verifyToken, notificationRoutes);
 app.use('/api/connections', verifyToken, connectionRoutes); // friend requests that gate new student chats
 app.use('/api/audit-logs', verifyToken, auditLogRoutes); // ADMIN/COORDINATOR read-only trail of every change
+app.use('/api/archive', verifyToken, archiveRoutes); // archived students/staff/companies + restore
 app.use('/api/ojt-hours', verifyToken, ojtHoursRoutes); // ADMIN only: required OJT hours per course
 
 // 404 handler

@@ -79,7 +79,7 @@ export const createAnnouncement = async (announcementData) => {
   // Create notification for all users when announcement is published
   if (isActive) {
     try {
-      const users = await prisma.user.findMany({ select: { id: true } });
+      const users = await prisma.user.findMany({ where: { isArchived: false }, select: { id: true } });
       const notifData = users.map(u => ({
         userId: u.id,
         title: `New Announcement: ${title}`,

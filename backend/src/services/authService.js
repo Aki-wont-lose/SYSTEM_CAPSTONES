@@ -43,6 +43,13 @@ export const loginUser = async (email, password) => {
     throw error;
   }
 
+  if (user.isArchived) {
+    await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN_FAILED', entity: 'Account', description: `Sign-in blocked for an archived account (${user.email})` });
+    const error = new Error('This account is archived. Ask the OJT coordinator to restore it.');
+    error.status = 403;
+    throw error;
+  }
+
   if (!user.isActive) {
     await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN_FAILED', entity: 'Account', description: `Sign-in blocked for a disabled account (${user.email})` });
     const error = new Error('Account is disabled. Contact the OJT coordinator.');

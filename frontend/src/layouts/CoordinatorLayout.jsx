@@ -13,6 +13,7 @@ const titles = {
   '/coordinator/submissions': 'Submissions',
   '/coordinator/companies': 'Partner Companies',
   '/coordinator/logs': 'Student Logs',
+  '/coordinator/archive': 'Archive',
   '/coordinator/announcements': 'Announcements',
   '/coordinator/messages': 'Messages',
   '/coordinator/profile': 'My Profile',

@@ -134,6 +134,12 @@ export const loginWithMicrosoft = async (idToken) => {
     throw error;
   }
 
+  if (user.isArchived) {
+    const error = new Error('This account is archived. Ask the OJT coordinator to restore it.');
+    error.status = 403;
+    throw error;
+  }
+
   if (!user.isActive) {
     const error = new Error('Account is disabled. Contact the OJT coordinator.');
     error.status = 403;

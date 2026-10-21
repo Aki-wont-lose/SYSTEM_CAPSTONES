@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 const AUDIT_ACTIONS = [
   'CREATE',
   'UPDATE',
+  'DELETE',
   'LOGIN',
   'LOGIN_FAILED',
   'LOGOUT',
@@ -16,15 +17,21 @@ const AUDIT_ACTIONS = [
 ];
 
 export const getAuditLogs = async (filters = {}) => {
-  const { page = 1, limit = 50, action, from, to, search } = filters;
+  const { action, role, from, to, search } = filters;
+  const page = Math.max(1, Number.parseInt(filters.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, Number.parseInt(filters.limit, 10) || 50));
+
   const where = {};
-  if (action) where.action = action;
+  if (action) where.action = String(action).toUpperCase();
+  // Account-type filter in the UI maps to the role snapshot stored on the entry.
+  if (role) where.userRole = String(role).toUpperCase();
   if (from) where.createdAt = { ...where.createdAt, gte: new Date(from) };
   if (to) where.createdAt = { ...where.createdAt, lte: new Date(`${to}T23:59:59.999Z`) };
   if (search) {
     where.OR = [
       { description: { contains: search, mode: 'insensitive' } },
-      { userEmail: { contains: search, mode: 'insensitive' } }
+      { userEmail: { contains: search, mode: 'insensitive' } },
+      { entity: { contains: search, mode: 'insensitive' } }
     ];
   }
 

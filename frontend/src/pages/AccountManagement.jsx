@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, Pencil, Trash2, KeyRound, Copy, Check, CheckCircle2, UserCheck, UserX, ArrowUpDown, ArrowUp, ArrowDown, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Pencil, Archive, KeyRound, Copy, Check, CheckCircle2, UserCheck, UserX, ArrowUpDown, ArrowUp, ArrowDown, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -268,7 +268,7 @@ const AccountManagement = () => {
       loadStaff();
       loadCounts();
     } catch (err) {
-      setError(err.response?.data?.message || 'Could not remove the account.');
+      setError(err.response?.data?.message || 'Could not archive the account.');
     } finally { setDeleting(false); }
   };
 
@@ -553,8 +553,8 @@ const AccountManagement = () => {
                                   <Pencil className="w-4 h-4" />
                                 </button>
                                 {(member.role !== 'ADMIN' || isSuperAdmin) && (
-                                  <button onClick={() => setDeleteTarget(member)} title="Remove account" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
-                                    <Trash2 className="w-4 h-4" />
+                                  <button onClick={() => setDeleteTarget(member)} title="Archive account" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
+                                    <Archive className="w-4 h-4" />
                                   </button>
                                 )}
                               </>
@@ -736,13 +736,14 @@ const AccountManagement = () => {
         )}
       </Modal>
 
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Remove Account" maxWidth="max-w-sm">
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Archive Account" maxWidth="max-w-sm">
         <p className="text-sm text-sti-gray-dark dark:text-slate-200">
-          Remove <strong>{deleteTarget?.email}</strong>? The account will no longer be able to sign in.
+          Move <strong>{deleteTarget?.email}</strong> to the Archive? They will no longer be able to sign in,
+          but their history is kept and you can restore them from the Archive page.
         </p>
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button variant="danger" onClick={handleDelete} loading={deleting}>Remove</Button>
+          <Button variant="primary" icon={Archive} onClick={handleDelete} loading={deleting}>Archive</Button>
         </div>
       </Modal>
 

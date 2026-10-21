@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, CheckCircle2, ArrowUpDown, ArrowUp, ArrowDown, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Pencil, Archive, Eye, X, Clock, CalendarDays, Upload, CheckCircle2, ArrowUpDown, ArrowUp, ArrowDown, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -233,6 +233,7 @@ const StudentManagement = () => {
       loadStudents();
     } catch (err) {
       console.error(err);
+      alert(err.response?.data?.message || 'Could not archive the student.');
     } finally {
       setDeleting(false);
     }
@@ -450,8 +451,8 @@ const StudentManagement = () => {
                         <button onClick={() => openEditModal(s)} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
                           <Pencil className="w-4 h-4" />
                         </button>
-                        <button onClick={() => setDeleteTarget(s)} className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
-                          <Trash2 className="w-4 h-4" />
+                        <button onClick={() => setDeleteTarget(s)} title="Archive student" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
+                          <Archive className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -658,15 +659,16 @@ const StudentManagement = () => {
         )}
       </Modal>
 
-      {/* Delete confirmation */}
-      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Student" maxWidth="max-w-sm">
+      {/* Archive confirmation */}
+      <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Archive Student" maxWidth="max-w-sm">
         <p className="text-sm text-sti-gray-dark dark:text-slate-200">
-          Are you sure you want to delete <strong>{deleteTarget?.firstName} {deleteTarget?.lastName}</strong>?
-          This will permanently remove their account and attendance records.
+          Move <strong>{deleteTarget?.firstName} {deleteTarget?.lastName}</strong> to the Archive?
+          Their account is blocked from signing in, but attendance, logs, and submissions are kept.
+          You can restore them from the Archive page.
         </p>
         <div className="flex justify-end gap-3 mt-6">
           <Button variant="secondary" onClick={() => setDeleteTarget(null)}>Cancel</Button>
-          <Button variant="danger" onClick={handleDelete} loading={deleting}>Delete</Button>
+          <Button variant="primary" icon={Archive} onClick={handleDelete} loading={deleting}>Archive</Button>
         </div>
       </Modal>
 

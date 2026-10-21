@@ -17,6 +17,7 @@ export const getContactUsers = async (currentUserId) => {
   const users = await prisma.user.findMany({
     where: {
       isActive: true,
+      isArchived: false,
       id: { not: currentUserId },
       email: { notIn: BLOCKED_EMAILS }
     },
@@ -69,8 +70,13 @@ export const getContactUsers = async (currentUserId) => {
     const name = u.student
       ? `${u.student.firstName} ${u.student.lastName}`
       : [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email.split('@')[0].replace('.', ' ');
+    // Explicit allow-list: the API never returns role (or any other account
+    // attribute) to the messaging UI, so it cannot be displayed or spoofed there.
     return {
-      ...u,
+      id: u.id,
+      email: u.email,
+      firstName: u.firstName,
+      lastName: u.lastName,
       displayName: name,
       studentId: u.student?.studentId || null,
       hasConversation: !!conversation,
@@ -105,8 +111,8 @@ export const sendMessage = async (senderId, senderRole, receiverId, content) => 
   if (senderId === receiverId) {
     const e = new Error('You cannot message yourself'); e.status = 400; throw e;
   }
-  const receiver = await prisma.user.findUnique({ where: { id: receiverId }, select: { role: true, isActive: true } });
-  if (!receiver || !receiver.isActive) { const e = new Error('Recipient not found'); e.status = 404; throw e; }
+  const receiver = await prisma.user.findUnique({ where: { id: receiverId }, select: { role: true, isActive: true, isArchived: true } });
+  if (!receiver || !receiver.isActive || receiver.isArchived) { const e = new Error('Recipient not found'); e.status = 404; throw e; }
 
   const sender = await prisma.user.findUnique({
     where: { id: senderId },

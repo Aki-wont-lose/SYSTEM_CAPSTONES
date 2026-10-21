@@ -66,6 +66,7 @@ const lookupUser = (userId) =>
       email: true,
       role: true,
       isActive: true,
+      isArchived: true,
       mustChangePassword: true,
       coordinatorCourse: true,
       supervisorCompanyId: true
@@ -97,8 +98,8 @@ export const verifyToken = (req, res, next) => {
     // later request, which is worse than the original problem.
     lookupUser(decoded.userId)
       .then((user) => {
-        if (!user || !user.isActive) {
-          return res.status(401).json({ success: false, message: 'Account is inactive or no longer exists' });
+        if (!user || !user.isActive || user.isArchived) {
+          return res.status(401).json({ success: false, message: 'Account is inactive, archived, or no longer exists' });
         }
         if (user.role !== decoded.role) {
           // Role changed since the token was issued - force a fresh login.
