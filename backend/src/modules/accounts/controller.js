@@ -69,14 +69,14 @@ export const regenerateAccountPassword = asyncHandler(async (req, res) => {
   });
 });
 
-// DELETE /accounts/:id - remove a staff account
+// DELETE /accounts/:id - archive a staff account (soft delete)
 export const removeStaffAccount = asyncHandler(async (req, res) => {
   const result = await deleteStaffAccount(req.params.id, {
     requesterIsSuperAdmin: !!req.user.isSuperAdmin,
     requesterId: req.user.userId,
     requesterEmail: req.user.email
   });
-  res.status(200).json({ success: true, message: 'Account removed', data: result });
+  res.status(200).json({ success: true, message: 'Account archived', data: result });
 });
 
 // POST /accounts/batch - create many staff accounts from a batch upload

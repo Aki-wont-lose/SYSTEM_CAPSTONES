@@ -16,6 +16,7 @@ async function main() {
   await prisma.company.deleteMany();
   await prisma.user.deleteMany();
   await prisma.announcement.deleteMany();
+  await prisma.oJtHoursConfig.deleteMany();
 
   const adminPassword = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD || 'Admin123!', 10);
   // Students sign in ONLY via "Sign in with Microsoft" (their school account), so
@@ -106,6 +107,21 @@ async function main() {
   // Partner Companies - start empty now that Add Company works (Admin/Coordinator adds via UI)
   // No sample companies seeded; they are added via Partner Companies > Add Company
   console.log('✓ Companies skipped (start empty - add via UI)');
+
+// Default required OJT hours per course (admin-editable later)
+const defaultHours = [
+  { course: 'BSIT', requiredHours: 486 },
+  { course: 'BSCS', requiredHours: 300 },
+  { course: 'BSCPE', requiredHours: 300 },
+  { course: 'BSACT', requiredHours: 320 },
+  { course: 'BSHM', requiredHours: 600 },
+  { course: 'BSTM', requiredHours: 600 },
+  { course: 'BSAIS', requiredHours: 400 }
+];
+for (const h of defaultHours) {
+  await prisma.oJtHoursConfig.create({ data: h });
+}
+console.log('OJT hours config created');
 
   // Announcements
   const now = new Date();

@@ -1,78 +1,41 @@
-// src/services/auditLogService.js — writes and reads the system audit trail
+// modules/auditLogs/service.js - append-only audit trail
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-// The list offered in the audit-log action filter. LINK and UNLINK are omitted
-// because the Microsoft account-linking flow is retired, so those actions are
-// never recorded any more. (The database enum still accepts them for old rows.)
-export const AUDIT_ACTIONS = ['CREATE', 'UPDATE', 'DELETE', 'LOGIN', 'LOGIN_FAILED', 'LOGOUT', 'REVIEW', 'SUBMIT', 'EXPORT'];
-
-// Account-type filter options for the audit log. Kept static so the UI never has
-// to expose (or enumerate) the individual user accounts.
-export const AUDIT_ROLES = ['ADMIN', 'COORDINATOR', 'SUPERVISOR', 'STUDENT'];
-
-// Never throws: a failed audit write must not break the action being audited.
-export const recordAudit = async ({
-  userId = null,
-  userEmail = null,
-  userRole = null,
-  action,
-  entity,
-  entityId = null,
-  description,
-  metadata = null,
-  ipAddress = null,
-}) => {
-  try {
-    await prisma.auditLog.create({
-      data: {
-        userId: userId || null,
-        userEmail: userEmail ? String(userEmail).slice(0, 120) : null,
-        userRole: userRole || null,
-        action,
-        entity: String(entity || 'System'),
-        entityId: entityId ? String(entityId) : null,
-        description: String(description || '').slice(0, 500),
-        metadata: metadata || undefined,
-        ipAddress: ipAddress || null,
-      },
-    });
-  } catch (err) {
-    console.error('Failed to write audit log:', err.message);
-  }
-};
+const AUDIT_ACTIONS = [
+  'CREATE',
+  'UPDATE',
+  'LOGIN',
+  'LOGIN_FAILED',
+  'LOGOUT',
+  'REVIEW',
+  'SUBMIT',
+  'EXPORT',
+  'LINK',
+  'UNLINK'
+];
 
 export const getAuditLogs = async (filters = {}) => {
-  const page = Math.max(1, parseInt(filters.page, 10) || 1);
-  const limit = Math.min(200, Math.max(1, parseInt(filters.limit, 10) || 50));
+  const { page = 1, limit = 50, action, from, to, search } = filters;
   const where = {};
-
-  if (filters.action && AUDIT_ACTIONS.includes(filters.action)) where.action = filters.action;
-  if (filters.entity) where.entity = filters.entity;
-  if (filters.userId) where.userId = filters.userId;
-  if (filters.role && AUDIT_ROLES.includes(filters.role)) where.userRole = filters.role;
-  if (filters.search) {
-    const term = String(filters.search).trim();
+  if (action) where.action = action;
+  if (from) where.createdAt = { ...where.createdAt, gte: new Date(from) };
+  if (to) where.createdAt = { ...where.createdAt, lte: new Date(`${to}T23:59:59.999Z`) };
+  if (search) {
     where.OR = [
-      { description: { contains: term, mode: 'insensitive' } },
-      { userEmail: { contains: term, mode: 'insensitive' } },
-      { entity: { contains: term, mode: 'insensitive' } },
-      { entityId: { contains: term, mode: 'insensitive' } },
+      { description: { contains: search, mode: 'insensitive' } },
+      { userEmail: { contains: search, mode: 'insensitive' } }
     ];
   }
 
-  if (filters.from || filters.to) {
-    where.createdAt = {};
-    if (filters.from) where.createdAt.gte = new Date(filters.from);
-    if (filters.to) where.createdAt.lte = new Date(`${filters.to}T23:59:59.999Z`);
-  }
-
-  // The actor list is intentionally NOT returned: it would enumerate every user
-  // account to anyone who can open the audit log. The Account Type filter above
-  // gives the same filtering power without exposing individual users.
   const [data, total] = await Promise.all([
-    prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
-    prisma.auditLog.count({ where }),
+    prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit
+    }),
+    prisma.auditLog.count({ where })
   ]);
 
   return {
@@ -82,23 +45,13 @@ export const getAuditLogs = async (filters = {}) => {
     limit,
     totalPages: Math.max(1, Math.ceil(total / limit)),
     facets: {
-      actions: AUDIT_ACTIONS,
-    },
+      actions: AUDIT_ACTIONS
+    }
   };
 };
 
-export const deleteAuditLog = async (id) => {
-  const existing = await prisma.auditLog.findUnique({ where: { id } });
-  if (!existing) {
-    const error = new Error('Audit log not found');
-    error.status = 404;
-    throw error;
-  }
-  await prisma.auditLog.delete({ where: { id } });
-  return existing;
-};
-
-export const clearAuditLogs = async () => {
-  const { count } = await prisma.auditLog.deleteMany({});
-  return { deleted: count };
+export const recordAudit = async ({ userId, userEmail, userRole, action, entity, entityId, description, metadata } = {}) => {
+  return prisma.auditLog.create({
+    data: { userId, userEmail, userRole, action, entity, entityId, description, metadata }
+  });
 };

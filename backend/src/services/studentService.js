@@ -1,6 +1,7 @@
 // src/services/studentService.js
 import { PrismaClient } from '@prisma/client';
 import { isValidStudentEmail, isValidSection, ELMS_EMAIL_ERROR, ELMS_SECTION_ERROR } from '../utils/studentValidation.js';
+import { studentScopeWhere } from './accessScope.js';
 
 const prisma = new PrismaClient();
 
@@ -26,6 +27,8 @@ const dropBlank = (obj) =>
 
 export const getAllStudents = async (filters = {}) => {
   const where = {};
+  // Archived students are hidden from listings by default
+  where.isArchived = false;
 
   const clean = dropBlank(filters);
   if (clean.ojt_status) {
@@ -132,6 +135,16 @@ export const createStudent = async (studentData, userData) => {
     throw badRequest(ELMS_SECTION_ERROR);
   }
 
+  // Look up required OJT hours for this course from the admin-maintained config
+  let requiredHours = null;
+  if (studentData.course) {
+    const hoursCfg = await prisma.oJtHoursConfig.findUnique({
+      where: { course: studentData.course },
+      select: { requiredHours: true }
+    });
+    if (hoursCfg) requiredHours = hoursCfg.requiredHours;
+  }
+
   try {
     // Students sign in with Microsoft only, so no password is stored for them.
     const user = await prisma.user.create({
@@ -149,6 +162,7 @@ export const createStudent = async (studentData, userData) => {
         ...studentData,
         email,
         contactNumber: studentData.contactNumber ?? '',
+        requiredHours: requiredHours ?? studentData.requiredHours ?? null,
         userId: user.id
       },
       include: {
@@ -256,7 +270,7 @@ export const deleteStudent = async (studentId) => {
   try {
     const student = await prisma.student.findUnique({
       where: { id: studentId },
-      select: { userId: true }
+      select: { userId: true, isArchived: true }
     });
 
     if (!student) {
@@ -265,39 +279,45 @@ export const deleteStudent = async (studentId) => {
       throw err;
     }
 
-    // Delete student and its linked User so email/studentId can be reused
-    await prisma.student.delete({
-      where: { id: studentId }
-    });
-    // Remove the login account as well (was left orphaned before, causing "email already exists")
-    try {
-      await prisma.user.delete({ where: { id: student.userId } });
-    } catch (_) {
-      // user already gone or cascade - ignore
+    if (student.isArchived) {
+      return { success: true, archived: true };
     }
-    return { success: true };
+
+    // Soft-archive instead of hard delete so audit trails and history stay intact
+    await prisma.student.update({
+      where: { id: studentId },
+      data: { isArchived: true, archivedAt: new Date() }
+    });
+    // Archive the linked login account too so its email/studentId can be freed
+    try {
+      await prisma.user.update({
+        where: { id: student.userId },
+        data: { isArchived: true, archivedAt: new Date() }
+      });
+    } catch (_) {
+      // user already gone - ignore
+    }
+    return { success: true, archived: true };
   } catch (error) {
     throw error;
   }
 };
 
-export const getStudentStats = async () => {
+export const getStudentStats = async (user = null) => {
+  // Coordinators only see students in their own course; admins and supervisors
+  // see everything (supervisors are already scoped elsewhere when they query).
+  const scope = user ? studentScopeWhere(user) : {};
+  const where = Object.keys(scope).length ? scope : {};
+
   const [total, active, completed, pending, onHold, byCourse, activeCompanies] = await Promise.all([
-    prisma.student.count(),
-    prisma.student.count({
-      where: { ojt_status: 'ONGOING' }
-    }),
-    prisma.student.count({
-      where: { ojt_status: 'COMPLETED' }
-    }),
-    prisma.student.count({
-      where: { ojt_status: 'NOT_STARTED' }
-    }),
-    prisma.student.count({
-      where: { ojt_status: 'ON_HOLD' }
-    }),
+    prisma.student.count({ where }),
+    prisma.student.count({ where: { ...where, ojt_status: 'ONGOING' } }),
+    prisma.student.count({ where: { ...where, ojt_status: 'COMPLETED' } }),
+    prisma.student.count({ where: { ...where, ojt_status: 'NOT_STARTED' } }),
+    prisma.student.count({ where: { ...where, ojt_status: 'ON_HOLD' } }),
     prisma.student.groupBy({
       by: ['course'],
+      where,
       _count: { _all: true },
       orderBy: { course: 'asc' }
     }),

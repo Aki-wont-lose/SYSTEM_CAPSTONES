@@ -5,9 +5,9 @@ const prisma = new PrismaClient();
 
 export const getDashboardStats = getStudentStats;
 
-export const getSupervisorDashboard = async (userId) => {
-  // COORDINATOR / SUPERVISOR see same counters (scoped filtering can be added later)
-  return getStudentStats();
+export const getSupervisorDashboard = async (userId, user) => {
+  // COORDINATOR / SUPERVISOR see counters scoped to their course/company
+  return getStudentStats(user);
 };
 
 export const getStudentDashboard = async (userId) => {

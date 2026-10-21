@@ -188,8 +188,8 @@ export const updateStudentProfile = asyncHandler(async (req, res) => {
 export const removeStudent = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  // Deleting a student also deletes their login account (user onDelete: Cascade),
-  // so this must be scoped. Previously any coordinator could delete any student.
+  // Archiving a student also archives their login account (isArchived flag),
+  // so email/studentId can be reused later. This must be scoped.
   const existing = await getStudentById(id);
   if (!existing) {
     return res.status(404).json({ success: false, message: 'Student not found' });
@@ -200,7 +200,7 @@ export const removeStudent = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Student deleted successfully'
+    message: 'Student archived successfully'
   });
 });
 

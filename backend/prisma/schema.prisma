@@ -30,6 +30,10 @@ model User {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
+  // Soft-archive instead of hard delete so audit trails stay intact
+  isArchived    Boolean   @default(false)
+  archivedAt    DateTime?
+
   // Relations
   student      Student?
   supervisorCompany Company? @relation("SupervisorCompany", fields: [supervisorCompanyId], references: [id])
@@ -127,6 +131,10 @@ model Student {
 
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
+
+  // Soft-archive instead of hard delete
+  isArchived         Boolean      @default(false)
+  archivedAt         DateTime?
 
   // Relations
   user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -438,5 +446,16 @@ model Notification {
   @@index([userId])
   @@index([isRead])
   @@index([createdAt])
+}
+
+// Per-course required OJT hours. Admin-maintained so it can change year to year.
+model OjtHoursConfig {
+  id            String   @id @default(cuid())
+  course        String   @unique // BSIT, BSCS, BSCPE, BSACT, BSHM, BSTM, BSAIS
+  requiredHours Int      // required OJT hours for this course
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([course])
 }
 

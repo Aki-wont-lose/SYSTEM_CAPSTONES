@@ -49,6 +49,8 @@ export const listStaff = async ({ role, search, includeInactive = true, requeste
   if (requesterRole && requesterRole !== 'ADMIN') return [];
 
   const where = {};
+  // Archived accounts are hidden from account management by default
+  where.isArchived = false;
   if (role === 'ADMIN') {
     // Administrator accounts are private to the super-admin.
     if (!requesterIsSuperAdmin) return [];
@@ -406,39 +408,42 @@ export const deleteStaffAccount = async (userId, { requesterIsSuperAdmin = false
   const isSelf = (requesterId && existing.id === requesterId) ||
     (requesterEmail && String(existing.email || '').toLowerCase() === String(requesterEmail).toLowerCase());
 
-  // The super-admin is the top-level account: it can never be removed, not even
+  // The super-admin is the top-level account: it can never be archived, not even
   // by itself, so the system always keeps a top-level operator.
   if (isSuperAdmin(existing)) {
-    const error = new Error('The super-admin account cannot be removed');
+    const error = new Error('The super-admin account cannot be archived');
     error.status = 400;
     throw error;
   }
 
-  // Nobody can delete their own account through Account Management.
+  // Nobody can archive their own account through Account Management.
   if (isSelf) {
-    const error = new Error('You cannot remove your own account');
+    const error = new Error('You cannot archive your own account');
     error.status = 400;
     throw error;
   }
 
   // Administrator accounts are private to the super-admin. The super-admin may
-  // remove the admins it created, but never its own account, so the system
-  // always keeps a top-level administrator able to manage it.
+  // archive the admins it created, but never its own account.
   if (existing.role === 'ADMIN') {
     if (!requesterIsSuperAdmin) {
-      const error = new Error('Administrator accounts cannot be removed from Account Management');
+      const error = new Error('Administrator accounts cannot be archived from Account Management');
       error.status = 400;
       throw error;
     }
     if (requesterId && existing.id === requesterId) {
-      const error = new Error('You cannot remove your own administrator account');
+      const error = new Error('You cannot archive your own administrator account');
       error.status = 400;
       throw error;
     }
   }
 
-  await prisma.user.delete({ where: { id: userId } });
-  return { success: true };
+  // Soft-archive instead of hard delete so audit trails and history stay intact
+  await prisma.user.update({
+    where: { id: userId },
+    data: { isArchived: true, archivedAt: new Date() }
+  });
+  return { success: true, archived: true };
 };
 
 export const getAccountById = async (userId) => {

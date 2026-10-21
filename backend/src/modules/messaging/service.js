@@ -1,4 +1,4 @@
-// modules/messaging/service.js — open messaging: any user can chat with anyone
+// modules/messaging/service.js - open messaging: any user can chat with anyone
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
@@ -25,11 +25,10 @@ export const getContactUsers = async (currentUserId) => {
       email: true,
       firstName: true,
       lastName: true,
-      role: true,
       isActive: true,
       student: { select: { firstName: true, lastName: true, studentId: true } }
     },
-    orderBy: [{ role: 'asc' }, { email: 'asc' }]
+    orderBy: [{ email: 'asc' }]
   });
 
   const messages = await prisma.message.findMany({
@@ -74,7 +73,6 @@ export const getContactUsers = async (currentUserId) => {
       ...u,
       displayName: name,
       studentId: u.student?.studentId || null,
-      roleLabel: u.role.charAt(0) + u.role.slice(1).toLowerCase(),
       hasConversation: !!conversation,
       unreadCount: conversation?.unreadCount || 0,
       lastMessageAt: conversation?.lastMessageAt || null,
@@ -94,8 +92,8 @@ export const getConversation = async (currentUserId, otherUserId) => {
     orderBy: { createdAt: 'asc' },
     take: 200,
     include: {
-      sender: { select: { email: true, role: true } },
-      receiver: { select: { email: true, role: true } }
+      sender: { select: { email: true } },
+      receiver: { select: { email: true } }
     }
   });
 };
@@ -112,14 +110,14 @@ export const sendMessage = async (senderId, senderRole, receiverId, content) => 
 
   const sender = await prisma.user.findUnique({
     where: { id: senderId },
-    select: { email: true, firstName: true, lastName: true, role: true, student: { select: { firstName: true, lastName: true } } }
+    select: { email: true, firstName: true, lastName: true, student: { select: { firstName: true, lastName: true } } }
   });
   const senderName = sender?.student
     ? `${sender.student.firstName} ${sender.student.lastName}`
     : [sender?.firstName, sender?.lastName].filter(Boolean).join(' ') || sender?.email?.split('@')[0] || 'A user';
   const message = await prisma.message.create({
     data: { senderId, receiverId, content: content.trim() },
-    include: { sender: { select: { email: true, role: true } } }
+    include: { sender: { select: { email: true } } }
   });
   try {
     await prisma.notification.create({

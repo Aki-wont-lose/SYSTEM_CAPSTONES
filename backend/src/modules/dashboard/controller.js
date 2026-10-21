@@ -5,7 +5,7 @@ import { getStudentDashboard as getStudentDashSvc } from './service.js';
 
 // GET /dashboard/stats - fetch the staff dashboard summary
 export const fetchDashboardStats = asyncHandler(async (req, res) => {
-  const stats = await getStudentStats();
+  const stats = await getStudentStats(req.user);
   res.status(200).json({ success: true, message: 'Stats retrieved successfully', data: stats });
 });
 
