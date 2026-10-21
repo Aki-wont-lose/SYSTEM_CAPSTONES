@@ -10,6 +10,8 @@ import { courseLabel } from '../constants/programs';
 // Let an admin view and update their profile, photo, and email
 const AdminProfile = () => {
   const { user, updateUser } = useAuth();
+  // Super admin is an ADMIN account with a flag, so either check is enough.
+  const canManageHours = user?.role === 'ADMIN' || user?.isSuperAdmin;
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [details, setDetails] = useState({ firstName: '', lastName: '', email: '' });
@@ -43,11 +45,11 @@ const AdminProfile = () => {
 
   // Only the admin maintains the per-course OJT hours.
   useEffect(() => {
-    if (user?.role !== 'ADMIN') return;
+    if (!canManageHours) return;
     getOjtHours()
       .then((res) => setHours(res.data || []))
       .catch(() => {});
-  }, [user?.role]);
+  }, [canManageHours]);
 
   // Save every course's required hours in one go
   const handleSaveHours = async () => {
@@ -215,7 +217,7 @@ const AdminProfile = () => {
         </form>
       </Card>
 
-      {user?.role === 'ADMIN' && (
+      {canManageHours && (
         <Card>
           <h3 className="font-bold text-sti-gray-dark dark:text-white mb-1 flex items-center gap-2">
             <Clock className="w-4 h-4 text-sti-blue" /> OJT Required Hours

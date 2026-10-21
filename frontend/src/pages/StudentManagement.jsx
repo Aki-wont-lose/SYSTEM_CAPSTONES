@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, CheckCircle2, ArrowUpDown, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Eye, X, Clock, CalendarDays, Upload, CheckCircle2, ArrowUpDown, ArrowUp, ArrowDown, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -203,14 +203,27 @@ const StudentManagement = () => {
     setPage(1);
   };
 
-  const SortHeader = ({ label, sortKey, className = '' }) => (
-    <th className={`px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide ${className}`}>
-      <button onClick={() => handleSort(sortKey)} className="inline-flex items-center gap-1 hover:text-sti-blue transition-colors">
-        {label}
-        <ArrowUpDown className="w-3 h-3" />
-      </button>
-    </th>
-  );
+  const SortHeader = ({ label, sortKey, className = '' }) => {
+    const isActive = sort.key === sortKey;
+    return (
+      <th
+        className={`px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide ${className}`}
+        aria-sort={isActive ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+      >
+        <button
+          onClick={() => handleSort(sortKey)}
+          className={`inline-flex items-center gap-1 transition-colors hover:text-sti-blue ${isActive ? 'text-sti-blue' : ''}`}
+        >
+          {label}
+          {isActive ? (
+            sort.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+          ) : (
+            <ArrowUpDown className="w-3 h-3 opacity-50" />
+          )}
+        </button>
+      </th>
+    );
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
