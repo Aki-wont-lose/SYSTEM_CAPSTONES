@@ -215,6 +215,8 @@ model Company {
   programs        String[]  @default([]) // BSHM / BSIT / BSTM - empty = open to all programs
   availableSlots  Int       @default(0)
   status          CompanyStatus @default(ACTIVE)
+  isArchived      Boolean   @default(false)
+  archivedAt      DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -223,6 +225,7 @@ model Company {
   supervisors     User[]    @relation("SupervisorCompany")
 
   @@index([status])
+  @@index([isArchived])
 }
 
 // Requirement model - documents students must submit

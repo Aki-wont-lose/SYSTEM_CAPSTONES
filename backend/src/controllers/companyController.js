@@ -41,10 +41,10 @@ export const editCompany = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Company updated', data: company });
 });
 
-// DELETE /companies/:id - delete a company
+// DELETE /companies/:id - archive a company (soft delete)
 export const removeCompany = asyncHandler(async (req, res) => {
   await deleteCompany(req.params.id);
-  res.status(200).json({ success: true, message: 'Company deleted' });
+  res.status(200).json({ success: true, message: 'Company archived' });
 });
 
 // POST /companies/:id/assign - assign a student to a company

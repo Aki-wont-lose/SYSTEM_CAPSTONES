@@ -173,14 +173,14 @@ const Companies = () => {
     }
   };
 
-  // Delete a company after confirmation
+  // Archive a company after confirmation (history and student links are kept)
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this partner company?')) return;
+    if (!window.confirm('Archive this partner company?\n\nIt disappears from the list, but its students and history are kept.')) return;
     try {
       await deleteCompany(id);
       loadData();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete company');
+      alert(err.response?.data?.message || 'Failed to archive company');
     }
   };
 

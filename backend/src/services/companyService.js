@@ -37,7 +37,9 @@ const normalizeCompanyInput = (data) => {
 
 export const getAllCompanies = async (filters = {}) => {
   const { search, program, status, hasSlots } = typeof filters === 'string' ? { search: filters } : filters;
-  const where = {};
+  // Archived companies disappear from every listing (admin table and the
+  // student's Find Company page) but keep their students and history intact.
+  const where = { isArchived: false };
   const or = [];
 
   if (search) {
@@ -69,7 +71,7 @@ export const getCompanyById = async (id) => {
   // that company - email, contact number, supervisor contact and base64 profile
   // picture - to any authenticated caller, including students. Only staff who own
   // the company may see the roster, and then only the columns the roster needs.
-  return prisma.company.findUnique({
+  const company = await prisma.company.findUnique({
     where: { id },
     include: {
       students: {
@@ -87,6 +89,8 @@ export const getCompanyById = async (id) => {
       }
     }
   });
+  // Archived companies behave like deleted ones for lookups.
+  return company && !company.isArchived ? company : null;
 };
 
 export const createCompany = async (data) => {
@@ -111,9 +115,15 @@ export const updateCompany = async (id, data) => {
   }
 };
 
+// Archive, never delete: student placements and attendance history point at this
+// row, so removing it would orphan records. An archived company is also marked
+// INACTIVE so it cannot be picked for new placements.
 export const deleteCompany = async (id) => {
   try {
-    return await prisma.company.delete({ where: { id } });
+    return await prisma.company.update({
+      where: { id },
+      data: { isArchived: true, archivedAt: new Date(), status: 'INACTIVE' }
+    });
   } catch (error) {
     if (error.code === 'P2025') {
       const err = new Error('Company not found');
@@ -125,6 +135,15 @@ export const deleteCompany = async (id) => {
 };
 
 export const assignStudentToCompany = async (studentId, companyId) => {
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { isArchived: true }
+  });
+  if (!company || company.isArchived) {
+    const err = new Error('Company not found or archived');
+    err.status = 400;
+    throw err;
+  }
   return prisma.student.update({
     where: { id: studentId },
     data: { companyId }
