@@ -59,7 +59,8 @@ const verifyMicrosoftIdToken = (idToken) =>
       },
       (err, decoded) => {
         if (err) {
-          console.error('JWT verify error:', err.message, 'audience:', MS_CLIENT_ID);
+          const unverified = jwt.decode(idToken) || {};
+          console.error('JWT verify error:', err.message, 'expected audience:', MS_CLIENT_ID, 'token aud:', JSON.stringify(unverified.aud), 'iss:', unverified.iss, 'ver:', unverified.ver);
           return reject(err);
         }
         resolve(decoded);
