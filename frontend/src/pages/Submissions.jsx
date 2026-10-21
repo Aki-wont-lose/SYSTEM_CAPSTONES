@@ -1,5 +1,5 @@
 import AdminRequirements from './AdminRequirements';
 const Submissions = () => {
-  return <AdminRequirements defaultTab="submissions" hideRequirements hideGrading />;
+  return <AdminRequirements defaultTab="checklist" hideRequirements hideGrading />;
 };
 export default Submissions;

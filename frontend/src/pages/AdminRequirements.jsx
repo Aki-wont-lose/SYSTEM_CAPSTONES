@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Pencil, Trash2, X, FileCheck2, Check, XCircle, Download, Filter, FileSpreadsheet, BarChart3, Award, AlertTriangle, FileText, FileType2, FileImage, File as FileIcon, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
@@ -11,7 +11,8 @@ import {
   deleteRequirement,
   getAllSubmissions,
   getGradingSummary,
-  reviewSubmission
+  reviewSubmission,
+  setRequirementCompletion
 } from '../services/requirementService';
 import { sectionLabel } from '../constants/studentRules';
 
@@ -64,7 +65,7 @@ const templateSizeLabel = (dataUrl) => {
 };
 
 // Manage requirement templates, student submissions, and automated grading
-const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = false, hideSubmissions = false, hideBatchUpload = false, hideGrading = false }) => {
+const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = false, hideSubmissions = false, hideBatchUpload = false, hideGrading = false, hideChecklist = false }) => {
   const [tab, setTab] = useState(defaultTab);
   const [requirements, setRequirements] = useState([]);
   const [submissions, setSubmissions] = useState([]);
@@ -85,6 +86,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   const [remarks, setRemarks] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [batchResult, setBatchResult] = useState(null);
+  const [togglingCheck, setTogglingCheck] = useState('');
 
   // Convert an uploaded file into a base64 string for storage
   const fileToBase64 = (file) => new Promise((resolve, reject) => {
@@ -112,15 +114,30 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   };
 
   // Fetch the per-student grading summary, optionally filtered by program
-  const loadGrading = async () => {
-    setLoading(true);
+  const loadGrading = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await getGradingSummary(courseFilter ? { course: courseFilter } : {});
       setGrading(res.data);
     } catch (err) {
       setActionError(err.response?.data?.message || 'Could not load grading summary.');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+    }
+  };
+
+  // Tick one requirement for one student, then refresh the matrix quietly.
+  const handleToggleCheck = async (studentId, requirementId, completed) => {
+    const key = `${studentId}:${requirementId}`;
+    setTogglingCheck(key);
+    setActionError('');
+    try {
+      await setRequirementCompletion(studentId, requirementId, completed);
+      await loadGrading(true);
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Could not update the checklist.');
+    } finally {
+      setTogglingCheck('');
     }
   };
 
@@ -130,7 +147,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   }, [statusFilter, programFilter]);
 
   useEffect(() => {
-    if (tab === 'grading') loadGrading();
+    if (tab === 'grading' || tab === 'checklist') loadGrading();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, courseFilter]);
 
@@ -378,7 +395,15 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   };
 
   // Heading text for the currently selected tab
-  const tabTitle = tab === 'requirements' ? 'Templates' : tab === 'grading' ? 'Automated Grading' : 'Submissions';
+  const tabTitle = tab === 'requirements' ? 'Templates' : tab === 'grading' ? 'Automated Grading' : tab === 'checklist' ? 'Requirement Checklist' : 'Submissions';
+
+  // Only show requirement columns that apply to at least one student in view.
+  const checklistRequirements = useMemo(() => {
+    if (!grading) return [];
+    const applicable = new Set();
+    (grading.rows || []).forEach((row) => (row.breakdown || []).forEach((cell) => applicable.add(cell.requirementId)));
+    return (grading.requirements || []).filter((req) => applicable.has(req.id));
+  }, [grading]);
 
   // Apply the free-text template search across title, category, program, and description
   const templateQuery = templateSearch.trim().toLowerCase();
@@ -392,7 +417,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">{tabTitle}</h1>
           <p className="text-sm text-sti-gray">
-            {tab === 'requirements' ? 'Document requirements per program' : tab === 'grading' ? 'Scores, missing deadlines, and auto-graded submissions' : 'Student submissions'}
+            {tab === 'requirements' ? 'Document requirements per program' : tab === 'grading' ? 'Scores, missing deadlines, and auto-graded submissions' : tab === 'checklist' ? 'Tick each requirement as students pass it' : 'Student submissions'}
           </p>
         </div>
         {tab === 'requirements' && (
@@ -449,6 +474,16 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
               }`}
             >
               Submissions
+            </button>
+          )}
+          {!hideChecklist && (
+            <button
+              onClick={() => setTab('checklist')}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                tab === 'checklist' ? 'border-sti-blue text-sti-blue' : 'border-transparent text-sti-gray hover:text-sti-gray-dark dark:hover:text-white'
+              }`}
+            >
+              Checklist
             </button>
           )}
           {!hideGrading && (
@@ -583,6 +618,103 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
             })}
           </div>
         )
+      ) : tab === 'checklist' ? (
+        <>
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div className="relative sm:w-56">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+              <select value={courseFilter} onChange={(e) => setCourseFilter(e.target.value)} className="input-field pl-9">
+                <option value="">All programs</option>
+                <option value="BSIT">BSIT</option>
+                <option value="BSCS">BSCS</option>
+                <option value="BSCPE">BSCPE</option>
+                <option value="BSACT">BSACT</option>
+                <option value="BSHM">BSHM</option>
+                <option value="BSTM">BSTM</option>
+                <option value="BSAIS">BSAIS</option>
+              </select>
+            </div>
+            <p className="text-xs text-sti-gray">Tick a box to mark that requirement complete for the student.</p>
+          </div>
+
+          {!grading || grading.rows.length === 0 ? (
+            <Card className="text-center py-16">
+              <FileCheck2 className="w-10 h-10 text-sti-gray mx-auto mb-3" />
+              <p className="text-sti-gray text-sm">No students to show yet.</p>
+            </Card>
+          ) : checklistRequirements.length === 0 ? (
+            <Card className="text-center py-16">
+              <FileCheck2 className="w-10 h-10 text-sti-gray mx-auto mb-3" />
+              <p className="text-sti-gray text-sm">No requirements to check yet.</p>
+            </Card>
+          ) : (
+            <Card className="p-0 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-black/5 dark:border-white/10 text-left">
+                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide sticky left-0 z-10 bg-white dark:bg-slate-800 min-w-[200px]">Student</th>
+                      <th className="px-4 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Program</th>
+                      {checklistRequirements.map((req) => (
+                        <th key={req.id} title={req.title} className="px-2 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-center min-w-[110px]">
+                          <span className="block max-w-[110px] truncate">{req.title}</span>
+                        </th>
+                      ))}
+                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-center">Done</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {grading.rows.map((row) => (
+                      <tr key={row.studentId} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5">
+                        <td className="px-6 py-3.5 sticky left-0 z-10 bg-white dark:bg-slate-800">
+                          <p className="font-medium text-sti-gray-dark dark:text-white">{row.name}</p>
+                          <p className="text-xs text-sti-gray">{row.studentNumber}</p>
+                        </td>
+                        <td className="px-4 py-3.5 text-sti-gray-dark dark:text-slate-200 whitespace-nowrap">{row.course} {sectionLabel(row.section, row.course)}</td>
+                        {checklistRequirements.map((req) => {
+                          const cell = (row.breakdown || []).find((item) => item.requirementId === req.id);
+                          if (!cell) {
+                            return <td key={req.id} className="px-2 py-3.5 text-center text-sti-gray">—</td>;
+                          }
+                          const done = cell.state === 'COMPLETED';
+                          const key = `${row.studentId}:${req.id}`;
+                          return (
+                            <td key={req.id} className="px-2 py-3.5 text-center">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleCheck(row.studentId, req.id, !done)}
+                                disabled={togglingCheck === key}
+                                title={done ? 'Mark incomplete' : 'Mark complete'}
+                                className={`inline-flex items-center justify-center w-7 h-7 rounded-lg border transition-colors disabled:opacity-50 ${
+                                  done
+                                    ? 'bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600'
+                                    : 'border-black/15 dark:border-white/20 text-transparent hover:border-sti-blue hover:text-sti-blue/30'
+                                }`}
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              {cell.state === 'PENDING' && <p className="text-[10px] text-sti-yellow-dark mt-0.5">Pending</p>}
+                              {cell.state === 'REJECTED' && <p className="text-[10px] text-red-600 mt-0.5">Rejected</p>}
+                            </td>
+                          );
+                        })}
+                        <td className="px-6 py-3.5 text-center whitespace-nowrap">
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                            row.totalRequirements > 0 && row.completed === row.totalRequirements
+                              ? 'bg-emerald-50 text-emerald-600'
+                              : 'bg-sti-gray-light dark:bg-white/10 text-sti-gray-dark dark:text-slate-200'
+                          }`}>
+                            {row.completed}/{row.totalRequirements}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </>
       ) : tab === 'grading' ? (
         !grading || grading.rows.length === 0 ? (
           <Card className="text-center py-16">

@@ -3,7 +3,6 @@ import { PrismaClient } from '@prisma/client';
 import { canAccessStudent } from '../../services/accessScope.js';
 
 const prisma = new PrismaClient();
-const STAFF_ROLES = ['ADMIN', 'COORDINATOR', 'SUPERVISOR'];
 
 const notFound = (message) => {
   const error = new Error(message);
@@ -31,20 +30,18 @@ export const getArchivedRecords = async (user) => {
     orderBy: { archivedAt: 'desc' }
   });
 
-  let staff = [];
+  let coordinators = [];
   if (isAdmin) {
-    staff = await prisma.user.findMany({
-      where: { isArchived: true, role: { in: STAFF_ROLES } },
+    coordinators = await prisma.user.findMany({
+      where: { isArchived: true, role: 'COORDINATOR' },
       select: {
         id: true,
         email: true,
         firstName: true,
         lastName: true,
-        role: true,
         coordinatorCourse: true,
         isActive: true,
-        archivedAt: true,
-        supervisorCompany: { select: { name: true } }
+        archivedAt: true
       },
       orderBy: { archivedAt: 'desc' }
     });
@@ -58,7 +55,7 @@ export const getArchivedRecords = async (user) => {
       })
     : [];
 
-  return { students, staff, companies };
+  return { students, coordinators, companies };
 };
 
 export const restoreStudent = async (studentId, user) => {
@@ -100,13 +97,13 @@ export const restoreStudent = async (studentId, user) => {
   return { success: true, restored: true };
 };
 
-export const restoreStaff = async (userId) => {
+export const restoreCoordinator = async (userId) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, role: true, isArchived: true }
   });
 
-  if (!user || !STAFF_ROLES.includes(user.role)) throw notFound('Staff account not found');
+  if (!user || user.role !== 'COORDINATOR') throw notFound('Coordinator account not found');
   if (!user.isArchived) return { success: true, restored: false };
 
   await prisma.user.update({

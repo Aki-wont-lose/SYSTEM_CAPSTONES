@@ -329,6 +329,102 @@ export const reviewSubmission = async (submissionId, status, remarks, score, rev
   return updated;
 };
 
+// Placeholder file name for a requirement a coordinator ticks off manually. It is
+// deleted again when the check is removed; a real uploaded file is never deleted.
+const MANUAL_MARK_FILE = 'Marked complete by coordinator';
+
+// Tick or untick a requirement for one student from the coordinator checklist.
+export const setRequirementCompletion = async (studentId, requirementId, completed, user) => {
+  if (!studentId || !requirementId) {
+    const error = new Error('Student and requirement are required');
+    error.status = 400;
+    throw error;
+  }
+
+  const [student, requirement] = await Promise.all([
+    prisma.student.findUnique({
+      where: { id: studentId },
+      select: { id: true, course: true, companyId: true, supervisorEmail: true, firstName: true, lastName: true }
+    }),
+    prisma.requirement.findUnique({ where: { id: requirementId } })
+  ]);
+
+  if (!student) {
+    const error = new Error('Student not found');
+    error.status = 404;
+    throw error;
+  }
+  if (!requirement) {
+    const error = new Error('Requirement not found');
+    error.status = 404;
+    throw error;
+  }
+
+  assertStudentAccess(user, student);
+
+  if (requirement.program && requirement.program !== student.course) {
+    const error = new Error('This requirement does not apply to the student\'s program');
+    error.status = 400;
+    throw error;
+  }
+
+  const existing = await prisma.submission.findFirst({
+    where: { studentId, requirementId },
+    orderBy: { submittedAt: 'desc' }
+  });
+
+  let submission = existing;
+
+  if (completed) {
+    if (existing) {
+      submission = await prisma.submission.update({
+        where: { id: existing.id },
+        data: { status: 'APPROVED', reviewedAt: new Date() }
+      });
+    } else {
+      submission = await prisma.submission.create({
+        data: {
+          requirementId,
+          studentId,
+          fileName: MANUAL_MARK_FILE,
+          fileData: '',
+          status: 'APPROVED',
+          remarks: 'Marked complete manually',
+          reviewedAt: new Date()
+        }
+      });
+    }
+  } else if (existing) {
+    if (existing.fileName === MANUAL_MARK_FILE) {
+      await prisma.submission.delete({ where: { id: existing.id } });
+      submission = null;
+    } else {
+      submission = await prisma.submission.update({
+        where: { id: existing.id },
+        data: {
+          status: 'REJECTED',
+          remarks: 'Unmarked by coordinator',
+          score: 0,
+          reviewedAt: new Date()
+        }
+      });
+    }
+  }
+
+  await recordAudit({
+    userId: user?.userId || null,
+    userEmail: user?.email || null,
+    userRole: user?.role || null,
+    action: 'UPDATE',
+    entity: 'Submission',
+    entityId: submission?.id || requirementId,
+    description: `${completed ? 'Marked' : 'Unmarked'} "${requirement.title}" for ${student.firstName} ${student.lastName}`,
+    metadata: { studentId, requirementId, completed: Boolean(completed) }
+  });
+
+  return { completed: Boolean(completed), submission };
+};
+
 // Automated grading summary: per-student completion, missing deadlines, and score totals
 export const getGradingSummary = async (filters = {}, user = null) => {
   const now = new Date();

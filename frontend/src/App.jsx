@@ -31,6 +31,7 @@ import Messages from './pages/Messages';
 import AttendanceMonitoring from './pages/AttendanceMonitoring';
 import AuditLogs from './pages/AuditLogs';
 import Archive from './pages/Archive';
+import OjtHours from './pages/OjtHours';
 
 const ROLE_HOME = {
   ADMIN: '/admin/dashboard',
@@ -101,6 +102,7 @@ function App() {
         <Route path="/admin/archive" element={<Archive />} />
         <Route path="/admin/announcements" element={<AnnouncementManagement />} />
         <Route path="/admin/messages" element={<Messages />} />
+        <Route path="/admin/ojt-hours" element={<OjtHours />} />
         <Route path="/admin/profile" element={<AdminProfile />} />
       </Route>
 

@@ -11,8 +11,8 @@ export const restoreStudent = async (id) => {
   return response.data;
 };
 
-export const restoreStaff = async (id) => {
-  const response = await api.post(`/archive/staff/${id}/restore`);
+export const restoreCoordinator = async (id) => {
+  const response = await api.post(`/archive/coordinators/${id}/restore`);
   return response.data;
 };
 

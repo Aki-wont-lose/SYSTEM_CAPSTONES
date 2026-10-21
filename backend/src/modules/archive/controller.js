@@ -1,5 +1,5 @@
 // modules/archive/controller.js
-import { getArchivedRecords, restoreStudent, restoreStaff, restoreCompany } from './service.js';
+import { getArchivedRecords, restoreStudent, restoreCoordinator, restoreCompany } from './service.js';
 import { asyncHandler } from '../../middleware/errorHandler.js';
 
 export const fetchArchivedRecords = asyncHandler(async (req, res) => {
@@ -12,9 +12,9 @@ export const restoreArchivedStudent = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: 'Student restored', data: result });
 });
 
-export const restoreArchivedStaff = asyncHandler(async (req, res) => {
-  const result = await restoreStaff(req.params.id);
-  res.status(200).json({ success: true, message: 'Staff account restored', data: result });
+export const restoreArchivedCoordinator = asyncHandler(async (req, res) => {
+  const result = await restoreCoordinator(req.params.id);
+  res.status(200).json({ success: true, message: 'Coordinator account restored', data: result });
 });
 
 export const restoreArchivedCompany = asyncHandler(async (req, res) => {

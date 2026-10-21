@@ -21,6 +21,7 @@ const linksByRole = {
     { section: 'System', links: [
       { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
       { to: '/admin/archive', label: 'Archive', icon: Archive },
+      { to: '/admin/ojt-hours', label: 'OJT Hours', icon: Clock },
       { to: '/admin/messages', label: 'Messages', icon: MessageCircle },
       { to: '/admin/profile', label: 'Profile', icon: UserCircle },
     ]},

@@ -1,26 +1,19 @@
 import { useEffect, useState, useRef } from 'react';
-import { Mail, Shield, Camera, Image as ImageIcon, User, Save, Clock } from 'lucide-react';
+import { Mail, Shield, Camera, Image as ImageIcon, User, Save } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
-import { getOjtHours, updateOjtHours } from '../services/ojtHoursService';
-import { courseLabel } from '../constants/programs';
 
 // Let an admin view and update their profile, photo, and email
 const AdminProfile = () => {
   const { user, updateUser } = useAuth();
-  // Super admin is an ADMIN account with a flag, so either check is enough.
-  const canManageHours = user?.role === 'ADMIN' || user?.isSuperAdmin;
   const [showPicker, setShowPicker] = useState(false);
   const [saving, setSaving] = useState(false);
   const [details, setDetails] = useState({ firstName: '', lastName: '', email: '' });
   const [savingDetails, setSavingDetails] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
   const [toast, setToast] = useState(null);
-  const [hours, setHours] = useState([]);
-  const [savingHours, setSavingHours] = useState(false);
-  const [hoursToast, setHoursToast] = useState(null);
   const fileRef = useRef(null);
   const defaults = [{bg:'bg-sti-blue'},{bg:'bg-sti-yellow'},{bg:'bg-emerald-500'}];
   const isImg = user?.profilePicture?.startsWith('data:image');
@@ -42,30 +35,6 @@ const AdminProfile = () => {
     };
     load();
   }, []);
-
-  // Only the admin maintains the per-course OJT hours.
-  useEffect(() => {
-    if (!canManageHours) return;
-    getOjtHours()
-      .then((res) => setHours(res.data || []))
-      .catch((err) =>
-        setHoursToast({ tone: 'error', msg: err.response?.data?.message || 'Could not load OJT hours' })
-      );
-  }, [canManageHours]);
-
-  // Save every course's required hours in one go
-  const handleSaveHours = async () => {
-    setSavingHours(true);
-    try {
-      await Promise.all(hours.map((row) => updateOjtHours(row.course, Number(row.requiredHours))));
-      setHoursToast({ tone: 'success', msg: 'OJT hours saved' });
-    } catch (err) {
-      setHoursToast({ tone: 'error', msg: err.response?.data?.message || 'Could not save OJT hours' });
-    } finally {
-      setSavingHours(false);
-      setTimeout(() => setHoursToast(null), 3500);
-    }
-  };
 
   const fullName = [details.firstName, details.lastName].filter(Boolean).join(' ');
   // Friendlier label for the user's role
@@ -218,38 +187,6 @@ const AdminProfile = () => {
           </div>
         </form>
       </Card>
-
-      {canManageHours && (
-        <Card>
-          <h3 className="font-bold text-sti-gray-dark dark:text-white mb-1 flex items-center gap-2">
-            <Clock className="w-4 h-4 text-sti-blue" /> OJT Required Hours
-          </h3>
-          <p className="text-xs text-sti-gray mb-5">
-            Applied automatically when a student is created or moved to a course.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {hours.map((row) => (
-              <div key={row.course}>
-                <label className="block text-xs font-medium text-sti-gray mb-1.5">{courseLabel(row.course)}</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="1"
-                    value={row.requiredHours}
-                    onChange={(e) => setHours((list) => list.map((item) => item.course === row.course ? { ...item, requiredHours: e.target.value } : item))}
-                    className="input-field"
-                  />
-                  <span className="text-xs text-sti-gray shrink-0">hours</span>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-5 flex items-center gap-3">
-            <Button onClick={handleSaveHours} loading={savingHours} icon={Save} className="text-sm px-4 py-2">Save hours</Button>
-            {hoursToast && <p className={`text-xs ${hoursToast.tone === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>{hoursToast.msg}</p>}
-          </div>
-        </Card>
-      )}
     </div>
   );
 };

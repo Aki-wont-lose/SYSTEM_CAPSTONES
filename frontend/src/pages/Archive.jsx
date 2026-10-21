@@ -3,14 +3,8 @@ import { Archive, ArchiveRestore, Search, GraduationCap, Users, Building2 } from
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
-import { getArchivedRecords, restoreStudent, restoreStaff, restoreCompany } from '../services/archiveService';
+import { getArchivedRecords, restoreStudent, restoreCoordinator, restoreCompany } from '../services/archiveService';
 import { courseLabel } from '../constants/programs';
-
-const ROLE_LABELS = {
-  ADMIN: 'Admin',
-  COORDINATOR: 'Coordinator',
-  SUPERVISOR: 'Supervisor'
-};
 
 const formatDate = (value) =>
   value
@@ -18,12 +12,12 @@ const formatDate = (value) =>
     : '—';
 
 const studentName = (student) => `${student.firstName} ${student.lastName}`.trim() || student.email || 'Student';
-const staffName = (member) => [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email;
+const coordinatorName = (member) => [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email;
 
 const ArchivePage = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
-  const [records, setRecords] = useState({ students: [], staff: [], companies: [] });
+  const [records, setRecords] = useState({ students: [], coordinators: [], companies: [] });
   const [activeTab, setActiveTab] = useState('students');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -33,7 +27,7 @@ const ArchivePage = () => {
   const tabs = useMemo(
     () => [
       { key: 'students', label: 'Students', icon: GraduationCap },
-      ...(isAdmin ? [{ key: 'staff', label: 'Staff', icon: Users }] : []),
+      ...(isAdmin ? [{ key: 'coordinators', label: 'Coordinators', icon: Users }] : []),
       { key: 'companies', label: 'Companies', icon: Building2 }
     ],
     [isAdmin]
@@ -46,7 +40,7 @@ const ArchivePage = () => {
       const data = await getArchivedRecords();
       setRecords({
         students: data?.students || [],
-        staff: data?.staff || [],
+        coordinators: data?.coordinators || [],
         companies: data?.companies || []
       });
     } catch (err) {
@@ -75,8 +69,8 @@ const ArchivePage = () => {
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(term));
       }
-      if (activeTab === 'staff') {
-        return [staffName(item), item.email, item.role, item.coordinatorCourse, item.supervisorCompany?.name]
+      if (activeTab === 'coordinators') {
+        return [coordinatorName(item), item.email, item.coordinatorCourse]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(term));
       }
@@ -87,14 +81,14 @@ const ArchivePage = () => {
   }, [records, activeTab, search]);
 
   const handleRestore = async (type, item) => {
-    const label = type === 'students' ? studentName(item) : type === 'staff' ? staffName(item) : item.name;
+    const label = type === 'students' ? studentName(item) : type === 'coordinators' ? coordinatorName(item) : item.name;
     if (!window.confirm(`Restore ${label}? They will appear in the active lists again.`)) return;
 
     const key = `${type}:${item.id}`;
     setRestoring(key);
     try {
       if (type === 'students') await restoreStudent(item.id);
-      else if (type === 'staff') await restoreStaff(item.id);
+      else if (type === 'coordinators') await restoreCoordinator(item.id);
       else await restoreCompany(item.id);
       await load();
     } catch (err) {
@@ -185,11 +179,10 @@ const ArchivePage = () => {
                       <th className="px-6 py-3 font-semibold">Company</th>
                     </>
                   )}
-                  {activeTab === 'staff' && (
+                  {activeTab === 'coordinators' && (
                     <>
                       <th className="px-6 py-3 font-semibold">Account</th>
-                      <th className="px-6 py-3 font-semibold">Role</th>
-                      <th className="px-6 py-3 font-semibold">Assignment</th>
+                      <th className="px-6 py-3 font-semibold">Course</th>
                     </>
                   )}
                   {activeTab === 'companies' && (
@@ -221,15 +214,14 @@ const ArchivePage = () => {
                           <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{item.company?.name || '—'}</td>
                         </>
                       )}
-                      {activeTab === 'staff' && (
+                      {activeTab === 'coordinators' && (
                         <>
                           <td className="px-6 py-3.5">
-                            <p className="font-medium text-sti-gray-dark dark:text-white">{staffName(item)}</p>
+                            <p className="font-medium text-sti-gray-dark dark:text-white">{coordinatorName(item)}</p>
                             <p className="text-xs text-sti-gray break-all">{item.email}</p>
                           </td>
-                          <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{ROLE_LABELS[item.role] || item.role}</td>
                           <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
-                            {item.role === 'COORDINATOR' ? (item.coordinatorCourse || '—') : (item.supervisorCompany?.name || '—')}
+                            {item.coordinatorCourse ? courseLabel(item.coordinatorCourse) : '—'}
                           </td>
                         </>
                       )}

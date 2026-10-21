@@ -15,6 +15,7 @@ const titles = {
   '/admin/logs': 'Student Logs',
   '/admin/audit-logs': 'Audit Logs',
   '/admin/archive': 'Archive',
+  '/admin/ojt-hours': 'OJT Required Hours',
   '/admin/announcements': 'Announcements',
   '/admin/messages': 'Messages',
   '/admin/profile': 'My Profile',

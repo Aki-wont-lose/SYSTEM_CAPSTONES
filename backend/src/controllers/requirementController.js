@@ -8,6 +8,7 @@ import {
   getAllSubmissions,
   submitFile,
   reviewSubmission,
+  setRequirementCompletion,
   getGradingSummary,
   getStudentWeeklyTasks,
   completeWeeklyTask
@@ -93,6 +94,18 @@ export const upload = asyncHandler(async (req, res) => {
       : 'File submitted',
     data: submission
   });
+});
+
+// PUT /requirements/checklist/:studentId/:requirementId - tick/untick a requirement (ADMIN+COORDINATOR)
+export const toggleRequirementCheck = asyncHandler(async (req, res) => {
+  const completed = req.body?.completed === true || req.body?.completed === 'true';
+  const data = await setRequirementCompletion(
+    req.params.studentId,
+    req.params.requirementId,
+    completed,
+    req.user
+  );
+  res.status(200).json({ success: true, message: completed ? 'Marked complete' : 'Marked incomplete', data });
 });
 
 // PUT /requirements/submissions/:submissionId/review - review a submission with score and remarks (staff)

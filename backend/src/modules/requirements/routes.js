@@ -1,6 +1,6 @@
 // modules/requirements/routes.js — COORDINATOR(+ADMIN) manages with PDF templates, SUPERVISOR reviews, STUDENT submit/view
 import express from 'express';
-import { fetchRequirements, fetchMySubmissions, fetchAllSubmissions, fetchGradingSummary, fetchMyTasks, finishMyTask, addRequirement, editRequirement, removeRequirement, upload, review } from '../../controllers/requirementController.js';
+import { fetchRequirements, fetchMySubmissions, fetchAllSubmissions, fetchGradingSummary, fetchMyTasks, finishMyTask, addRequirement, editRequirement, removeRequirement, upload, review, toggleRequirementCheck } from '../../controllers/requirementController.js';
 import { verifyRole } from '../../middleware/auth.js';
 
 const router = express.Router();
@@ -12,6 +12,9 @@ router.put('/my-tasks/:id/complete', finishMyTask);
 // ADMIN + COORDINATOR + SUPERVISOR can review queue and view automated grading
 router.get('/submissions/all', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), fetchAllSubmissions);
 router.get('/grading', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), fetchGradingSummary);
+
+// ADMIN + COORDINATOR can tick requirements off manually from the checklist
+router.put('/checklist/:studentId/:requirementId', verifyRole(['ADMIN','COORDINATOR']), toggleRequirementCheck);
 
 // ADMIN + COORDINATOR can create/update/delete requirement definitions (with PDF template)
 router.post('/', verifyRole(['ADMIN','COORDINATOR']), addRequirement);

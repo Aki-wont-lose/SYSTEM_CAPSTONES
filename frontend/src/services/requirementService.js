@@ -60,6 +60,12 @@ export const submitRequirementFile = async (requirementId, fileName, fileData) =
   return response.data;
 };
 
+// Tick or untick one requirement for a student from the checklist
+export const setRequirementCompletion = async (studentId, requirementId, completed) => {
+  const response = await api.put(`/requirements/checklist/${studentId}/${requirementId}`, { completed });
+  return response.data;
+};
+
 // Review a submission with status, remarks, and score
 export const reviewSubmission = async (submissionId, status, remarks, score) => {
   const response = await api.put(`/requirements/submissions/${submissionId}/review`, { status, remarks, score });
