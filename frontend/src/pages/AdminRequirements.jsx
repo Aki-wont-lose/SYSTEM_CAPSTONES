@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Pencil, Trash2, X, FileCheck2, Check, XCircle, Download, Filter, FileSpreadsheet, BarChart3, Award, AlertTriangle, FileText, FileType2, FileImage, File as FileIcon, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, FileCheck2, Check, XCircle, Download, Filter, FileSpreadsheet, BarChart3, Award, AlertTriangle, FileText, FileType2, FileImage, File as FileIcon, Search, Clock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -634,7 +634,9 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                 <option value="BSAIS">BSAIS</option>
               </select>
             </div>
-            <p className="text-xs text-sti-gray">Tick a box to mark that requirement complete for the student.</p>
+            <p className="text-xs text-sti-gray">
+              Tick a box to mark it complete. <span className="text-sti-yellow-dark">Amber</span> = pending review, <span className="text-red-600">red</span> = rejected.
+            </p>
           </div>
 
           {!grading || grading.rows.length === 0 ? (
@@ -677,24 +679,28 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                             return <td key={req.id} className="px-2 py-3.5 text-center text-sti-gray">—</td>;
                           }
                           const done = cell.state === 'COMPLETED';
+                          const pending = cell.state === 'PENDING';
+                          const rejected = cell.state === 'REJECTED';
                           const key = `${row.studentId}:${req.id}`;
                           return (
-                            <td key={req.id} className="px-2 py-3.5 text-center">
+                            <td key={req.id} className="px-2 py-3.5 text-center align-middle">
                               <button
                                 type="button"
                                 onClick={() => handleToggleCheck(row.studentId, req.id, !done)}
                                 disabled={togglingCheck === key}
                                 title={done ? 'Mark incomplete' : 'Mark complete'}
-                                className={`inline-flex items-center justify-center w-7 h-7 rounded-lg border transition-colors disabled:opacity-50 ${
+                                className={`mx-auto inline-flex items-center justify-center w-7 h-7 rounded-lg border transition-colors disabled:opacity-50 ${
                                   done
                                     ? 'bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600'
-                                    : 'border-black/15 dark:border-white/20 text-transparent hover:border-sti-blue hover:text-sti-blue/30'
+                                    : rejected
+                                      ? 'bg-red-50 border-red-300 text-red-600 dark:bg-red-950/40 dark:border-red-800'
+                                      : pending
+                                        ? 'bg-amber-50 border-amber-300 text-sti-yellow-dark dark:bg-amber-950/40 dark:border-amber-800'
+                                        : 'border-black/15 dark:border-white/20 text-transparent hover:border-sti-blue hover:text-sti-blue/30'
                                 }`}
                               >
-                                <Check className="w-4 h-4" />
+                                {done ? <Check className="w-4 h-4" /> : rejected ? <X className="w-4 h-4" /> : pending ? <Clock className="w-3.5 h-3.5" /> : <Check className="w-4 h-4" />}
                               </button>
-                              {cell.state === 'PENDING' && <p className="text-[10px] text-sti-yellow-dark mt-0.5">Pending</p>}
-                              {cell.state === 'REJECTED' && <p className="text-[10px] text-red-600 mt-0.5">Rejected</p>}
                             </td>
                           );
                         })}

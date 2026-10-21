@@ -192,7 +192,9 @@ export const getAllSubmissions = async (filters = {}, user = null) => {
   const where = {};
   if (filters.requirementId) where.requirementId = filters.requirementId;
   if (filters.status) where.status = filters.status;
-  if (user) where.student = scopeWhere(user, {});
+  // Archived students stay out of the review queue and the checklist.
+  const studentFilter = { isArchived: false };
+  where.student = user ? scopeWhere(user, studentFilter) : studentFilter;
 
   return prisma.submission.findMany({
     where,
@@ -430,7 +432,7 @@ export const getGradingSummary = async (filters = {}, user = null) => {
   const now = new Date();
   // Restrict the student set to the caller's scope. Without this, any supervisor or
   // coordinator could call /requirements/grading and read every student's scores.
-  const studentWhere = user ? scopeWhere(user, {}) : {};
+  const studentWhere = user ? scopeWhere(user, { isArchived: false }) : { isArchived: false };
   if (filters.course) studentWhere.course = filters.course;
   if (filters.search) {
     studentWhere.OR = [

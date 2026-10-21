@@ -21,12 +21,32 @@ export const updateOjtHours = async (course, requiredHours) => {
     e.status = 400;
     throw e;
   }
-  return prisma.ojtHoursConfig.upsert({
+
+  // Pull the previous default so existing students who are still on it pick up
+  // the new value, while a per-student manual override is left untouched.
+  const previous = await prisma.ojtHoursConfig.findUnique({
     where: { course },
-    update: { requiredHours: hours },
-    create: { course, requiredHours: hours },
-    select: { id: true, course: true, requiredHours: true }
+    select: { requiredHours: true }
   });
+
+  const [config] = await prisma.$transaction([
+    prisma.ojtHoursConfig.upsert({
+      where: { course },
+      update: { requiredHours: hours },
+      create: { course, requiredHours: hours },
+      select: { id: true, course: true, requiredHours: true }
+    }),
+    prisma.student.updateMany({
+      where: {
+        course,
+        isArchived: false,
+        ...(previous ? { requiredHours: previous.requiredHours } : {})
+      },
+      data: { requiredHours: hours }
+    })
+  ]);
+
+  return config;
 };
 
 export const getOjtHoursByCourse = async (course) => {
