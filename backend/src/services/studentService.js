@@ -243,6 +243,16 @@ export const updateStudent = async (studentId, updateData) => {
       throw badRequest(ELMS_SECTION_ERROR);
     }
 
+    // Moving a student to another course also moves them to that course's
+    // required OJT hours, unless the caller set requiredHours explicitly.
+    if (sanitized.course !== undefined && sanitized.requiredHours === undefined) {
+      const hoursCfg = await prisma.oJtHoursConfig.findUnique({
+        where: { course: sanitized.course },
+        select: { requiredHours: true }
+      });
+      if (hoursCfg) sanitized.requiredHours = hoursCfg.requiredHours;
+    }
+
     return prisma.student.update({
       where: { id: studentId },
       data: sanitized,
@@ -307,7 +317,7 @@ export const getStudentStats = async (user = null) => {
   // Coordinators only see students in their own course; admins and supervisors
   // see everything (supervisors are already scoped elsewhere when they query).
   const scope = user ? studentScopeWhere(user) : {};
-  const where = Object.keys(scope).length ? scope : {};
+  const where = { isArchived: false, ...scope };
 
   const [total, active, completed, pending, onHold, byCourse, activeCompanies] = await Promise.all([
     prisma.student.count({ where }),

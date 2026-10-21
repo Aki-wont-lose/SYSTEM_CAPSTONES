@@ -14,7 +14,8 @@ import {
 } from '../services/studentService';
 import { getCompanies } from '../services/companyService';
 import { getStudentAttendanceForStaff, getStudentSummaryForStaff } from '../services/attendanceService';
-import { PROGRAM_OPTIONS } from '../constants/programs';
+import { getOjtHours } from '../services/ojtHoursService';
+import { PROGRAM_OPTIONS, courseLabel } from '../constants/programs';
 import {
   sectionsForProgram,
   sectionLabel,
@@ -71,6 +72,7 @@ const StudentManagement = () => {
   const [batchResult, setBatchResult] = useState(null);
   const [batchLoading, setBatchLoading] = useState(false);
   const [newCredentials, setNewCredentials] = useState(null);
+  const [hoursByCourse, setHoursByCourse] = useState({});
   
   const loadStudents = async () => {
     setLoading(true);
@@ -87,6 +89,18 @@ const StudentManagement = () => {
 
   useEffect(() => {
     getCompanies().then((res) => setCompanies(res.data)).catch(console.error);
+  }, []);
+
+  // Required hours per course, shown as a hint in the Add/Edit form. The server
+  // applies them automatically; this only makes the value visible.
+  useEffect(() => {
+    getOjtHours()
+      .then((res) => {
+        const map = {};
+        (res.data || []).forEach((row) => { map[row.course] = row.requiredHours; });
+        setHoursByCourse(map);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -494,6 +508,11 @@ const StudentManagement = () => {
                   <option key={program.value} value={program.value}>{program.label}</option>
                 ))}
               </select>
+              {form.course && hoursByCourse[form.course] != null && (
+                <p className="text-xs text-sti-gray mt-1.5">
+                  {courseLabel(form.course)} • {hoursByCourse[form.course]} required OJT hours (applied automatically)
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Section</label>

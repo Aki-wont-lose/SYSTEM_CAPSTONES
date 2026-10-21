@@ -13,7 +13,7 @@ import {
 
 // GET /accounts/counts - fetch staff account counts by role
 export const fetchAccountCounts = asyncHandler(async (req, res) => {
-  const counts = await getAccountCounts(req.user.role);
+  const counts = await getAccountCounts(req.user);
   res.status(200).json({ success: true, message: 'Account counts retrieved', data: counts });
 });
 

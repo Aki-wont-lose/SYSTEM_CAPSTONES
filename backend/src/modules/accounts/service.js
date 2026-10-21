@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { hashPassword, generateTemporaryPassword } from '../../services/authService.js';
 import { isValidStaffEmail, STAFF_EMAIL_ERROR } from '../../utils/staffValidation.js';
 import { isSuperAdmin } from '../../middleware/auth.js';
+import { studentScopeWhere } from '../../services/accessScope.js';
 
 const prisma = new PrismaClient();
 
@@ -26,12 +27,15 @@ const staffSelect = {
   _count: { select: { receivedMessages: true } }
 };
 
-export const getAccountCounts = async (requesterRole) => {
-  const students = await prisma.student.count();
+export const getAccountCounts = async (user) => {
+  // Coordinator/supervisor counts must use the same course/company scope as
+  // their student list, otherwise the tab badge disagrees with the table.
+  const scope = user ? studentScopeWhere(user) : {};
+  const students = await prisma.student.count({ where: { isArchived: false, ...scope } });
 
   // Staff head-counts are only meaningful to an ADMIN; everyone else gets the
   // student total (the only figure their Account Management screen shows).
-  if (requesterRole !== 'ADMIN') {
+  if (!user || user.role !== 'ADMIN') {
     return { students, supervisors: 0, coordinators: 0, admins: 0 };
   }
 

@@ -70,13 +70,12 @@ const Messages = () => {
     return () => clearInterval(interval);
   }, [selected]);
 
-  // Turn an uppercase role into a readable label
-  const formatRole = (r) => r ? r.charAt(0) + r.slice(1).toLowerCase() : '';
-  // Match contacts against the search text by email, name, student id, or role
+  // Match contacts by email, name, or student id. Roles are never sent by the
+  // API or displayed here, so they cannot be used to identify or impersonate.
   const filteredContacts = contacts.filter(c => {
     const q = search.toLowerCase();
     if (!q) return false;
-    return c.email.toLowerCase().includes(q) || (c.displayName || '').toLowerCase().includes(q) || (c.studentId || '').toLowerCase().includes(q) || c.role.toLowerCase().includes(q);
+    return (c.email || '').toLowerCase().includes(q) || (c.displayName || '').toLowerCase().includes(q) || (c.studentId || '').toLowerCase().includes(q);
   });
   const visibleContacts = contacts
     .filter(c => c.hasConversation || recentIds.includes(c.id))
@@ -136,7 +135,7 @@ const Messages = () => {
     return (
       <div key={contact.id} className={`flex items-center border-b border-black/5 dark:border-white/10 ${isSelected ? 'bg-sti-blue-50 dark:bg-white/10' : ''}`}>
         <button onClick={() => openContact(contact)} className="flex-1 min-w-0 text-left px-4 py-3 hover:bg-sti-gray-light dark:hover:bg-white/5">
-          <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{contact.displayName || contact.email.split('@')[0]} <span className="text-xs font-normal text-sti-gray">• {contact.roleLabel || formatRole(contact.role)}</span></p>
+          <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{contact.displayName || contact.email.split('@')[0]}</p>
           {contact.hasConversation && <p className="text-xs text-sti-gray truncate mt-1">{contact.lastMessagePreview || 'No messages yet'}</p>}
         </button>
         {contact.unreadCount > 0 && <span className="mr-2 min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shrink-0">{contact.unreadCount > 99 ? '99+' : contact.unreadCount}</span>}
@@ -225,7 +224,7 @@ const Messages = () => {
                 </button>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{selected.displayName || selected.email}</p>
-                  <p className="text-xs text-sti-gray truncate">{selected.email} • {formatRole(selected.role)}</p>
+                  <p className="text-xs text-sti-gray truncate">{selected.email}</p>
                 </div>
                 <button onClick={() => removeContact(selected)} className="p-2 rounded-lg text-sti-gray hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 shrink-0" title="Remove from chat list" aria-label="Remove contact from chat list"><Trash2 className="w-4 h-4" /></button>
               </div>

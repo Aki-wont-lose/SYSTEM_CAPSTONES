@@ -5,7 +5,9 @@ import { fetchOjtHours, setOjtHours } from './controller.js';
 
 const router = express.Router();
 
-router.get('/', verifyRole(['ADMIN']), fetchOjtHours);
+// Coordinators may read the per-course hours (the Add Student form shows them);
+// only ADMIN may change them.
+router.get('/', verifyRole(['ADMIN', 'COORDINATOR']), fetchOjtHours);
 router.put('/:course', verifyRole(['ADMIN']), setOjtHours);
 
 export default router;

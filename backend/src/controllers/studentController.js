@@ -205,7 +205,8 @@ export const removeStudent = asyncHandler(async (req, res) => {
 });
 
 export const getDashboardStats = asyncHandler(async (req, res) => {
-  const stats = await getStudentStats();
+  // Pass the caller so coordinators only count students in their own course.
+  const stats = await getStudentStats(req.user);
 
   res.status(200).json({
     success: true,
