@@ -25,7 +25,7 @@ const MS_CLIENT_ID = process.env.MS_CLIENT_ID || BAKED_MS_CLIENT_ID;
 // "common" accepts both personal Microsoft accounts and any organization's
 // (e.g. a school's Office 365) accounts — matches the multi-tenant app setup
 // described in the README.
-const MS_TENANT = process.env.MS_TENANT || 'organizations';
+const MS_TENANT = process.env.MS_TENANT || 'common';
 
 const jwks = jwksClient({
   jwksUri: `https://login.microsoftonline.com/${MS_TENANT}/discovery/v2.0/keys`,

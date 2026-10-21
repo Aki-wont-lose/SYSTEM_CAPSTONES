@@ -10,7 +10,7 @@
 const BAKED_MS_CLIENT_ID = '3de575a3-45c7-43a5-b934-30bdcb4b2e0b';
 
 export const MS_CLIENT_ID = import.meta.env.VITE_MS_CLIENT_ID || BAKED_MS_CLIENT_ID;
-const MS_TENANT = import.meta.env.VITE_MS_TENANT || 'organizations';
+const MS_TENANT = import.meta.env.VITE_MS_TENANT || 'common';
 
 export const msalConfig = {
   auth: {
