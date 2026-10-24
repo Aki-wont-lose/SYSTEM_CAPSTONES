@@ -23,6 +23,13 @@ export const postMessage = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: msg });
 });
 
+// DELETE /messaging/conversation/:userId - delete all messages in a conversation
+export const removeConversation = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  await svc.deleteConversation(req.user.userId, userId);
+  res.json({ success: true, message: 'Conversation deleted' });
+});
+
 // DELETE /messaging/:id - delete one of the caller's messages
 export const removeMessage = asyncHandler(async (req, res) => {
   const { id } = req.params;

@@ -152,6 +152,18 @@ export const deleteMessage = async (userId, messageId) => {
   return { success: true };
 };
 
+export const deleteConversation = async (currentUserId, otherUserId) => {
+  await prisma.message.deleteMany({
+    where: {
+      OR: [
+        { senderId: currentUserId, receiverId: otherUserId },
+        { senderId: otherUserId, receiverId: currentUserId }
+      ]
+    }
+  });
+  return { success: true };
+};
+
 export const getUnreadCounts = async (userId) => {
   const groups = await prisma.message.groupBy({
     by: ['senderId'],

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Send, MessageCircle, Users, Search, Trash2, Image as ImageIcon, X, CheckCheck, ArrowLeft } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
-import { getContacts, getConversation, sendMessage, deleteMessage } from '../services/messageService';
+import { getContacts, getConversation, sendMessage, deleteMessage, deleteConversation } from '../services/messageService';
 import { useAuth } from '../hooks/useAuth';
 
 // Safely read a JSON array from localStorage, falling back to an empty array
@@ -111,22 +111,38 @@ const Messages = () => {
     });
   };
 
-  // Hide a contact from this user's chat list (messages are kept)
-  const removeContact = (contact) => {
+  // Delete all messages in the conversation and remove the contact from the active chat list
+  const removeContact = async (contact) => {
     const name = contact.displayName || contact.email;
-    if (!confirm(`Remove ${name} from your chat list?\n\nOnly for you. All messages are kept — search for ${name} any time to chat again.`)) return;
-    setHiddenIds(current => {
-      const next = current.includes(contact.id) ? current : [...current, contact.id];
-      updateStoredList('hiddenChats', next);
-      return next;
-    });
-    setRecentIds(current => {
-      const next = current.filter(id => id !== contact.id);
-      updateStoredList('recentChats', next);
-      return next;
-    });
-    if (selected?.id === contact.id) setSelected(null);
-    showToast('Contact removed from your chat list');
+    if (!confirm(`Delete conversation with ${name}? All messages in this chat will be deleted.`)) return;
+    try {
+      await deleteConversation(contact.id);
+      setContacts(current =>
+        current.map(c =>
+          c.id === contact.id
+            ? { ...c, hasConversation: false, unreadCount: 0, lastMessageAt: null, lastMessagePreview: null }
+            : c
+        )
+      );
+      setHiddenIds(current => {
+        const next = current.includes(contact.id) ? current : [...current, contact.id];
+        updateStoredList('hiddenChats', next);
+        return next;
+      });
+      setRecentIds(current => {
+        const next = current.filter(id => id !== contact.id);
+        updateStoredList('recentChats', next);
+        return next;
+      });
+      if (selected?.id === contact.id) {
+        setMessages([]);
+        setSelected(null);
+      }
+      await loadContacts();
+      showToast('Conversation deleted');
+    } catch (e) {
+      showToast(e.response?.data?.message || 'Failed to delete conversation');
+    }
   };
 
   // Render a single contact row with unread badge and remove button
@@ -161,7 +177,11 @@ const Messages = () => {
   // Delete a sent message after confirmation
   const handleDelete = async (msgId) => {
     if (!confirm('Delete this message?')) return;
-    try { await deleteMessage(msgId); loadConversation(); } catch (e) { showToast('Failed to delete'); }
+    try {
+      await deleteMessage(msgId);
+      setMessages(prev => prev.filter(m => m.id !== msgId));
+      await Promise.all([loadConversation(), loadContacts()]);
+    } catch (e) { showToast('Failed to delete'); }
   };
 
   // Read a picked image into state as a preview before sending

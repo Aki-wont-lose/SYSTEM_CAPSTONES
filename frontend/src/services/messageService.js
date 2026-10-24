@@ -20,6 +20,11 @@ export const deleteMessage = async (messageId) => {
   const res = await api.delete(`/messages/${messageId}`);
   return res.data;
 };
+// Delete all messages in a conversation with another user
+export const deleteConversation = async (userId) => {
+  const res = await api.delete(`/messages/conversation/${userId}`);
+  return res.data;
+};
 // Fetch the user's unread messages
 export const getUnread = async () => {
   const res = await api.get('/messages/unread');
