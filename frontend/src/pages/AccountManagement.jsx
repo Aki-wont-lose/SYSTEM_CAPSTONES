@@ -529,9 +529,6 @@ const AccountManagement = () => {
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${member.isActive ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-sti-gray-dark'}`}>
                             {member.isActive ? 'Active' : 'Disabled'}
                           </span>
-                          {member.mustChangePassword && (
-                            <span className="ml-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Temp password</span>
-                          )}
                         </td>
                         <td className="px-6 py-3.5">
                           <div className="flex items-center justify-end gap-1">

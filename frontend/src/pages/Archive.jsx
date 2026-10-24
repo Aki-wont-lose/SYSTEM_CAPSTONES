@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Archive, ArchiveRestore, Search, GraduationCap, Users, Building2 } from 'lucide-react';
+import { Archive, ArchiveRestore, Search, GraduationCap, Users, Building2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
 import { getArchivedRecords, restoreStudent, restoreCoordinator, restoreCompany } from '../services/archiveService';
 import { courseLabel } from '../constants/programs';
+
+const PAGE_SIZES = [10, 50, 100, 'ALL'];
 
 const formatDate = (value) =>
   value
@@ -20,6 +22,9 @@ const ArchivePage = () => {
   const [records, setRecords] = useState({ students: [], coordinators: [], companies: [] });
   const [activeTab, setActiveTab] = useState('students');
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState({ key: 'name', direction: 'asc' });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [restoring, setRestoring] = useState('');
@@ -58,27 +63,90 @@ const ArchivePage = () => {
     if (!tabs.some((tab) => tab.key === activeTab)) setActiveTab('students');
   }, [tabs, activeTab]);
 
+  const handleSort = (key) => {
+    setSort((prev) => (prev.key === key ? { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' }));
+  };
+
+  const sortValue = (item, key) => {
+    if (key === 'archived') {
+      return item.archivedAt ? new Date(item.archivedAt).getTime() : 0;
+    }
+    if (activeTab === 'students') {
+      if (key === 'name') return studentName(item).toLowerCase();
+      if (key === 'course') return `${courseLabel(item.course) || ''} ${item.section || ''}`.trim().toLowerCase();
+      if (key === 'company') return (item.company?.name || '').toLowerCase();
+    }
+    if (activeTab === 'coordinators') {
+      if (key === 'name') return coordinatorName(item).toLowerCase();
+      if (key === 'course') return (item.coordinatorCourse ? courseLabel(item.coordinatorCourse) : '').toLowerCase();
+    }
+    if (activeTab === 'companies') {
+      if (key === 'name') return (item.name || '').toLowerCase();
+      if (key === 'industry') return (item.industryType || '').toLowerCase();
+      if (key === 'address') return (item.address || '').toLowerCase();
+    }
+    return String(item[key] ?? '').toLowerCase();
+  };
+
   const rows = useMemo(() => {
     const list = records[activeTab] || [];
     const term = search.trim().toLowerCase();
-    if (!term) return list;
+    const filtered = !term
+      ? list
+      : list.filter((item) => {
+          if (activeTab === 'students') {
+            return [studentName(item), item.studentId, item.email, item.course, item.company?.name]
+              .filter(Boolean)
+              .some((value) => String(value).toLowerCase().includes(term));
+          }
+          if (activeTab === 'coordinators') {
+            return [coordinatorName(item), item.email, item.coordinatorCourse]
+              .filter(Boolean)
+              .some((value) => String(value).toLowerCase().includes(term));
+          }
+          return [item.name, item.industryType, item.address]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(term));
+        });
 
-    return list.filter((item) => {
-      if (activeTab === 'students') {
-        return [studentName(item), item.studentId, item.email, item.course, item.company?.name]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(term));
-      }
-      if (activeTab === 'coordinators') {
-        return [coordinatorName(item), item.email, item.coordinatorCourse]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(term));
-      }
-      return [item.name, item.industryType, item.address]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(term));
+    const direction = sort.direction === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const left = sortValue(a, sort.key);
+      const right = sortValue(b, sort.key);
+      if (left === right) return 0;
+      return left > right ? direction : -direction;
     });
-  }, [records, activeTab, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [records, activeTab, search, sort]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, search, sort, pageSize]);
+
+  const changePageSize = (value) => {
+    setPageSize(value === 'ALL' ? 'ALL' : Number(value));
+    setPage(1);
+  };
+
+  const pageLimit = pageSize === 'ALL' ? rows.length || 1 : pageSize;
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageLimit));
+  const paginatedRows = rows.slice((page - 1) * pageLimit, page * pageLimit);
+
+  const SortHeader = ({ label, sortKey, className = '' }) => {
+    const isActive = sort.key === sortKey;
+    return (
+      <th className={`px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide ${className}`}>
+        <button onClick={() => handleSort(sortKey)} className={`inline-flex items-center gap-1 transition-colors hover:text-sti-blue ${isActive ? 'text-sti-blue' : ''}`}>
+          {label}
+          {isActive ? (
+            sort.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+          ) : (
+            <ArrowUpDown className="w-3 h-3 opacity-50" />
+          )}
+        </button>
+      </th>
+    );
+  };
 
   const handleRestore = async (type, item) => {
     const label = type === 'students' ? studentName(item) : type === 'coordinators' ? coordinatorName(item) : item.name;
@@ -146,9 +214,20 @@ const ArchivePage = () => {
             className="input-field pl-10"
           />
         </div>
-        <p className="text-xs text-sti-gray">
-          Showing {rows.length} archived {rows.length === 1 ? 'record' : 'records'}
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs text-sti-gray">
+            Show
+            <select
+              value={pageSize}
+              onChange={(e) => changePageSize(e.target.value)}
+              className="rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-white/5 px-2.5 py-2 text-xs font-medium text-sti-gray-dark dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sti-blue/40"
+            >
+              {PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>{size === 'ALL' ? 'All' : size}</option>
+              ))}
+            </select>
+          </label>
+        </div>
       </Card>
 
       {error && (
@@ -174,30 +253,30 @@ const ArchivePage = () => {
                 <tr className="border-b border-black/5 dark:border-white/10 text-left text-[11px] uppercase tracking-wide text-sti-gray bg-sti-gray-light/60 dark:bg-slate-800/60">
                   {activeTab === 'students' && (
                     <>
-                      <th className="px-6 py-3 font-semibold">Student</th>
-                      <th className="px-6 py-3 font-semibold">Course</th>
-                      <th className="px-6 py-3 font-semibold">Company</th>
+                      <SortHeader label="Student" sortKey="name" />
+                      <SortHeader label="Course" sortKey="course" />
+                      <SortHeader label="Company" sortKey="company" />
                     </>
                   )}
                   {activeTab === 'coordinators' && (
                     <>
-                      <th className="px-6 py-3 font-semibold">Account</th>
-                      <th className="px-6 py-3 font-semibold">Course</th>
+                      <SortHeader label="Account" sortKey="name" />
+                      <SortHeader label="Course" sortKey="course" />
                     </>
                   )}
                   {activeTab === 'companies' && (
                     <>
-                      <th className="px-6 py-3 font-semibold">Company</th>
-                      <th className="px-6 py-3 font-semibold">Industry</th>
-                      <th className="px-6 py-3 font-semibold">Address</th>
+                      <SortHeader label="Company" sortKey="name" />
+                      <SortHeader label="Industry" sortKey="industry" />
+                      <SortHeader label="Address" sortKey="address" />
                     </>
                   )}
-                  <th className="px-6 py-3 font-semibold">Archived</th>
-                  <th className="px-6 py-3 font-semibold text-right">Action</th>
+                  <SortHeader label="Archived" sortKey="archived" />
+                  <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((item) => {
+                {paginatedRows.map((item) => {
                   const key = `${activeTab}:${item.id}`;
                   return (
                     <tr key={item.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
@@ -254,6 +333,20 @@ const ArchivePage = () => {
                 })}
               </tbody>
             </table>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-3 border-t border-black/5 dark:border-white/10">
+              <p className="text-xs text-sti-gray">
+                {rows.length === 0
+                  ? 'No records to display'
+                  : `Showing ${(page - 1) * pageLimit + 1}-${Math.min(page * pageLimit, rows.length)} of ${rows.length}`}
+              </p>
+              {pageSize !== 'ALL' && totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+                  <span className="text-xs text-sti-gray px-2">Page {page} of {totalPages}</span>
+                  <Button variant="secondary" onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </Card>
