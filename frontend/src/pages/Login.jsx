@@ -411,7 +411,7 @@ const Login = () => {
           <img
             src={heroImage.src}
             alt={heroImage.alt}
-            className="block w-full h-[250px] sm:h-[340px] md:h-[440px] lg:h-[540px] xl:h-[600px] object-cover object-center"
+            className="block w-full min-h-[230px] sm:min-h-0 sm:aspect-[1735/907] object-cover object-center"
           />
         </section>
 
