@@ -67,7 +67,9 @@ const Companies = () => {
             name: obj['name'] || '',
             address: obj['address'] || '',
             contactPerson: obj['contactperson'] || obj['contact'] || '',
-            contactNumber: obj['contactnumber'] || obj['contactno'] || obj['phone'] || '',
+            contactNumber: /^9\d{9}$/.test(String(obj['contactnumber'] || obj['contactno'] || obj['phone'] || '').trim())
+              ? `0${String(obj['contactnumber'] || obj['contactno'] || obj['phone'] || '').trim()}`
+              : (obj['contactnumber'] || obj['contactno'] || obj['phone'] || ''),
             email: obj['email'] || '',
             industryType: obj['industrytype'] || obj['industry'] || '',
             availableSlots: parseInt(obj['availableslots'] || obj['slots'] || obj['slot'] || '0') || 0,
@@ -90,7 +92,9 @@ const Companies = () => {
             name: obj['name'] || '',
             address: obj['address'] || '',
             contactPerson: obj['contactperson'] || obj['contact'] || '',
-            contactNumber: obj['contactnumber'] || obj['contactno'] || obj['phone'] || '',
+            contactNumber: /^9\d{9}$/.test(String(obj['contactnumber'] || obj['contactno'] || obj['phone'] || '').trim())
+              ? `0${String(obj['contactnumber'] || obj['contactno'] || obj['phone'] || '').trim()}`
+              : (obj['contactnumber'] || obj['contactno'] || obj['phone'] || ''),
             email: obj['email'] || '',
             industryType: obj['industrytype'] || obj['industry'] || '',
             availableSlots: parseInt(obj['availableslots'] || obj['slots'] || obj['slot'] || '0') || 0,

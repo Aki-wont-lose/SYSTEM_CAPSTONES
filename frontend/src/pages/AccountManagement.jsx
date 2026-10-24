@@ -280,6 +280,11 @@ const AccountManagement = () => {
     } finally { setDeleting(false); }
   };
 
+  const normalizeExcelPhone = (val) => {
+    const raw = String(val || '').trim();
+    return /^9\d{9}$/.test(raw) ? `0${raw}` : raw;
+  };
+
   const downloadBatchTemplate = () => {
     const isCoordinator = activeTab === 'COORDINATOR';
     const sample = isCoordinator
@@ -307,6 +312,19 @@ const AccountManagement = () => {
     const worksheet = XLSX.utils.json_to_sheet(sample, { header: columns });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, isCoordinator ? 'Coordinators' : 'Supervisors');
+    if (isCoordinator) {
+      const programsSheet = XLSX.utils.json_to_sheet(
+        ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'].map((program) => ({ program })),
+        { header: ['program'] }
+      );
+      XLSX.utils.book_append_sheet(workbook, programsSheet, 'Programs');
+    } else if (companies.length > 0) {
+      const companiesSheet = XLSX.utils.json_to_sheet(
+        companies.map((c) => ({ company: c.name })),
+        { header: ['company'] }
+      );
+      XLSX.utils.book_append_sheet(workbook, companiesSheet, 'Companies');
+    }
     XLSX.writeFile(workbook, `${isCoordinator ? 'Coordinator' : 'Supervisor'}_Template.xlsx`);
   };
 
@@ -339,7 +357,7 @@ const AccountManagement = () => {
             role: (obj['role'] || obj['accounttype'] || activeTab).toUpperCase(),
             coordinatorCourse: (obj['coordinatorcourse'] || obj['program'] || obj['course'] || '').toUpperCase(),
             companyName: obj['company'] || obj['companyname'] || obj['assignedcompany'] || '',
-            contactNumber: obj['contactnumber'] || obj['contact'] || obj['phone'] || obj['mobile'] || ''
+            contactNumber: normalizeExcelPhone(obj['contactnumber'] || obj['contact'] || obj['phone'] || obj['mobile'] || '')
           };
         }).filter(Boolean);
       } else {
@@ -363,7 +381,7 @@ const AccountManagement = () => {
             role: (obj['role'] || obj['accounttype'] || activeTab).toUpperCase(),
             coordinatorCourse: (obj['coordinatorcourse'] || obj['program'] || obj['course'] || '').toUpperCase(),
             companyName: obj['company'] || obj['companyname'] || obj['assignedcompany'] || '',
-            contactNumber: obj['contactnumber'] || obj['contact'] || obj['phone'] || obj['mobile'] || ''
+            contactNumber: normalizeExcelPhone(obj['contactnumber'] || obj['contact'] || obj['phone'] || obj['mobile'] || '')
           };
         }).filter(Boolean);
       }

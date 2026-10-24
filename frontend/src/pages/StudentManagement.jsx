@@ -287,9 +287,9 @@ const StudentManagement = () => {
   const downloadBatchTemplate = () => {
     const sample = [{
       studentId: '352467',
-      firstName: 'Marvin',
+      firstName: 'Juan',
       lastName: 'Cruz',
-      email: 'Cruz.352467@stamaria.edu.ph',
+      email: 'cruz.352467@stamaria.sti.edu.ph',
       course: 'BSIT',
       section: 'BSIT 1-101',
       contactNumber: '09171234567'
@@ -302,6 +302,16 @@ const StudentManagement = () => {
     XLSX.utils.book_append_sheet(workbook, programsSheet, 'Courses');
     XLSX.utils.book_append_sheet(workbook, sectionsSheet, 'Sections');
     XLSX.writeFile(workbook, 'Student_Template.xlsx');
+  };
+
+  const normalizeExcelPhone = (val) => {
+    const raw = String(val || '').trim();
+    return /^9\d{9}$/.test(raw) ? `0${raw}` : raw;
+  };
+
+  const normalizeExcelStudentId = (val) => {
+    const raw = String(val || '').trim();
+    return /^\d{1,5}$/.test(raw) ? raw.padStart(6, '0') : raw;
   };
 
   const handleBatchFile = async (file) => {
@@ -326,13 +336,13 @@ const StudentManagement = () => {
           // skip completely empty rows
           if (!Object.values(obj).some(v=>v)) return null;
           return {
-            studentId: obj['studentid'] || obj['id'] || obj['studentno'] || '',
+            studentId: normalizeExcelStudentId(obj['studentid'] || obj['id'] || obj['studentno'] || ''),
             firstName: obj['firstname'] || '',
             lastName: obj['lastname'] || '',
-            course: obj['course'] || '',
+            course: (obj['course'] || obj['program'] || '').toUpperCase(),
             section: obj['section'] || '',
             email: obj['email'] || '',
-            contactNumber: obj['contactnumber'] || obj['contact'] || obj['contactno'] || obj['phone'] || obj['mobile'] || '',
+            contactNumber: normalizeExcelPhone(obj['contactnumber'] || obj['contact'] || obj['contactno'] || obj['phone'] || obj['mobile'] || ''),
           };
         }).filter(Boolean);
       } else {
@@ -350,13 +360,13 @@ const StudentManagement = () => {
           const obj={}; headers.forEach((h,i)=>obj[h]=cleaned[i] || '');
           if (!Object.values(obj).some(v=>v)) return null;
           return {
-            studentId: obj['studentid'] || obj['id'] || obj['studentno'] || '',
+            studentId: normalizeExcelStudentId(obj['studentid'] || obj['id'] || obj['studentno'] || ''),
             firstName: obj['firstname'] || '',
             lastName: obj['lastname'] || '',
-            course: obj['course'] || '',
+            course: (obj['course'] || obj['program'] || '').toUpperCase(),
             section: obj['section'] || '',
             email: obj['email'] || '',
-            contactNumber: obj['contactnumber'] || obj['contact'] || obj['contactno'] || obj['phone'] || obj['mobile'] || '',
+            contactNumber: normalizeExcelPhone(obj['contactnumber'] || obj['contact'] || obj['contactno'] || obj['phone'] || obj['mobile'] || ''),
           };
         }).filter(Boolean);
       }

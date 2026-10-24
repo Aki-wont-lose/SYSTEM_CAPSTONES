@@ -382,7 +382,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
             program: ['bsit','bscs','bscpe','bsact','bshm','bstm','bsais'].includes(String(obj['program']||'').toLowerCase()) ? String(obj['program']).toUpperCase() : null,
             category: obj['category']||'',
             cadence: String(obj['cadence']||'').toUpperCase() === 'WEEKLY' ? 'WEEKLY' : 'ONCE',
-            dueInDays: obj['duedays'] ? Number(obj['duedays']) : null,
+            dueInDays: (obj['dueindays'] || obj['duedays']) ? Number(obj['dueindays'] || obj['duedays']) : null,
             maxScore: obj['maxscore'] ? Number(obj['maxscore']) : 0,
             autoGradeOnSubmit: parseBoolean(obj['autogradeonsubmit'], false),
             isRequired: parseBoolean(obj['isrequired'], true)
@@ -407,7 +407,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
             program: ['bsit','bscs','bscpe','bsact','bshm','bstm','bsais'].includes(String(obj['program']||'').toLowerCase()) ? String(obj['program']).toUpperCase() : null,
             category: obj['category']||'',
             cadence: String(obj['cadence']||'').toUpperCase() === 'WEEKLY' ? 'WEEKLY' : 'ONCE',
-            dueInDays: obj['duedays'] ? Number(obj['duedays']) : null,
+            dueInDays: (obj['dueindays'] || obj['duedays']) ? Number(obj['dueindays'] || obj['duedays']) : null,
             maxScore: obj['maxscore'] ? Number(obj['maxscore']) : 0,
             autoGradeOnSubmit: parseBoolean(obj['autogradeonsubmit'], false),
             isRequired: parseBoolean(obj['isrequired'], true)
