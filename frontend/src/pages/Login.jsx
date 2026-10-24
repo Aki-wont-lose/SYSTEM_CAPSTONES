@@ -51,7 +51,7 @@ const XIcon = ({ size = 18 }) => (
   </svg>
 );
 
-const heroImage = { src: '/hero/sti-login.jpg', alt: 'STI College Sta. Maria' };
+const heroImage = { src: '/hero/login-new.png', alt: 'STI College Sta. Maria' };
 
 const socials = [
   { href: 'https://www.youtube.com/user/STIdotEdu', label: 'YouTube', Icon: YouTubeIcon },
