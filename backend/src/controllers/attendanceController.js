@@ -238,6 +238,6 @@ export const reviewDtrRecord = asyncHandler(async (req, res) => {
 // GET /attendance/review-queue - fetch the DTR review queue with filters
 export const fetchReviewQueue = asyncHandler(async (req, res) => {
   const { status, course, studentId, from, to, limit } = req.query;
-  const data = await getDtrReviewQueue({ status, course, studentId, from, to, limit });
+  const data = await getDtrReviewQueue({ status, course, studentId, from, to, limit }, req.user);
   res.status(200).json({ success: true, data });
 });

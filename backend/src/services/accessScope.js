@@ -40,7 +40,7 @@ export const studentScopeWhere = (user) => {
     const email = user.supervisorEmail || user.email;
     const clauses = [];
     if (user.supervisorCompanyId) clauses.push({ companyId: user.supervisorCompanyId });
-    if (email) clauses.push({ supervisorEmail: email });
+    if (email) clauses.push({ supervisorEmail: { equals: email, mode: 'insensitive' } });
     // No company and no email => an unassigned supervisor owns NO students.
     // (Previously this branch showed the entire roster - that was the backdoor.)
     return clauses.length ? { OR: clauses } : NO_MATCH;
@@ -65,7 +65,7 @@ export const canAccessStudent = (user, student) => {
   if (user.role === 'SUPERVISOR') {
     const email = user.supervisorEmail || user.email;
     if (user.supervisorCompanyId && student.companyId === user.supervisorCompanyId) return true;
-    if (email && student.supervisorEmail === email) return true;
+    if (email && student.supervisorEmail && student.supervisorEmail.toLowerCase() === email.toLowerCase()) return true;
     return false;
   }
 

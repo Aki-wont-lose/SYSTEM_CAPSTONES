@@ -34,7 +34,6 @@ export const markRead = async (userId, id) => {
 };
 
 export const deleteNotification = async (userId, id) => {
-  const n = await prisma.notification.findUnique({ where: { id } });
-  if (!n || n.userId !== userId) throw new Error('Not found');
-  return prisma.notification.delete({ where: { id } });
+  await prisma.notification.deleteMany({ where: { id, userId } });
+  return { id };
 };

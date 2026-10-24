@@ -9,6 +9,8 @@ import {
   submitFile,
   reviewSubmission,
   setRequirementCompletion,
+  deleteStudentSubmission,
+  deleteSubmissionById,
   getGradingSummary,
   getStudentWeeklyTasks,
   completeWeeklyTask
@@ -113,4 +115,18 @@ export const review = asyncHandler(async (req, res) => {
   const { status, remarks, score } = req.body;
   const submission = await reviewSubmission(req.params.submissionId, status, remarks, score, req.user);
   res.status(200).json({ success: true, message: `Submission ${String(status).toLowerCase()}`, data: submission });
+});
+
+// DELETE /requirements/:id/submit - remove the signed-in student's submission for a requirement
+export const removeMySubmission = asyncHandler(async (req, res) => {
+  const student = await getStudentByUserId(req.user.userId);
+  if (!student) return res.status(404).json({ success: false, message: 'Student profile not found' });
+  const data = await deleteStudentSubmission(req.params.id, student.id);
+  res.status(200).json({ success: true, message: 'Submission removed', data });
+});
+
+// DELETE /requirements/submissions/:submissionId - remove a submission record (staff)
+export const removeSubmission = asyncHandler(async (req, res) => {
+  const data = await deleteSubmissionById(req.params.submissionId, req.user);
+  res.status(200).json({ success: true, message: 'Submission removed', data });
 });

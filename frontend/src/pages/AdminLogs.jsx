@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ClipboardList, Check, RotateCcw, Plus, X, Filter, Trash2, Paperclip, Download } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -43,6 +43,7 @@ const AdminLogs = () => {
   const [assignForm, setAssignForm] = useState({ studentId: '', date: new Date().toISOString().slice(0, 10), taskDescription: '' });
   const [assignFile, setAssignFile] = useState({ data: null, name: null });
   const [saving, setSaving] = useState(false);
+  const assignFileInputRef = useRef(null);
 
   // Fetch log entries (honoring the status filter) and the student list
   const loadData = async () => {
@@ -96,7 +97,13 @@ const AdminLogs = () => {
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) { alert('Attachment too large — max 3MB.'); e.target.value = ''; return; }
     const data = await fileToBase64(file);
+    e.target.value = '';
     setAssignFile({ data, name: file.name });
+  };
+
+  const handleRemoveAssignFile = () => {
+    if (assignFileInputRef.current) assignFileInputRef.current.value = '';
+    setAssignFile({ data: null, name: null });
   };
 
   // Create a task assignment for the chosen student
@@ -273,6 +280,7 @@ const AdminLogs = () => {
               <div>
                 <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Attachment (optional)</label>
                 <input
+                  ref={assignFileInputRef}
                   type="file"
                   accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
                   onChange={handleAssignFile}
@@ -280,8 +288,9 @@ const AdminLogs = () => {
                 />
                 {assignFile.name && (
                   <div className="mt-2 flex items-center gap-2 text-xs text-sti-blue">
-                    <Paperclip className="w-3.5 h-3.5" /> {assignFile.name}
-                    <button type="button" onClick={() => setAssignFile({ data: null, name: null })} className="text-red-600 hover:underline">Remove</button>
+                    <Paperclip className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{assignFile.name}</span>
+                    <button type="button" onClick={handleRemoveAssignFile} className="text-red-600 hover:underline shrink-0">Remove</button>
                   </div>
                 )}
               </div>

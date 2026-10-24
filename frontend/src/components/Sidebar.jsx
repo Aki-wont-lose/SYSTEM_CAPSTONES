@@ -90,17 +90,29 @@ const Sidebar = ({ role, isOpen, onClose }) => {
   const sections = linksByRole[role] || linksByRole.STUDENT;
   const roleLabel = user?.isSuperAdmin ? 'Super Admin' : (role ? role.charAt(0) + role.slice(1).toLowerCase() : '');
 
+  const staffFullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
   const displayName = user?.isSuperAdmin
-    ? 'Super Admin'
+    ? (staffFullName || 'Super Admin')
     : user?.student
     ? `${user.student.firstName} ${user.student.lastName}`
-    : user?.email?.split('@')[0] || 'User';
+    : staffFullName || user?.email?.split('@')[0] || 'User';
 
   const initials = user?.isSuperAdmin
-    ? 'SA'
+    ? (staffFullName ? `${(user?.firstName || '')[0] || ''}${(user?.lastName || '')[0] || ''}`.toUpperCase() || 'SA' : 'SA')
     : user?.student
-    ? `${user.student.firstName[0]}${user.student.lastName[0]}`
+    ? `${(user.student.firstName || '?')[0]}${(user.student.lastName || '?')[0]}`.toUpperCase()
+    : staffFullName
+    ? `${(user?.firstName || '')[0] || ''}${(user?.lastName || '')[0] || ''}`.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'
     : user?.email?.[0]?.toUpperCase() || 'U';
+
+  const rawPic = user?.profilePicture || user?.student?.profilePicture || null;
+  const isImg = typeof rawPic === 'string' && rawPic.startsWith('data:image');
+  const avatarBg = typeof rawPic === 'string' && rawPic.startsWith('DEFAULT:')
+    ? rawPic.split(':')[1]
+    : 'bg-sti-yellow';
+  const avatarTextClass = typeof rawPic === 'string' && rawPic.startsWith('DEFAULT:')
+    ? 'text-white'
+    : 'text-sti-blue-dark';
 
   return (
     <>
@@ -119,8 +131,8 @@ const Sidebar = ({ role, isOpen, onClose }) => {
         {/* Logo Header */}
         <div className="flex items-center justify-between px-5 h-20 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-white/10 flex items-center justify-center">
-              <img src="/simes-logo.png" alt="SIMES" className="w-full h-full object-contain p-0.5" onError={(e) => { e.target.style.display = 'none'; }} />
+            <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-[#fced0b] ring-2 ring-white/20 shadow-sm flex items-center justify-center">
+              <img src="/simes-logo.png" alt="SIMES" className="block w-full h-full object-contain scale-105" onError={(e) => { e.target.style.display = 'none'; }} />
             </div>
             <div>
               <p className="text-white font-bold text-base leading-tight">SIMES</p>
@@ -162,9 +174,13 @@ const Sidebar = ({ role, isOpen, onClose }) => {
         {/* User Profile Card at bottom */}
         <div className="shrink-0 p-3 border-t border-white/10">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-default">
-            <div className="w-8 h-8 rounded-full bg-sti-yellow flex items-center justify-center text-sti-blue-dark text-xs font-bold shrink-0">
-              {initials}
-            </div>
+            {isImg ? (
+              <img src={rawPic} alt={displayName} className="w-8 h-8 rounded-full object-cover border border-white/30 shrink-0" />
+            ) : (
+              <div className={`w-8 h-8 rounded-full ${avatarBg} flex items-center justify-center ${avatarTextClass} text-xs font-bold shrink-0`}>
+                {initials}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <p className="text-white text-sm font-semibold truncate">{displayName}</p>
               <p className="text-white/40 text-[11px] truncate capitalize">{roleLabel}</p>

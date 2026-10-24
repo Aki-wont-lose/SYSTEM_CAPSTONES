@@ -19,6 +19,7 @@ const AdminProfile = () => {
   const isImg = user?.profilePicture?.startsWith('data:image');
   // Pull the stored default color out of the "DEFAULT:<color>" marker, if that's the current picture
   const bg = user?.profilePicture?.startsWith('DEFAULT:') ? user.profilePicture.split(':')[1] : 'bg-sti-blue';
+  const isEmailLocked = user?.role === 'SUPERVISOR' || user?.role === 'COORDINATOR';
 
   // Load the current profile details from the API on mount
   useEffect(() => {
@@ -29,8 +30,13 @@ const AdminProfile = () => {
         setDetails({
           firstName: profileUser.firstName || '',
           lastName: profileUser.lastName || '',
-          email: profileUser.email || ''
+          email: profileUser.email || user?.email || ''
         });
+        const patch = {};
+        if (profileUser.firstName !== undefined) patch.firstName = profileUser.firstName;
+        if (profileUser.lastName !== undefined) patch.lastName = profileUser.lastName;
+        if (profileUser.profilePicture) patch.profilePicture = profileUser.profilePicture;
+        if (Object.keys(patch).length > 0) updateUser(patch);
       } catch {}
     };
     load();
@@ -81,17 +87,33 @@ const AdminProfile = () => {
 
   // Read a chosen image, reject oversized files, and upload it as the profile picture
   const handleGallery = (e) => {
-    const file = e.target.files?.[0]; if(!file) return;
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
     if (file.size > 4*1024*1024) { alert('Max 4MB'); return; }
     const r = new FileReader(); r.onload = async () => {
       setSaving(true);
-      try { const res = await api.put('/profile', { profilePicture: r.result }); updateUser({ profilePicture: r.result, ...res.data.user || {} }); } catch{} finally{setSaving(false); setShowPicker(false);}
-    }; r.readAsDataURL(file); e.target.value='';
+      try {
+        const res = await api.put('/profile', { profilePicture: r.result });
+        const updated = res.data?.data || res.data?.user || {};
+        updateUser({ ...updated, profilePicture: r.result });
+      } catch {} finally {
+        setSaving(false);
+        setShowPicker(false);
+      }
+    }; r.readAsDataURL(file);
   };
   // Apply a preset solid-color avatar
   const handleDefault = async (b) => {
     setSaving(true);
-    try { const res = await api.put('/profile', { profilePicture: `DEFAULT:${b}` }); updateUser({ profilePicture: `DEFAULT:${b}`, ...res.data.user || {} }); } catch{} finally{setSaving(false); setShowPicker(false);}
+    try {
+      const res = await api.put('/profile', { profilePicture: `DEFAULT:${b}` });
+      const updated = res.data?.data || res.data?.user || {};
+      updateUser({ ...updated, profilePicture: `DEFAULT:${b}` });
+    } catch {} finally {
+      setSaving(false);
+      setShowPicker(false);
+    }
   };
 
   return (
@@ -159,18 +181,30 @@ const AdminProfile = () => {
 
       <Card>
         <h3 className="font-bold text-sti-gray-dark dark:text-white mb-5">Account Information</h3>
-        <form onSubmit={handleSaveEmail} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <form onSubmit={isEmailLocked ? (e) => e.preventDefault() : handleSaveEmail} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="flex items-center gap-1.5 text-xs font-medium text-sti-gray mb-1.5">
               <Mail className="w-3.5 h-3.5" /> Email Address
+              {isEmailLocked && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sti-gray-light text-sti-gray dark:bg-white/10">Locked</span>
+              )}
             </label>
             <input
               type="email"
-              value={details.email}
-              onChange={(e) => setDetails({ ...details, email: e.target.value })}
-              className="input-field"
+              value={details.email || user?.email || ''}
+              onChange={(e) => {
+                if (!isEmailLocked) setDetails({ ...details, email: e.target.value });
+              }}
+              readOnly={isEmailLocked}
+              disabled={isEmailLocked}
+              className={`input-field ${isEmailLocked ? 'bg-sti-gray-light/70 dark:bg-slate-800/70 text-sti-gray-dark dark:text-slate-300 cursor-not-allowed opacity-80' : ''}`}
               placeholder="you@stamaria.sti.edu.ph"
             />
+            {isEmailLocked && (
+              <p className="text-[11px] text-sti-gray mt-1.5">
+                Contact an administrator if your registered email address needs to be updated.
+              </p>
+            )}
           </div>
           <div>
             <label className="flex items-center gap-1.5 text-xs font-medium text-sti-gray mb-1.5">
@@ -181,10 +215,12 @@ const AdminProfile = () => {
               <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-sti-gray-light text-sti-gray dark:bg-white/10">Locked</span>
             </p>
           </div>
-          <div className="sm:col-span-2 flex items-center gap-3">
-            <Button type="submit" icon={Save} loading={savingEmail} className="text-sm px-4 py-2">Save email</Button>
-            {toast && <p className={`text-xs ${toast.tone === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>{toast.msg}</p>}
-          </div>
+          {!isEmailLocked && (
+            <div className="sm:col-span-2 flex items-center gap-3">
+              <Button type="submit" icon={Save} loading={savingEmail} className="text-sm px-4 py-2">Save email</Button>
+              {toast && <p className={`text-xs ${toast.tone === 'error' ? 'text-red-600' : 'text-emerald-600'}`}>{toast.msg}</p>}
+            </div>
+          )}
         </form>
       </Card>
     </div>

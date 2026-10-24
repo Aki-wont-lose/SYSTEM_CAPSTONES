@@ -135,17 +135,41 @@ export const deleteCompany = async (id) => {
 };
 
 export const assignStudentToCompany = async (studentId, companyId) => {
-  const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    select: { isArchived: true }
-  });
+  const [company, existingStudent, companySupervisor] = await Promise.all([
+    prisma.company.findUnique({
+      where: { id: companyId },
+      select: { isArchived: true, contactPerson: true, contactNumber: true, email: true }
+    }),
+    prisma.student.findUnique({
+      where: { id: studentId },
+      select: { workingDays: true, workingHours: true }
+    }),
+    prisma.user.findFirst({
+      where: { role: 'SUPERVISOR', supervisorCompanyId: companyId, isArchived: false },
+      select: { email: true, firstName: true, lastName: true, contactNumber: true }
+    })
+  ]);
   if (!company || company.isArchived) {
     const err = new Error('Company not found or archived');
     err.status = 400;
     throw err;
   }
+
+  const fullName = companySupervisor
+    ? [companySupervisor.firstName, companySupervisor.lastName].filter(Boolean).join(' ').trim()
+    : '';
+  const updateData = {
+    companyId,
+    supervisorName: company.contactPerson || fullName || companySupervisor?.email || null,
+    supervisorEmail: companySupervisor?.email || company.email || null,
+    supervisorContact: companySupervisor?.contactNumber || company.contactNumber || null,
+    workingDays: existingStudent?.workingDays || 'Monday - Friday',
+    workingHours: existingStudent?.workingHours || '8:00 AM - 5:00 PM'
+  };
+
   return prisma.student.update({
     where: { id: studentId },
-    data: { companyId }
+    data: updateData,
+    include: { company: true }
   });
 };

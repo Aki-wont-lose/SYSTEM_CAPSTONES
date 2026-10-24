@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Mail,
@@ -385,8 +385,8 @@ const Login = () => {
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-950 px-4 sm:px-6 lg:px-8">
         <div className="w-full flex items-center justify-between py-3 gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="h-9 w-9 sm:h-12 sm:w-12 rounded-xl bg-sti-blue-dark/5 dark:bg-white/10 flex items-center justify-center shrink-0 overflow-hidden">
-              <img src="/simes-logo.png" alt="SIMES - STI College Sta. Maria" className="block w-full h-full object-contain p-0.5" />
+            <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-[#fced0b] ring-1 ring-black/10 dark:ring-white/15 shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
+              <img src="/simes-logo.png" alt="SIMES - STI College Sta. Maria" className="block w-full h-full object-contain scale-105" />
             </div>
             <div className="min-w-0 leading-tight">
               <p className="font-extrabold text-black dark:text-white text-sm sm:text-base lg:text-lg truncate">

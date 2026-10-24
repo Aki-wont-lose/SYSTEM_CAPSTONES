@@ -1,6 +1,7 @@
 // src/services/attendanceService.js
 import { PrismaClient } from '@prisma/client';
 import { recordAudit } from './auditLogService.js';
+import { scopeWhere } from './accessScope.js';
 
 const prisma = new PrismaClient();
 
@@ -402,16 +403,19 @@ export const reviewDtr = async (attendanceId, reviewer, status, remarks) => {
 };
 
 // Staff review queue: submitted DTRs awaiting a decision, newest first
-export const getDtrReviewQueue = async (filters = {}) => {
+export const getDtrReviewQueue = async (filters = {}, user = null) => {
+  const safeFilters = filters || {};
   const where = {};
-  if (filters.status) where.reviewStatus = filters.status;
+  if (safeFilters.status) where.reviewStatus = safeFilters.status;
   else where.reviewStatus = 'SUBMITTED';
-  if (filters.studentId) where.studentId = filters.studentId;
-  if (filters.course) where.student = { course: filters.course };
-  if (filters.from || filters.to) {
+  if (safeFilters.studentId) where.studentId = safeFilters.studentId;
+  const studentFilter = { isArchived: false };
+  if (safeFilters.course) studentFilter.course = safeFilters.course;
+  where.student = user ? scopeWhere(user, studentFilter) : studentFilter;
+  if (safeFilters.from || safeFilters.to) {
     where.date = {};
-    if (filters.from) where.date.gte = new Date(filters.from);
-    if (filters.to) where.date.lte = new Date(filters.to);
+    if (safeFilters.from) where.date.gte = new Date(safeFilters.from);
+    if (safeFilters.to) where.date.lte = new Date(safeFilters.to);
   }
 
   const records = await prisma.attendance.findMany({
@@ -420,7 +424,7 @@ export const getDtrReviewQueue = async (filters = {}) => {
       student: { select: { id: true, studentId: true, firstName: true, lastName: true, course: true, section: true } }
     },
     orderBy: [{ date: 'desc' }],
-    take: Math.min(parseInt(filters.limit) || 100, 500)
+    take: Math.min(parseInt(safeFilters.limit) || 100, 500)
   });
 
   const grouped = records.reduce((acc, record) => {

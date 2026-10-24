@@ -9,7 +9,21 @@ export const getMyProfile = async (userId) => {
   // profilePicture column may not exist yet until db push, so don't select it to avoid crash
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, firstName: true, lastName: true, contactNumber: true, role: true, theme: true, isActive: true, createdAt: true } });
   const student = await getStudentByUserId(userId);
-  return { user, student };
+  let profilePicture = student?.profilePicture || null;
+  if (!student && user) {
+    const avatarEntry = await prisma.auditLog.findFirst({
+      where: { userId, entity: 'ProfileAvatar' },
+      orderBy: { createdAt: 'desc' },
+      select: { metadata: true }
+    });
+    if (avatarEntry?.metadata && typeof avatarEntry.metadata === 'object' && avatarEntry.metadata.profilePicture) {
+      profilePicture = avatarEntry.metadata.profilePicture;
+    }
+  }
+  return {
+    user: user ? { ...user, profilePicture } : null,
+    student
+  };
 };
 
 export const updateMyProfile = async (userId, data) => {
@@ -24,6 +38,20 @@ export const updateMyProfile = async (userId, data) => {
     if (Object.keys(updateData).length) return updateStudent(student.id, updateData);
     return student;
   }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, firstName: true, lastName: true, contactNumber: true, role: true }
+  });
+  if (!existingUser) return null;
+
+  // Company supervisors and OJT coordinators are not permitted to change their registered email addresses
+  if (data.email !== undefined && ['SUPERVISOR', 'COORDINATOR'].includes(existingUser.role)) {
+    const error = new Error('Company supervisors and OJT coordinators cannot change their registered email address');
+    error.status = 403;
+    throw error;
+  }
+
   // Staff self-service fields (email is the sign-in identity, so it is validated and lowercased).
   // role is intentionally absent: nobody can change their own role here, which is what protects
   // the last remaining ADMIN from locking themselves out of the admin-only pages.
@@ -51,25 +79,64 @@ export const updateMyProfile = async (userId, data) => {
     // Staff sign in with this address via Microsoft, so it has to keep matching
     // the institutional rule create() enforces — otherwise a self-edit could
     // strand the account. Only enforced when the address actually changes.
-    const current = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
-    if (current?.email !== email && !isValidStaffEmail(email)) {
+    if (existingUser.email !== email && !isValidStaffEmail(email)) {
       const error = new Error(STAFF_EMAIL_ERROR);
       error.status = 400;
       throw error;
     }
     staffUpdate.email = email;
   }
+
+  let updatedUser = existingUser;
   if (Object.keys(staffUpdate).length) {
-    return prisma.user.update({
+    updatedUser = await prisma.user.update({
       where: { id: userId },
       data: staffUpdate,
       select: { id: true, email: true, firstName: true, lastName: true, contactNumber: true, role: true }
     });
   }
-  // For staff (ADMIN/COORDINATOR/SUPERVISOR) - profilePicture for User not in schema yet, just skip
+
+  // Persist staff profilePicture without duplicating records
+  let profilePicture = undefined;
   if (data.profilePicture !== undefined) {
-    // Staff avatar change is UI-only for now (no DB column)
-    return prisma.user.findUnique({ where: { id: userId }, select: { id: true, email: true, role: true } });
+    profilePicture = data.profilePicture;
+    const existingAvatar = await prisma.auditLog.findFirst({
+      where: { userId, entity: 'ProfileAvatar' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true }
+    });
+    if (existingAvatar) {
+      await prisma.auditLog.update({
+        where: { id: existingAvatar.id },
+        data: { metadata: { profilePicture: data.profilePicture } }
+      });
+    } else {
+      await prisma.auditLog.create({
+        data: {
+          userId,
+          userEmail: updatedUser.email,
+          userRole: updatedUser.role,
+          action: 'UPDATE',
+          entity: 'ProfileAvatar',
+          entityId: userId,
+          description: 'Updated profile picture',
+          metadata: { profilePicture: data.profilePicture }
+        }
+      });
+    }
+  } else {
+    const existingAvatar = await prisma.auditLog.findFirst({
+      where: { userId, entity: 'ProfileAvatar' },
+      orderBy: { createdAt: 'desc' },
+      select: { metadata: true }
+    });
+    if (existingAvatar?.metadata && typeof existingAvatar.metadata === 'object' && existingAvatar.metadata.profilePicture) {
+      profilePicture = existingAvatar.metadata.profilePicture;
+    }
+  }
+
+  if (Object.keys(staffUpdate).length || data.profilePicture !== undefined) {
+    return { ...updatedUser, ...(profilePicture !== undefined ? { profilePicture } : {}) };
   }
   return null;
 };

@@ -427,20 +427,59 @@ export const setRequirementCompletion = async (studentId, requirementId, complet
   return { completed: Boolean(completed), submission };
 };
 
+// Remove a student's own non-approved submission file for a requirement
+export const deleteStudentSubmission = async (requirementId, studentId) => {
+  const existing = await prisma.submission.findFirst({
+    where: { requirementId, studentId },
+    orderBy: { submittedAt: 'desc' }
+  });
+  if (!existing) {
+    const error = new Error('Submission not found');
+    error.status = 404;
+    throw error;
+  }
+  if (existing.status === 'APPROVED') {
+    const error = new Error('Approved submissions cannot be removed');
+    error.status = 400;
+    throw error;
+  }
+  await prisma.submission.deleteMany({ where: { requirementId, studentId } });
+  return { deleted: true, requirementId };
+};
+
+// Remove a submission record as staff (within the caller's student scope)
+export const deleteSubmissionById = async (submissionId, user) => {
+  const existing = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    include: {
+      student: { select: { id: true, course: true, companyId: true, supervisorEmail: true } }
+    }
+  });
+  if (!existing) {
+    const error = new Error('Submission not found');
+    error.status = 404;
+    throw error;
+  }
+  assertStudentAccess(user, existing.student);
+  await prisma.submission.delete({ where: { id: submissionId } });
+  return { deleted: true, id: submissionId };
+};
+
 // Automated grading summary: per-student completion, missing deadlines, and score totals
 export const getGradingSummary = async (filters = {}, user = null) => {
   const now = new Date();
   // Restrict the student set to the caller's scope. Without this, any supervisor or
   // coordinator could call /requirements/grading and read every student's scores.
-  const studentWhere = user ? scopeWhere(user, { isArchived: false }) : { isArchived: false };
-  if (filters.course) studentWhere.course = filters.course;
+  const baseFilter = { isArchived: false };
+  if (filters.course) baseFilter.course = filters.course;
   if (filters.search) {
-    studentWhere.OR = [
+    baseFilter.OR = [
       { firstName: { contains: filters.search, mode: 'insensitive' } },
       { lastName: { contains: filters.search, mode: 'insensitive' } },
       { studentId: { contains: filters.search, mode: 'insensitive' } }
     ];
   }
+  const studentWhere = user ? scopeWhere(user, baseFilter) : baseFilter;
 
   const [students, requirements] = await Promise.all([
     prisma.student.findMany({

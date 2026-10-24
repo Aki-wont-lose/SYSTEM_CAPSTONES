@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Pencil, Trash2, X, FileCheck2, Check, XCircle, Download, Filter, FileSpreadsheet, BarChart3, Award, AlertTriangle, FileText, FileType2, FileImage, File as FileIcon, Search, Clock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
@@ -12,7 +12,8 @@ import {
   getAllSubmissions,
   getGradingSummary,
   reviewSubmission,
-  setRequirementCompletion
+  setRequirementCompletion,
+  deleteSubmission
 } from '../services/requirementService';
 import { sectionLabel } from '../constants/studentRules';
 
@@ -87,6 +88,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   const [dragOver, setDragOver] = useState(false);
   const [batchResult, setBatchResult] = useState(null);
   const [togglingCheck, setTogglingCheck] = useState('');
+  const templateInputRef = useRef(null);
 
   // Convert an uploaded file into a base64 string for storage
   const fileToBase64 = (file) => new Promise((resolve, reject) => {
@@ -126,14 +128,14 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     }
   };
 
-  // Tick one requirement for one student, then refresh the matrix quietly.
+  // Tick one requirement for one student, then refresh the matrix and submission list quietly.
   const handleToggleCheck = async (studentId, requirementId, completed) => {
     const key = `${studentId}:${requirementId}`;
     setTogglingCheck(key);
     setActionError('');
     try {
       await setRequirementCompletion(studentId, requirementId, completed);
-      await loadGrading(true);
+      await Promise.all([loadGrading(true), loadData()]);
     } catch (err) {
       setActionError(err.response?.data?.message || 'Could not update the checklist.');
     } finally {
@@ -147,7 +149,11 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   }, [statusFilter, programFilter]);
 
   useEffect(() => {
-    if (tab === 'grading' || tab === 'checklist') loadGrading();
+    if (tab === 'grading' || tab === 'checklist') {
+      loadGrading();
+    } else {
+      loadData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, courseFilter]);
 
@@ -156,6 +162,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     setEditing(null);
     setForm({ ...emptyForm, program: programFilter === 'ALL' ? 'ALL' : programFilter });
     setActionError('');
+    if (templateInputRef.current) templateInputRef.current.value = '';
     setShowModal(true);
   };
 
@@ -177,6 +184,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
       templateFileName: req.templateFileName || null
     });
     setActionError('');
+    if (templateInputRef.current) templateInputRef.current.value = '';
     setShowModal(true);
   };
 
@@ -188,7 +196,13 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) { setActionError('Template too large — max 3MB. Please compress the file and try again.'); e.target.value = ''; return; }
     const b64 = await fileToBase64(file);
+    e.target.value = '';
     setForm({ ...form, templateFile: b64, templateFileName: file.name });
+  };
+
+  const handleRemoveTemplateFile = () => {
+    if (templateInputRef.current) templateInputRef.current.value = '';
+    setForm({ ...form, templateFile: null, templateFileName: null });
   };
 
   // Trigger a download of the requirement's template file
@@ -273,11 +287,29 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   // Delete a requirement after confirmation
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this requirement? All related submissions will also be removed.')) return;
+    setActionError('');
     try {
       await deleteRequirement(id);
-      loadData();
+      setRequirements((prev) => prev.filter((r) => r.id !== id));
+      setSubmissions((prev) => prev.filter((s) => s.requirementId !== id));
+      await loadData();
+      if (grading) await loadGrading(true);
     } catch (err) {
       setActionError(err.response?.data?.message || 'Failed to delete');
+    }
+  };
+
+  // Delete a student submission record after confirmation
+  const handleDeleteSubmission = async (sub) => {
+    if (!window.confirm(`Remove submission "${sub.fileName}"?`)) return;
+    setActionError('');
+    try {
+      await deleteSubmission(sub.id);
+      setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
+      await loadData();
+      if (grading) await loadGrading(true);
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Failed to remove submission');
     }
   };
 
@@ -879,50 +911,60 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                           </span>
                         </td>
                         <td className="px-6 py-3.5">
-                          {sub.status === 'PENDING' && (
-                            rejectingId === sub.id ? (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  autoFocus
-                                  value={remarks}
-                                  onChange={(e) => setRemarks(e.target.value)}
-                                  placeholder="Reason"
-                                  className="input-field py-1.5 text-xs w-32"
-                                />
-                                <button onClick={() => handleReject(sub.id)} className="text-red-600 text-xs font-semibold">Send</button>
-                                <button onClick={() => setRejectingId(null)} className="text-sti-gray text-xs">Cancel</button>
-                              </div>
-                            ) : scoringId === sub.id ? (
-                              <div className="flex items-center gap-2">
-                                <input
-                                  autoFocus
-                                  type="number"
-                                  min="0"
-                                  max={sub.requirement?.maxScore || undefined}
-                                  value={scoreValue}
-                                  onChange={(e) => setScoreValue(e.target.value)}
-                                  placeholder={`0-${sub.requirement?.maxScore || 0}`}
-                                  className="input-field py-1.5 text-xs w-24"
-                                />
-                                <button onClick={() => handleApprove(sub.id, scoreValue)} className="text-sti-blue text-xs font-semibold">Save</button>
-                                <button onClick={() => setScoringId(null)} className="text-sti-gray text-xs">Cancel</button>
-                              </div>
-                            ) : (
-                              <div className="flex gap-1">
-                                {sub.requirement?.maxScore > 0 && (
-                                  <button onClick={() => { setScoringId(sub.id); setScoreValue(sub.score ?? ''); }} className="px-2 py-1.5 rounded-lg hover:bg-sti-gray-light text-sti-gray text-xs font-semibold" title="Approve with score">
-                                    Score
+                          <div className="flex items-center gap-1">
+                            {sub.status === 'PENDING' && (
+                              rejectingId === sub.id ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    autoFocus
+                                    value={remarks}
+                                    onChange={(e) => setRemarks(e.target.value)}
+                                    placeholder="Reason"
+                                    className="input-field py-1.5 text-xs w-32"
+                                  />
+                                  <button onClick={() => handleReject(sub.id)} className="text-red-600 text-xs font-semibold">Send</button>
+                                  <button onClick={() => setRejectingId(null)} className="text-sti-gray text-xs">Cancel</button>
+                                </div>
+                              ) : scoringId === sub.id ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    autoFocus
+                                    type="number"
+                                    min="0"
+                                    max={sub.requirement?.maxScore || undefined}
+                                    value={scoreValue}
+                                    onChange={(e) => setScoreValue(e.target.value)}
+                                    placeholder={`0-${sub.requirement?.maxScore || 0}`}
+                                    className="input-field py-1.5 text-xs w-24"
+                                  />
+                                  <button onClick={() => handleApprove(sub.id, scoreValue)} className="text-sti-blue text-xs font-semibold">Save</button>
+                                  <button onClick={() => setScoringId(null)} className="text-sti-gray text-xs">Cancel</button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-1">
+                                  {sub.requirement?.maxScore > 0 && (
+                                    <button onClick={() => { setScoringId(sub.id); setScoreValue(sub.score ?? ''); }} className="px-2 py-1.5 rounded-lg hover:bg-sti-gray-light text-sti-gray text-xs font-semibold" title="Approve with score">
+                                      Score
+                                    </button>
+                                  )}
+                                  <button onClick={() => handleApprove(sub.id)} className="p-1.5 rounded-lg hover:bg-sti-blue-50 text-sti-blue" title="Approve">
+                                    <Check className="w-4 h-4" />
                                   </button>
-                                )}
-                                <button onClick={() => handleApprove(sub.id)} className="p-1.5 rounded-lg hover:bg-sti-blue-50 text-sti-blue" title="Approve">
-                                  <Check className="w-4 h-4" />
-                                </button>
-                                <button onClick={() => setRejectingId(sub.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600" title="Reject">
-                                  <XCircle className="w-4 h-4" />
-                                </button>
-                              </div>
-                            )
-                          )}
+                                  <button onClick={() => setRejectingId(sub.id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-600" title="Reject">
+                                    <XCircle className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSubmission(sub)}
+                              className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600"
+                              title="Remove submission"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -970,11 +1012,12 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
               </div>
               <div>
                 <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Template File</label>
-                <input type="file" accept=".pdf,.doc,.docx" onChange={handleTemplateChange} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white hover:file:bg-sti-blue-dark file:text-xs file:font-semibold" />
+                <input ref={templateInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleTemplateChange} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white hover:file:bg-sti-blue-dark file:text-xs file:font-semibold" />
                 {form.templateFileName && (
                   <div className="mt-2 flex items-center gap-2 text-xs text-sti-blue">
-                    <FileCheck2 className="w-4 h-4" /> {form.templateFileName}
-                    <button type="button" onClick={() => setForm({ ...form, templateFile: null, templateFileName: null })} className="text-red-600 hover:underline">Remove</button>
+                    <FileCheck2 className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{form.templateFileName}</span>
+                    <button type="button" onClick={handleRemoveTemplateFile} className="text-red-600 hover:underline shrink-0">Remove</button>
                   </div>
                 )}
               </div>

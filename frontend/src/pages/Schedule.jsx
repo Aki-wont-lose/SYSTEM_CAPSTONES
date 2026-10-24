@@ -70,11 +70,11 @@ const Schedule = () => {
               <h3 className="font-bold text-sti-gray-dark dark:text-white">Supervisor & Working Hours</h3>
             </div>
             <div className="mt-2">
-              <InfoRow icon={User} label="Supervisor" value={student.supervisorName} />
-              <InfoRow icon={Phone} label="Supervisor Contact" value={student.supervisorContact} />
-              <InfoRow icon={Mail} label="Supervisor Email" value={student.supervisorEmail} />
-              <InfoRow icon={CalendarDays} label="Working Days" value={student.workingDays} />
-              <InfoRow icon={Clock} label="Working Hours" value={student.workingHours} />
+              <InfoRow icon={User} label="Supervisor" value={student.supervisorName || student.company?.contactPerson} />
+              <InfoRow icon={Phone} label="Supervisor Contact" value={student.supervisorContact || student.company?.contactNumber} />
+              <InfoRow icon={Mail} label="Supervisor Email" value={student.supervisorEmail || student.company?.email} />
+              <InfoRow icon={CalendarDays} label="Working Days" value={student.workingDays || (student.company ? 'Monday - Friday' : null)} />
+              <InfoRow icon={Clock} label="Working Hours" value={student.workingHours || (student.company ? '8:00 AM - 5:00 PM' : null)} />
             </div>
           </Card>
         </div>

@@ -1,6 +1,6 @@
 // modules/requirements/routes.js — COORDINATOR(+ADMIN) manages with PDF templates, SUPERVISOR reviews, STUDENT submit/view
 import express from 'express';
-import { fetchRequirements, fetchMySubmissions, fetchAllSubmissions, fetchGradingSummary, fetchMyTasks, finishMyTask, addRequirement, editRequirement, removeRequirement, upload, review, toggleRequirementCheck } from '../../controllers/requirementController.js';
+import { fetchRequirements, fetchMySubmissions, fetchAllSubmissions, fetchGradingSummary, fetchMyTasks, finishMyTask, addRequirement, editRequirement, removeRequirement, upload, review, toggleRequirementCheck, removeMySubmission, removeSubmission } from '../../controllers/requirementController.js';
 import { verifyRole } from '../../middleware/auth.js';
 
 const router = express.Router();
@@ -23,6 +23,8 @@ router.delete('/:id', verifyRole(['ADMIN','COORDINATOR']), removeRequirement);
 
 // Any authenticated user can submit; review limited to ADMIN+COORDINATOR+SUPERVISOR
 router.post('/:id/submit', upload);
+router.delete('/:id/submit', removeMySubmission);
 router.put('/submissions/:submissionId/review', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), review);
+router.delete('/submissions/:submissionId', verifyRole(['ADMIN','COORDINATOR']), removeSubmission);
 
 export default router;

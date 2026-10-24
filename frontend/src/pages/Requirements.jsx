@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { FileCheck2, Upload, CheckCircle2, XCircle, Clock3, X, Download, AlertTriangle, Search, FileText, FileType2, FileImage, FileSpreadsheet, File as FileIcon } from 'lucide-react';
+import { FileCheck2, Upload, CheckCircle2, XCircle, Clock3, X, Download, AlertTriangle, Search, FileText, FileType2, FileImage, FileSpreadsheet, File as FileIcon, Trash2 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import WeeklyToDo from '../components/WeeklyToDo';
-import { getMySubmissions, submitRequirementFile } from '../services/requirementService';
+import { getMySubmissions, submitRequirementFile, deleteMySubmission } from '../services/requirementService';
 
 const statusConfig = {
   PENDING: { label: 'Pending Review', style: 'bg-yellow-50 text-sti-yellow-dark', Icon: Clock3 },
@@ -57,6 +57,7 @@ const Requirements = ({ mode = 'all' }) => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState(null);
+  const [removingId, setRemovingId] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const fileInputRef = useRef(null);
@@ -115,6 +116,23 @@ const Requirements = ({ mode = 'all' }) => {
     a.href = req.templateFile;
     a.download = req.templateFileName || `${req.title}_template.pdf`;
     a.click();
+  };
+
+  const handleRemoveSubmission = async (reqId) => {
+    if (!window.confirm('Remove this submitted file?')) return;
+    setError('');
+    setNotice('');
+    setRemovingId(reqId);
+    try {
+      await deleteMySubmission(reqId);
+      setItems((prev) => prev.map((item) => (item.id === reqId ? { ...item, submission: null, derivedStatus: 'NOT_STARTED' } : item)));
+      setNotice('Submitted file removed');
+      await loadData();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not remove file');
+    } finally {
+      setRemovingId(null);
+    }
   };
 
   useEffect(() => { setPage(1); }, [search, pageSize]);
@@ -330,7 +348,7 @@ const Requirements = ({ mode = 'all' }) => {
                           <td className="px-6 py-3.5 align-top text-xs text-sti-gray">
                             {showSubmissionInfo && submission ? (
                               <span className="break-all">{submission.fileName}</span>
-                            ) : showTemplateInfo && req.templateFileName ? (
+                            ) : showTemplateInfo && req.templateFile && req.templateFileName ? (
                               <span className="flex items-center gap-1.5 break-all">
                                 <FileCheck2 className="w-3.5 h-3.5 text-sti-blue shrink-0" /> {req.templateFileName}
                               </span>
@@ -348,14 +366,27 @@ const Requirements = ({ mode = 'all' }) => {
                                 </button>
                               )}
                               {showSubmissionInfo && (
-                                <Button
-                                  variant={submission?.status === 'APPROVED' ? 'secondary' : 'primary'}
-                                  icon={Upload}
-                                  loading={uploadingId === req.id}
-                                  onClick={() => triggerUpload(req.id)}
-                                >
-                                  {!submission ? 'Upload' : submission.status === 'REJECTED' ? 'Re-upload' : 'Replace'}
-                                </Button>
+                                <>
+                                  <Button
+                                    variant={submission?.status === 'APPROVED' ? 'secondary' : 'primary'}
+                                    icon={Upload}
+                                    loading={uploadingId === req.id}
+                                    onClick={() => triggerUpload(req.id)}
+                                  >
+                                    {!submission ? 'Upload' : submission.status === 'REJECTED' ? 'Re-upload' : 'Replace'}
+                                  </Button>
+                                  {submission && submission.status !== 'APPROVED' && (
+                                    <button
+                                      type="button"
+                                      disabled={removingId === req.id}
+                                      onClick={() => handleRemoveSubmission(req.id)}
+                                      title="Remove submitted file"
+                                      className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors disabled:opacity-50"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </div>
                           </td>

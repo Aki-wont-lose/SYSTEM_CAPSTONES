@@ -445,15 +445,19 @@ const StudentManagement = () => {
                     </td>
                     <td className="px-6 py-3.5">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => openViewModal(s)} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
+                        <button onClick={() => openViewModal(s)} title="View student details" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
                           <Eye className="w-4 h-4" />
                         </button>
-                        <button onClick={() => openEditModal(s)} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => setDeleteTarget(s)} title="Archive student" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
-                          <Archive className="w-4 h-4" />
-                        </button>
+                        {(role === 'ADMIN' || role === 'COORDINATOR') && (
+                          <>
+                            <button onClick={() => openEditModal(s)} title="Edit student" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => setDeleteTarget(s)} title="Archive student" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600 transition-colors">
+                              <Archive className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -566,13 +570,51 @@ const StudentManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Partner Company</label>
-              <select value={form.companyId} onChange={(e) => setForm({ ...form, companyId: e.target.value })} className="input-field">
+              <select
+                value={form.companyId}
+                onChange={(e) => {
+                  const nextCompanyId = e.target.value;
+                  const picked = companies.find((c) => c.id === nextCompanyId);
+                  setForm({
+                    ...form,
+                    companyId: nextCompanyId,
+                    supervisorName: picked ? (picked.contactPerson || form.supervisorName || '') : '',
+                    supervisorContact: picked ? (picked.contactNumber || form.supervisorContact || '') : '',
+                    supervisorEmail: picked ? (picked.email || form.supervisorEmail || '') : '',
+                    workingDays: nextCompanyId ? (form.workingDays || 'Monday - Friday') : '',
+                    workingHours: nextCompanyId ? (form.workingHours || '8:00 AM - 5:00 PM') : ''
+                  });
+                }}
+                className="input-field"
+              >
                 <option value="">Not yet assigned</option>
                 {companies.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
+            {form.companyId && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Working Days</label>
+                  <input
+                    value={form.workingDays || ''}
+                    onChange={(e) => setForm({ ...form, workingDays: e.target.value })}
+                    placeholder="Monday - Friday"
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Working Hours</label>
+                  <input
+                    value={form.workingHours || ''}
+                    onChange={(e) => setForm({ ...form, workingHours: e.target.value })}
+                    placeholder="8:00 AM - 5:00 PM"
+                    className="input-field"
+                  />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
@@ -589,9 +631,17 @@ const StudentManagement = () => {
         {selectedStudent && (
           <div className="space-y-4">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-sti-blue flex items-center justify-center text-white text-xl font-bold">
-                {selectedStudent.firstName[0]}{selectedStudent.lastName[0]}
-              </div>
+              {selectedStudent.profilePicture?.startsWith('data:image') ? (
+                <img
+                  src={selectedStudent.profilePicture}
+                  alt={`${selectedStudent.firstName} ${selectedStudent.lastName}`}
+                  className="w-16 h-16 rounded-full object-cover shrink-0 ring-2 ring-sti-blue/20"
+                />
+              ) : (
+                <div className={`w-16 h-16 rounded-full ${selectedStudent.profilePicture?.startsWith('DEFAULT:') ? selectedStudent.profilePicture.replace('DEFAULT:', '') : 'bg-sti-blue'} flex items-center justify-center text-white text-xl font-bold shrink-0`}>
+                  {selectedStudent.firstName?.[0]}{selectedStudent.lastName?.[0]}
+                </div>
+              )}
               <div>
                 <p className="font-bold text-sti-gray-dark dark:text-white">{selectedStudent.firstName} {selectedStudent.lastName}</p>
                 <p className="text-sm text-sti-gray">{selectedStudent.studentId} • {selectedStudent.email}</p>
@@ -605,8 +655,8 @@ const StudentManagement = () => {
               <div><p className="text-sti-gray text-xs mb-1">Contact</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.contactNumber}</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Company</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.company?.name || 'Not yet assigned'}</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Hours</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.completedHours}/{selectedStudent.requiredHours}h ({Math.max(0, selectedStudent.requiredHours - selectedStudent.completedHours)}h left)</p></div>
-              <div><p className="text-sti-gray text-xs mb-1">Supervisor</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.supervisorName || 'Not yet assigned'}</p></div>
-              <div><p className="text-sti-gray text-xs mb-1">Working Hours</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.workingHours || '—'}</p></div>
+              <div><p className="text-sti-gray text-xs mb-1">Supervisor</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.supervisorName || selectedStudent.company?.contactPerson || 'Not yet assigned'}</p></div>
+              <div><p className="text-sti-gray text-xs mb-1">Working Schedule</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{[selectedStudent.workingDays || (selectedStudent.company ? 'Monday - Friday' : ''), selectedStudent.workingHours || (selectedStudent.company ? '8:00 AM - 5:00 PM' : '')].filter(Boolean).join(' • ') || '—'}</p></div>
             </div>
             {/* DTR Monitoring - time in/out visible to supervisor/coordinator/admin with photo */}
             <div className="pt-3 border-t border-black/5 dark:border-white/10">

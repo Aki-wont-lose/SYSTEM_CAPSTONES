@@ -25,10 +25,61 @@ const dropBlank = (obj) =>
     Object.entries(obj || {}).filter(([, value]) => value !== undefined && value !== null && value !== '')
   );
 
+const DEFAULT_WORKING_DAYS = 'Monday - Friday';
+const DEFAULT_WORKING_HOURS = '8:00 AM - 5:00 PM';
+
+const hydrateStudentPlacement = (student) => {
+  if (!student || !student.company) return student;
+  return {
+    ...student,
+    supervisorName: student.supervisorName || student.company.contactPerson || null,
+    supervisorContact: student.supervisorContact || student.company.contactNumber || null,
+    supervisorEmail: student.supervisorEmail || student.company.email || null,
+    workingDays: student.workingDays || DEFAULT_WORKING_DAYS,
+    workingHours: student.workingHours || DEFAULT_WORKING_HOURS
+  };
+};
+
+const resolveCompanyPlacementDefaults = async (companyId, existing = {}) => {
+  const [companySupervisor, companyRow] = await Promise.all([
+    prisma.user.findFirst({
+      where: { role: 'SUPERVISOR', supervisorCompanyId: companyId, isArchived: false },
+      select: { email: true, firstName: true, lastName: true, contactNumber: true }
+    }),
+    prisma.company.findUnique({
+      where: { id: companyId },
+      select: { contactPerson: true, contactNumber: true, email: true }
+    })
+  ]);
+
+  const supFullName = companySupervisor
+    ? [companySupervisor.firstName, companySupervisor.lastName].filter(Boolean).join(' ').trim()
+    : '';
+  const preferredName =
+    companyRow?.contactPerson ||
+    supFullName ||
+    companySupervisor?.email ||
+    null;
+
+  return {
+    supervisorName: existing.supervisorName || preferredName,
+    supervisorEmail: existing.supervisorEmail
+      ? normalizeEmail(existing.supervisorEmail)
+      : (companySupervisor?.email || companyRow?.email || null),
+    supervisorContact:
+      existing.supervisorContact ||
+      companySupervisor?.contactNumber ||
+      companyRow?.contactNumber ||
+      null,
+    workingDays: existing.workingDays || DEFAULT_WORKING_DAYS,
+    workingHours: existing.workingHours || DEFAULT_WORKING_HOURS
+  };
+};
+
 export const getAllStudents = async (filters = {}) => {
-  const where = {};
-  // Archived students are hidden from listings by default
-  where.isArchived = false;
+  const where = {
+    isArchived: false
+  };
 
   const clean = dropBlank(filters);
   if (clean.ojt_status) {
@@ -44,31 +95,47 @@ export const getAllStudents = async (filters = {}) => {
     where.supervisorEmail = clean.supervisorEmail;
   }
 
-  if (clean.search) {
-    where.OR = [
-      { firstName: { contains: clean.search } },
-      { lastName: { contains: clean.search } },
-      { studentId: { contains: clean.search } },
-      { email: { contains: clean.search } }
-    ];
+  let searchTerm = clean.search ? String(clean.search).trim() : '';
+  const andClauses = [];
+
+  if (Array.isArray(clean.OR) && clean.OR.length > 0) {
+    andClauses.push({ OR: clean.OR });
   }
 
   // scopeWhere() hands non-admins their restriction as an `AND` array (see
-  // accessScope.js). This used to be read as named keys only, so the whole `AND`
-  // clause was silently dropped and every coordinator/supervisor saw the entire
-  // roster. Preserve it here, combined with any explicit filters above. Each entry
-  // is blank-stripped as well: an empty `ojt_status` inside the AND array was what
-  // turned the coordinator list into a 500.
+  // accessScope.js). Strip blank keys and extract `search` from any inner clause
+  // so Prisma never receives an unknown `search` field or blank enum value.
   if (filters.AND) {
-    const andClauses = (Array.isArray(filters.AND) ? filters.AND : [filters.AND])
-      .map((clause) => dropBlank(clause))
-      .filter((clause) => Object.keys(clause).length > 0);
-    if (andClauses.length) {
-      where.AND = andClauses;
+    const rawClauses = Array.isArray(filters.AND) ? filters.AND : [filters.AND];
+    for (const rawClause of rawClauses) {
+      const stripped = dropBlank(rawClause);
+      if (stripped.search) {
+        if (!searchTerm) searchTerm = String(stripped.search).trim();
+        delete stripped.search;
+      }
+      if (Object.keys(stripped).length > 0) {
+        andClauses.push(stripped);
+      }
     }
   }
 
-  return prisma.student.findMany({
+  if (searchTerm) {
+    andClauses.push({
+      OR: [
+        { firstName: { contains: searchTerm, mode: 'insensitive' } },
+        { lastName: { contains: searchTerm, mode: 'insensitive' } },
+        { studentId: { contains: searchTerm, mode: 'insensitive' } },
+        { email: { contains: searchTerm, mode: 'insensitive' } },
+        { course: { contains: searchTerm, mode: 'insensitive' } }
+      ]
+    });
+  }
+
+  if (andClauses.length > 0) {
+    where.AND = andClauses;
+  }
+
+  const rows = await prisma.student.findMany({
     where,
     include: {
       user: {
@@ -82,10 +149,11 @@ export const getAllStudents = async (filters = {}) => {
     },
     orderBy: { createdAt: 'desc' }
   });
+  return rows.map(hydrateStudentPlacement);
 };
 
 export const getStudentById = async (studentId) => {
-  return prisma.student.findUnique({
+  const student = await prisma.student.findUnique({
     where: { id: studentId },
     include: {
       user: {
@@ -103,10 +171,11 @@ export const getStudentById = async (studentId) => {
       }
     }
   });
+  return hydrateStudentPlacement(student);
 };
 
 export const getStudentByUserId = async (userId) => {
-  return prisma.student.findUnique({
+  const student = await prisma.student.findUnique({
     where: { userId },
     include: {
       user: {
@@ -120,6 +189,7 @@ export const getStudentByUserId = async (userId) => {
       company: true
     }
   });
+  return hydrateStudentPlacement(student);
 };
 
 export const createStudent = async (studentData, userData) => {
@@ -156,11 +226,23 @@ export const createStudent = async (studentData, userData) => {
       }
     });
 
+    let placementDefaults = {
+      supervisorName: studentData.supervisorName || null,
+      supervisorEmail: studentData.supervisorEmail ? normalizeEmail(studentData.supervisorEmail) : null,
+      supervisorContact: studentData.supervisorContact || null,
+      workingDays: studentData.workingDays || null,
+      workingHours: studentData.workingHours || null
+    };
+    if (studentData.companyId) {
+      placementDefaults = await resolveCompanyPlacementDefaults(studentData.companyId, placementDefaults);
+    }
+
     // Create student record
     const student = await prisma.student.create({
       data: {
         ...studentData,
         email,
+        ...placementDefaults,
         contactNumber: studentData.contactNumber ?? '',
         requiredHours: requiredHours ?? studentData.requiredHours ?? null,
         userId: user.id
@@ -172,12 +254,13 @@ export const createStudent = async (studentData, userData) => {
             email: true,
             isActive: true
           }
-        }
+        },
+        company: true
       }
     });
 
     return {
-      student,
+      student: hydrateStudentPlacement(student),
       temporaryPassword: null
     };
   } catch (error) {
@@ -234,7 +317,16 @@ export const updateStudent = async (studentId, updateData) => {
     // while any NEW value must follow the strict ELMS rules.
     const current = await prisma.student.findUnique({
       where: { id: studentId },
-      select: { email: true, section: true }
+      select: {
+        email: true,
+        section: true,
+        companyId: true,
+        supervisorName: true,
+        supervisorEmail: true,
+        supervisorContact: true,
+        workingDays: true,
+        workingHours: true
+      }
     });
     if (sanitized.email !== undefined && sanitized.email !== current?.email && !isValidStudentEmail(sanitized.email)) {
       throw badRequest(ELMS_EMAIL_ERROR);
@@ -253,7 +345,24 @@ export const updateStudent = async (studentId, updateData) => {
       if (hoursCfg) sanitized.requiredHours = hoursCfg.requiredHours;
     }
 
-    return prisma.student.update({
+    // When assigning a student to a company, automatically populate supervisor and working schedule defaults
+    if (sanitized.companyId) {
+      const companyChanged = sanitized.companyId !== current?.companyId;
+      const defaults = await resolveCompanyPlacementDefaults(sanitized.companyId, {
+        supervisorName: sanitized.supervisorName || (!companyChanged ? current?.supervisorName : null),
+        supervisorEmail: sanitized.supervisorEmail || (!companyChanged ? current?.supervisorEmail : null),
+        supervisorContact: sanitized.supervisorContact || (!companyChanged ? current?.supervisorContact : null),
+        workingDays: sanitized.workingDays || current?.workingDays || null,
+        workingHours: sanitized.workingHours || current?.workingHours || null
+      });
+      Object.assign(sanitized, defaults);
+    } else if (sanitized.companyId === null) {
+      if (updateData.supervisorEmail === undefined) sanitized.supervisorEmail = null;
+      if (updateData.supervisorName === undefined) sanitized.supervisorName = null;
+      if (updateData.supervisorContact === undefined) sanitized.supervisorContact = null;
+    }
+
+    const updated = await prisma.student.update({
       where: { id: studentId },
       data: sanitized,
       include: {
@@ -263,9 +372,11 @@ export const updateStudent = async (studentId, updateData) => {
             email: true,
             isActive: true
           }
-        }
+        },
+        company: true
       }
     });
+    return hydrateStudentPlacement(updated);
   } catch (error) {
     if (error.code === 'P2025') {
       const err = new Error('Student not found');

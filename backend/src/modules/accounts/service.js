@@ -80,17 +80,27 @@ export const listStaff = async ({ role, search, includeInactive = true, requeste
     orderBy: [{ role: 'asc' }, { createdAt: 'desc' }]
   });
 
-  const studentCounts = await prisma.student.groupBy({
-    by: ['supervisorEmail'],
-    _count: { _all: true }
+  const activeStudents = await prisma.student.findMany({
+    where: { isArchived: false },
+    select: { id: true, companyId: true, supervisorEmail: true }
   });
-  const countByEmail = new Map(studentCounts.map((row) => [row.supervisorEmail, row._count._all]));
 
-  return staff.map((member) => ({
-    ...member,
-    isSuperAdmin: isSuperAdmin(member),
-    assignedStudents: member.role === 'SUPERVISOR' ? (countByEmail.get(member.email) || 0) : null
-  }));
+  return staff.map((member) => {
+    let assignedStudents = null;
+    if (member.role === 'SUPERVISOR') {
+      const memberEmail = String(member.email || '').toLowerCase();
+      assignedStudents = activeStudents.filter((s) => {
+        const byCompany = Boolean(member.supervisorCompanyId && s.companyId === member.supervisorCompanyId);
+        const byEmail = Boolean(memberEmail && s.supervisorEmail && s.supervisorEmail.toLowerCase() === memberEmail);
+        return byCompany || byEmail;
+      }).length;
+    }
+    return {
+      ...member,
+      isSuperAdmin: isSuperAdmin(member),
+      assignedStudents
+    };
+  });
 };
 
 export const createStaffAccount = async ({ email, firstName, lastName, role, coordinatorCourse, companyId, contactNumber, requesterIsSuperAdmin = false }) => {
@@ -171,7 +181,19 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     select: staffSelect
   });
 
-  return { user, temporaryPassword, fullName: `${normalizedFirstName} ${normalizedLastName}`, contactNumber: normalizedContact };
+  const fullName = `${normalizedFirstName} ${normalizedLastName}`.trim();
+  if (normalizedRole === 'SUPERVISOR' && companyId) {
+    await prisma.student.updateMany({
+      where: { companyId },
+      data: {
+        supervisorEmail: normalizedEmail,
+        supervisorName: fullName,
+        ...(normalizedContact ? { supervisorContact: normalizedContact } : {})
+      }
+    });
+  }
+
+  return { user, temporaryPassword, fullName, contactNumber: normalizedContact };
 };
 
 export const updateStaffAccount = async (userId, updateData, { requesterIsSuperAdmin = false, requesterId = null, requesterEmail = null } = {}) => {
@@ -305,10 +327,22 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
     await prisma.student.updateMany({ where: { supervisorEmail: existing.email }, data: { supervisorEmail: nextEmail } });
   }
 
-  if (existing.role === 'SUPERVISOR' && updateData.supervisorCompanyId && updateData.supervisorCompanyId !== existing.supervisorCompanyId) {
+  const targetCompanyId = data.supervisorCompanyId !== undefined ? data.supervisorCompanyId : existing.supervisorCompanyId;
+  if (nextRole === 'SUPERVISOR' && targetCompanyId) {
+    const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || nextEmail;
     await prisma.student.updateMany({
-      where: { supervisorEmail: nextEmail },
-      data: { companyId: updateData.supervisorCompanyId }
+      where: {
+        OR: [
+          { companyId: targetCompanyId },
+          { supervisorEmail: { equals: nextEmail, mode: 'insensitive' } }
+        ]
+      },
+      data: {
+        companyId: targetCompanyId,
+        supervisorEmail: nextEmail,
+        supervisorName: fullName,
+        ...(user.contactNumber ? { supervisorContact: user.contactNumber } : {})
+      }
     });
   }
 

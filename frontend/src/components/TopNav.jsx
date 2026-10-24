@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
-  const { user, logout, theme, toggleTheme } = useAuth();
+  const { user, logout, updateUser, theme, toggleTheme } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -15,6 +15,35 @@ const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
   const knownNotificationIds = useRef(new Set());
   const hasLoadedNotifications = useRef(false);
   const unread = notifications.filter(n=>!n.isRead).length;
+
+  // Keep user profile picture and details in sync across the header, sidebar, and refreshes
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    api.get('/profile')
+      .then((res) => {
+        if (!active) return;
+        const p = res.data?.data;
+        if (!p) return;
+        const syncedPic = p.profilePicture || p.student?.profilePicture || null;
+        const currentPic = user?.profilePicture || user?.student?.profilePicture || null;
+        const nextUpdates = {};
+        if (syncedPic && syncedPic !== currentPic) {
+          nextUpdates.profilePicture = syncedPic;
+        }
+        if (p.firstName !== undefined && p.firstName !== user?.firstName) nextUpdates.firstName = p.firstName;
+        if (p.lastName !== undefined && p.lastName !== user?.lastName) nextUpdates.lastName = p.lastName;
+        if (p.student && (!user?.student || syncedPic !== user?.student?.profilePicture)) {
+          nextUpdates.student = { ...(user?.student || {}), ...p.student };
+        }
+        if (Object.keys(nextUpdates).length > 0) {
+          updateUser(nextUpdates);
+        }
+      })
+      .catch(() => {});
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   const fetchNotifs = async () => {
     try {
@@ -48,29 +77,39 @@ const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
     ? 'Super Admin'
     : user?.student
     ? `${user.student.firstName} ${user.student.lastName}`
+    : (user?.firstName || user?.lastName)
+    ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
     : user?.email?.split('@')[0] || 'User';
 
   const initials = user?.isSuperAdmin
     ? 'SA'
     : user?.student
-    ? `${user.student.firstName[0]}${user.student.lastName[0]}`
+    ? `${user.student.firstName?.[0] || ''}${user.student.lastName?.[0] || ''}`.toUpperCase() || 'U'
+    : (user?.firstName || user?.lastName)
+    ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase() || 'U'
     : user?.email?.[0]?.toUpperCase() || 'U';
+
+  const rawPic = user?.profilePicture || user?.student?.profilePicture || null;
+  const isPhoto = typeof rawPic === 'string' && rawPic.startsWith('data:image');
+  const defaultBg = typeof rawPic === 'string' && rawPic.startsWith('DEFAULT:')
+    ? rawPic.replace('DEFAULT:', '')
+    : 'bg-sti-blue';
 
   return (
     <header className="sticky top-0 z-20 h-20 bg-white dark:bg-slate-800 border-b border-black/5 dark:border-white/10 flex items-center justify-between px-4 sm:px-8 transition-colors">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 min-w-0">
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray-dark dark:text-white"
+          className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray-dark dark:text-white shrink-0"
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-sti-gray-dark dark:text-white">{title}</h1>
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold text-sti-gray-dark dark:text-white truncate">{title}</h1>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         <button
           onClick={toggleTheme}
           className="p-2.5 rounded-full hover:bg-sti-gray-light dark:hover:bg-white/10 transition-colors"
@@ -89,59 +128,66 @@ const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
           {notifOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={()=>setNotifOpen(false)} />
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#1e1e1e] dark:bg-slate-800 rounded-xl shadow-cardHover border border-black/10 z-20 overflow-hidden max-h-[70vh] flex flex-col">
-                <div className="p-3 border-b border-white/10 flex items-center justify-between">
-                  <h3 className="font-bold text-white text-sm">Notifications</h3>
-                  <span className="text-xs text-gray-400">{unread} unread</span>
+              <div className="fixed left-3 right-3 top-[4.5rem] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 w-auto sm:w-96 max-w-[calc(100vw-1.5rem)] bg-[#1e1e1e] dark:bg-slate-800 rounded-xl shadow-cardHover border border-black/10 dark:border-white/10 z-20 overflow-hidden max-h-[calc(100vh-5.5rem)] sm:max-h-[70vh] flex flex-col">
+                <div className="px-3.5 py-3 border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
+                  <h3 className="font-bold text-white text-sm truncate">Notifications</h3>
+                  <span className="text-xs text-gray-400 shrink-0">{unread} unread</span>
                 </div>
-                <div className="flex-1 overflow-y-auto">
+                <div className="flex-1 overflow-y-auto overscroll-contain">
                   {notifications.length===0 ? (
                     <p className="text-sm text-gray-400 p-8 text-center">No notifications yet</p>
                   ) : notifications.map(n=>(
-                    <div key={n.id} onClick={()=>openNotif(n)} className={`p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer flex gap-3 ${!n.isRead ? 'bg-white/5' : ''}`}>
-                      <div className="w-8 h-8 rounded-full bg-sti-blue flex items-center justify-center text-white text-xs font-bold shrink-0">{n.title[0]}</div>
+                    <div key={n.id} onClick={()=>openNotif(n)} className={`p-3 border-b border-white/5 hover:bg-white/5 cursor-pointer flex items-start gap-2.5 sm:gap-3 ${!n.isRead ? 'bg-white/5' : ''}`}>
+                      <div className="w-8 h-8 rounded-full bg-sti-blue flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5">{n.title?.[0] || 'N'}</div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white truncate">{n.title}</p>
-                        <p className="text-xs text-gray-400 line-clamp-2">{n.content}</p>
-                        <p className="text-[11px] text-gray-500 mt-1">{new Date(n.createdAt).toLocaleString()} • {n.isRead ? 'Seen' : 'New'}</p>
+                        <p className="text-xs sm:text-sm font-medium text-white break-words leading-snug">{n.title}</p>
+                        <p className="text-xs text-gray-300 mt-0.5 break-words line-clamp-2 leading-relaxed">{n.content}</p>
+                        <p className="text-[11px] text-gray-400 mt-1 break-words">{new Date(n.createdAt).toLocaleString()} • {n.isRead ? 'Seen' : 'New'}</p>
                       </div>
-                      <button onClick={(e)=>{e.stopPropagation(); api.delete(`/notifications/${n.id}`).then(fetchNotifs);}} className="text-gray-500 hover:text-white p-1"><X className="w-3 h-3" /></button>
+                      <button
+                        type="button"
+                        onClick={(e)=>{e.stopPropagation(); api.delete(`/notifications/${n.id}`).catch(()=>{}).then(fetchNotifs);}}
+                        className="text-gray-400 hover:text-white p-1 -mr-1 shrink-0 rounded-lg"
+                        aria-label="Delete notification"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   ))}
                 </div>
-                <div className="p-2 border-t border-white/10 flex items-center justify-between text-xs">
-                  <button onClick={markAllRead} className="text-gray-300 hover:text-white flex items-center gap-1"><CheckCheck className="w-3 h-3" /> Mark all read</button>
-                  <button onClick={()=>setNotifOpen(false)} className="text-gray-400 hover:text-white">Configure</button>
+                <div className="px-3.5 py-2.5 border-t border-white/10 flex items-center justify-between gap-2 text-xs shrink-0">
+                  <button onClick={markAllRead} className="text-gray-300 hover:text-white flex items-center gap-1.5 shrink-0"><CheckCheck className="w-3.5 h-3.5 shrink-0" /> Mark all read</button>
+                  <button onClick={()=>setNotifOpen(false)} className="text-gray-400 hover:text-white shrink-0">Configure</button>
                 </div>
               </div>
             </>
           )}
           {messageToast && (
-        <div className="fixed top-24 right-4 z-40 w-[calc(100vw-2rem)] max-w-sm rounded-xl bg-[#1e1e1e] text-white shadow-cardHover border border-white/10 p-4">
+        <div className="fixed top-20 left-3 right-3 sm:top-24 sm:left-auto sm:right-4 z-40 sm:w-96 max-w-[calc(100vw-1.5rem)] rounded-xl bg-[#1e1e1e] text-white shadow-cardHover border border-white/10 p-4">
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-sti-blue flex items-center justify-center text-white text-xs font-bold shrink-0">{messageToast.title[0]}</div>
+            <div className="w-9 h-9 rounded-full bg-sti-blue flex items-center justify-center text-white text-xs font-bold shrink-0">{messageToast.title?.[0] || 'M'}</div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-white">{messageToast.title}</p>
-              <p className="text-xs text-gray-300 mt-1 line-clamp-3">{messageToast.content}</p>
+              <p className="text-sm font-semibold text-white break-words">{messageToast.title}</p>
+              <p className="text-xs text-gray-300 mt-1 break-words line-clamp-3">{messageToast.content}</p>
               <button onClick={() => { setMessageToast(null); setNotifOpen(true); openNotif(messageToast); }} className="text-xs text-sti-yellow hover:text-white mt-2">View notification</button>
             </div>
-            <button onClick={() => setMessageToast(null)} className="text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
+            <button onClick={() => setMessageToast(null)} className="text-gray-400 hover:text-white shrink-0"><X className="w-4 h-4" /></button>
           </div>
         </div>
       )}
       {selectedNotif && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={()=>setSelectedNotif(null)}>
-              <div className="bg-[#232323] rounded-xl max-w-md w-full p-5" onClick={e=>e.stopPropagation()}>
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="font-bold text-white text-sm">Notification from {selectedNotif.title.replace('New Announcement: ','')}</h3>
-                  <button onClick={()=>setSelectedNotif(null)} className="text-gray-400"><X className="w-4 h-4" /></button>
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4" onClick={()=>setSelectedNotif(null)}>
+              <div className="bg-[#232323] rounded-xl max-w-md w-full p-4 sm:p-5 max-h-[85vh] overflow-y-auto" onClick={e=>e.stopPropagation()}>
+                <div className="flex justify-between items-start gap-3 mb-3">
+                  <h3 className="font-bold text-white text-sm break-words min-w-0 flex-1">Notification from {selectedNotif.title.replace('New Announcement: ','')}</h3>
+                  <button onClick={()=>setSelectedNotif(null)} className="text-gray-400 hover:text-white shrink-0 p-1"><X className="w-4 h-4" /></button>
                 </div>
-                <p className="text-xs text-gray-400">From: {selectedNotif.title} @ {new Date(selectedNotif.createdAt).toLocaleString()}</p>
+                <p className="text-xs text-gray-400 break-words">From: {selectedNotif.title} @ {new Date(selectedNotif.createdAt).toLocaleString()}</p>
                 {selectedNotif.image && <img src={selectedNotif.image} alt="" className="w-full h-40 object-cover rounded-lg mt-3" />}
-                <p className="text-sm text-gray-200 mt-3 whitespace-pre-wrap">{selectedNotif.content}</p>
+                <p className="text-sm text-gray-200 mt-3 whitespace-pre-wrap break-words">{selectedNotif.content}</p>
                 <div className="flex justify-end gap-2 mt-4">
-                  <button onClick={async()=>{ await api.delete(`/notifications/${selectedNotif.id}`); setSelectedNotif(null); fetchNotifs(); }} className="bg-[#0a4a8a] text-white px-4 py-1.5 rounded-full text-xs">Delete</button>
-                  <button onClick={()=>setSelectedNotif(null)} className="text-gray-400 text-xs">Close</button>
+                  <button onClick={async()=>{ await api.delete(`/notifications/${selectedNotif.id}`).catch(()=>{}); setSelectedNotif(null); fetchNotifs(); }} className="bg-[#0a4a8a] text-white px-4 py-1.5 rounded-full text-xs">Delete</button>
+                  <button onClick={()=>setSelectedNotif(null)} className="text-gray-400 hover:text-white text-xs px-2 py-1.5">Close</button>
                 </div>
               </div>
             </div>
@@ -153,9 +199,17 @@ const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
             onClick={() => setMenuOpen(!menuOpen)}
             className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full hover:bg-sti-gray-light dark:hover:bg-white/10 transition-colors"
           >
-            <div className="w-9 h-9 rounded-full bg-sti-blue flex items-center justify-center text-white text-sm font-bold shrink-0">
-              {initials}
-            </div>
+            {isPhoto ? (
+              <img
+                src={rawPic}
+                alt={displayName}
+                className="w-9 h-9 rounded-full object-cover shrink-0 ring-2 ring-sti-blue/20"
+              />
+            ) : (
+              <div className={`w-9 h-9 rounded-full ${defaultBg} flex items-center justify-center text-white text-sm font-bold shrink-0`}>
+                {initials}
+              </div>
+            )}
             <span className="hidden sm:block text-sm font-medium text-sti-gray-dark dark:text-white max-w-[140px] truncate">
               {displayName}
             </span>

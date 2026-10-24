@@ -21,7 +21,7 @@ export const getAuditLogs = async (filters = {}) => {
   const page = Math.max(1, Number.parseInt(filters.page, 10) || 1);
   const limit = Math.min(100, Math.max(1, Number.parseInt(filters.limit, 10) || 50));
 
-  const where = {};
+  const where = { entity: { not: 'ProfileAvatar' } };
   if (action) where.action = String(action).toUpperCase();
   // Account-type filter in the UI maps to the role snapshot stored on the entry.
   if (role) where.userRole = String(role).toUpperCase();

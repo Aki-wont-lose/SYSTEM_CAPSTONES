@@ -6,7 +6,7 @@ import WelcomeCarousel from '../components/WelcomeCarousel';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentSummary } from '../services/attendanceService';
 import { getActiveAnnouncements, parseAnnouncementPhotos } from '../services/announcementService';
-import { getMyWeeklyTasks, completeWeeklyTask } from '../services/requirementService';
+import { getMyWeeklyTasks, completeWeeklyTask, getMySubmissions } from '../services/requirementService';
 
 const formatDate = (value) =>
   value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : null;
@@ -22,8 +22,9 @@ const isUpcomingDate = (dateVal) => {
   if (!dateVal) return false;
   const d = new Date(dateVal);
   const now = new Date();
-  const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  return d > now && d <= sevenDaysLater;
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sevenDaysLater = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000 + 86399999);
+  return d >= todayStart && d <= sevenDaysLater;
 };
 
 const StudentDashboard = () => {
@@ -31,20 +32,23 @@ const StudentDashboard = () => {
   const [summary, setSummary] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [tasks, setTasks] = useState([]);
+  const [requirements, setRequirements] = useState([]);
   const [busyId, setBusyId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [summaryRes, announcementsRes, tasksRes] = await Promise.all([
+        const [summaryRes, announcementsRes, tasksRes, reqsRes] = await Promise.all([
           getStudentSummary(),
           getActiveAnnouncements(4),
           getMyWeeklyTasks(),
+          getMySubmissions().catch(() => ({ data: [] })),
         ]);
         setSummary(summaryRes.data);
         setAnnouncements(announcementsRes.data);
         setTasks(tasksRes.data || []);
+        setRequirements(reqsRes.data || []);
       } catch (err) {
         console.error('Failed to load dashboard data', err);
       } finally {
@@ -82,8 +86,21 @@ const StudentDashboard = () => {
   const remainingHours = stats?.remainingHours ?? Math.max(0, requiredHours - completedHours);
 
   const pendingTasks = tasks.filter((t) => t.status !== 'COMPLETED');
-  const todayTasks = pendingTasks.filter((t) => isTodayDate(t.dueDate) || isTodayDate(t.weekOf));
-  const upcomingTasks = pendingTasks.filter((t) => isUpcomingDate(t.dueDate));
+  const pendingRequirementDeadlines = requirements
+    .filter((r) => r.dueDate && r.derivedStatus !== 'COMPLETED' && r.submission?.status !== 'APPROVED')
+    .map((r) => ({
+      id: `req-${r.id}`,
+      title: r.title,
+      dueDate: r.dueDate,
+      type: 'requirement',
+      status: r.derivedStatus || 'NOT_STARTED',
+    }));
+  const allPendingDeadlines = [
+    ...pendingTasks.map((t) => ({ ...t, type: 'task' })),
+    ...pendingRequirementDeadlines,
+  ];
+  const todayTasks = allPendingDeadlines.filter((t) => isTodayDate(t.dueDate) || isTodayDate(t.weekOf));
+  const upcomingTasks = allPendingDeadlines.filter((t) => isUpcomingDate(t.dueDate));
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -150,7 +167,7 @@ const StudentDashboard = () => {
         <div className="space-y-4">
 
           {/* Calendar */}
-          <CalendarWidget />
+          <CalendarWidget deadlines={allPendingDeadlines} />
 
           {/* To-Do */}
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-card border border-black/5 dark:border-white/5 p-4">

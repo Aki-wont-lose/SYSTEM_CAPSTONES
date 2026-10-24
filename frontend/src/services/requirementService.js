@@ -71,3 +71,15 @@ export const reviewSubmission = async (submissionId, status, remarks, score) => 
   const response = await api.put(`/requirements/submissions/${submissionId}/review`, { status, remarks, score });
   return response.data;
 };
+
+// Remove the signed-in student's submission for a requirement
+export const deleteMySubmission = async (requirementId) => {
+  const response = await api.delete(`/requirements/${requirementId}/submit`);
+  return response.data;
+};
+
+// Remove a submission record as staff
+export const deleteSubmission = async (submissionId) => {
+  const response = await api.delete(`/requirements/submissions/${submissionId}`);
+  return response.data;
+};

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Mail, User, BookOpen, Users, Hash, Camera, Image as ImageIcon, Check } from 'lucide-react';
 import Card from '../components/Card';
+import { useAuth } from '../hooks/useAuth';
 import { getMyProfile, updateMyProfile } from '../services/studentService';
 import { sectionLabel } from '../constants/studentRules';
 
@@ -13,6 +14,7 @@ const statusStyles = {
 };
 
 const StudentProfile = () => {
+  const { user, updateUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPicker, setShowPicker] = useState(false);
@@ -24,10 +26,25 @@ const StudentProfile = () => {
     { bg: 'bg-emerald-500', label: 'Green' },
   ];
 
+  const syncProfileToAuth = (studentData) => {
+    if (!studentData) return;
+    updateUser({
+      profilePicture: studentData.profilePicture || null,
+      student: {
+        ...(user?.student || {}),
+        ...studentData,
+        profilePicture: studentData.profilePicture || null
+      }
+    });
+  };
+
   const loadProfile = async () => {
     try {
       const res = await getMyProfile();
       setProfile(res.data);
+      if (res.data?.profilePicture) {
+        syncProfileToAuth(res.data);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -41,28 +58,42 @@ const StudentProfile = () => {
 
   const handleGalleryPick = (e) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
     if (file.size > 4 * 1024 * 1024) { alert('Image too large (max 4MB)'); return; }
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result;
       setSavingPic(true);
-      try { const res = await updateMyProfile({ profilePicture: base64 }); setProfile(res.data); setShowPicker(false); } catch (err) { alert('Failed to update photo'); }
-      finally { setSavingPic(false); }
+      try {
+        const res = await updateMyProfile({ profilePicture: base64 });
+        const nextProfile = { ...(res.data || profile), profilePicture: base64 };
+        setProfile(nextProfile);
+        syncProfileToAuth(nextProfile);
+        setShowPicker(false);
+      } catch (err) {
+        alert('Failed to update photo');
+      } finally {
+        setSavingPic(false);
+      }
     };
     reader.readAsDataURL(file);
-    e.target.value = '';
   };
 
   const handleDefaultPick = async (bg) => {
-    // Use initials with chosen bg as "default choice" - store as null to use initials with bg, or store bg code
     setSavingPic(true);
     try {
-      // Store a marker like "DEFAULT:blue" to indicate default choice, or clear to use default
-      const res = await updateMyProfile({ profilePicture: `DEFAULT:${bg}` });
-      setProfile(res.data);
+      const marker = `DEFAULT:${bg}`;
+      const res = await updateMyProfile({ profilePicture: marker });
+      const nextProfile = { ...(res.data || profile), profilePicture: marker };
+      setProfile(nextProfile);
+      syncProfileToAuth(nextProfile);
       setShowPicker(false);
-    } catch { alert('Failed'); } finally { setSavingPic(false); }
+    } catch {
+      alert('Failed');
+    } finally {
+      setSavingPic(false);
+    }
   };
 
   if (loading) {
