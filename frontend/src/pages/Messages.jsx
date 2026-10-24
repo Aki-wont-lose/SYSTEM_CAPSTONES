@@ -266,7 +266,7 @@ const Messages = () => {
                                   </span>
                                 )}
                               </div>
-                              {isMine && <button onClick={()=>handleDelete(m.id)} className="absolute -top-2 -right-2 hidden group-hover:flex bg-white dark:bg-slate-700 border border-black/10 rounded-full p-1 shadow"><Trash2 className="w-3 h-3 text-red-600" /></button>}
+                              <button onClick={()=>handleDelete(m.id)} className="absolute -top-2 -right-2 hidden group-hover:flex bg-white dark:bg-slate-700 border border-black/10 rounded-full p-1 shadow" title="Delete message"><Trash2 className="w-3 h-3 text-red-600" /></button>
                             </div>
                           </div>
                       );

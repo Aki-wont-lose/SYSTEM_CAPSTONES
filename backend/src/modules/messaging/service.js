@@ -147,7 +147,11 @@ export const markAsRead = async (userId, otherUserId) => {
 export const deleteMessage = async (userId, messageId) => {
   const msg = await prisma.message.findUnique({ where: { id: messageId } });
   if (!msg) { const e = new Error('Message not found'); e.status = 404; throw e; }
-  if (msg.senderId !== userId) { const e = new Error('Only sender can delete'); e.status = 403; throw e; }
+  if (msg.senderId !== userId && msg.receiverId !== userId) {
+    const e = new Error('Not authorized to delete this message');
+    e.status = 403;
+    throw e;
+  }
   await prisma.message.delete({ where: { id: messageId } });
   return { success: true };
 };
