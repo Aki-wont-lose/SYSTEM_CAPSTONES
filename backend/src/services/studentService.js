@@ -1,6 +1,17 @@
 // src/services/studentService.js
 import { PrismaClient } from '@prisma/client';
-import { isValidStudentEmail, isValidSection, ELMS_EMAIL_ERROR, ELMS_SECTION_ERROR } from '../utils/studentValidation.js';
+import {
+  isValidStudentEmail,
+  isValidStudentId,
+  validateStudentEmailMatch,
+  isValidContactNumber,
+  isValidSection,
+  canonicalSection,
+  ELMS_EMAIL_ERROR,
+  STUDENT_ID_ERROR,
+  CONTACT_NUMBER_ERROR,
+  ELMS_SECTION_ERROR
+} from '../utils/studentValidation.js';
 import { studentScopeWhere } from './accessScope.js';
 
 const prisma = new PrismaClient();
@@ -29,15 +40,45 @@ const DEFAULT_WORKING_DAYS = 'Monday - Friday';
 const DEFAULT_WORKING_HOURS = '8:00 AM - 5:00 PM';
 
 const hydrateStudentPlacement = (student) => {
-  if (!student || !student.company) return student;
+  if (!student) return student;
+  const normalizedSection = canonicalSection(student.section, student.course) || student.section;
+  if (!student.company) {
+    return normalizedSection !== student.section ? { ...student, section: normalizedSection } : student;
+  }
   return {
     ...student,
+    section: normalizedSection,
     supervisorName: student.supervisorName || student.company.contactPerson || null,
     supervisorContact: student.supervisorContact || student.company.contactNumber || null,
     supervisorEmail: student.supervisorEmail || student.company.email || null,
     workingDays: student.workingDays || DEFAULT_WORKING_DAYS,
     workingHours: student.workingHours || DEFAULT_WORKING_HOURS
   };
+};
+
+const validateCompanyForStudent = async (companyId, studentCourse, isNewAssignment = true) => {
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { id: true, name: true, status: true, isArchived: true, programs: true, availableSlots: true }
+  });
+  if (!company || company.isArchived || company.status === 'INACTIVE') {
+    throw badRequest('Selected partner company is inactive or unavailable.');
+  }
+  const normalizedCourse = String(studentCourse || '').trim().toUpperCase();
+  if (
+    normalizedCourse &&
+    Array.isArray(company.programs) &&
+    company.programs.length > 0 &&
+    !company.programs.includes(normalizedCourse)
+  ) {
+    throw badRequest(
+      `${company.name} only accepts ${company.programs.join(', ')} interns (student is in ${normalizedCourse}).`
+    );
+  }
+  if (isNewAssignment && company.availableSlots != null && company.availableSlots <= 0) {
+    throw badRequest(`${company.name} has no open OJT slots available.`);
+  }
+  return company;
 };
 
 const resolveCompanyPlacementDefaults = async (companyId, existing = {}) => {
@@ -193,16 +234,32 @@ export const getStudentByUserId = async (userId) => {
 };
 
 export const createStudent = async (studentData, userData) => {
-  // Enforce the institutional rules here, not only in the form, so a direct API
-  // call (or a CSV batch row) can never create a student with a non-ELMS email
-  // or an off-catalog section. Year level is derived from the section, so a
-  // valid section is required.
-  const email = normalizeEmail(studentData.email || userData?.email || '');
-  if (!isValidStudentEmail(email)) {
-    throw badRequest(ELMS_EMAIL_ERROR);
+  const cleanStudentId = String(studentData.studentId || '').trim();
+  if (!isValidStudentId(cleanStudentId)) {
+    throw badRequest(STUDENT_ID_ERROR);
   }
-  if (!isValidSection(studentData.section)) {
+
+  const email = normalizeEmail(studentData.email || userData?.email || '');
+  const emailError = validateStudentEmailMatch({
+    email,
+    studentId: cleanStudentId,
+    lastName: studentData.lastName
+  });
+  if (emailError) {
+    throw badRequest(emailError);
+  }
+
+  const normalizedSection = canonicalSection(studentData.section, studentData.course);
+  if (!isValidSection(normalizedSection, studentData.course)) {
     throw badRequest(ELMS_SECTION_ERROR);
+  }
+
+  if (!isValidContactNumber(studentData.contactNumber)) {
+    throw badRequest(CONTACT_NUMBER_ERROR);
+  }
+
+  if (studentData.companyId) {
+    await validateCompanyForStudent(studentData.companyId, studentData.course, true);
   }
 
   // Look up required OJT hours for this course from the admin-maintained config
@@ -237,13 +294,20 @@ export const createStudent = async (studentData, userData) => {
       placementDefaults = await resolveCompanyPlacementDefaults(studentData.companyId, placementDefaults);
     }
 
+    const sanitizedCreate = {};
+    for (const field of STAFF_EDITABLE_STUDENT_FIELDS) {
+      if (studentData[field] !== undefined) sanitizedCreate[field] = studentData[field];
+    }
+
     // Create student record
     const student = await prisma.student.create({
       data: {
-        ...studentData,
+        ...sanitizedCreate,
+        studentId: cleanStudentId,
+        section: normalizedSection,
         email,
         ...placementDefaults,
-        contactNumber: studentData.contactNumber ?? '',
+        contactNumber: studentData.contactNumber ? String(studentData.contactNumber).trim() : '',
         requiredHours: requiredHours ?? studentData.requiredHours ?? null,
         userId: user.id
       },
@@ -318,6 +382,10 @@ export const updateStudent = async (studentId, updateData) => {
     const current = await prisma.student.findUnique({
       where: { id: studentId },
       select: {
+        studentId: true,
+        firstName: true,
+        lastName: true,
+        course: true,
         email: true,
         section: true,
         companyId: true,
@@ -328,11 +396,40 @@ export const updateStudent = async (studentId, updateData) => {
         workingHours: true
       }
     });
-    if (sanitized.email !== undefined && sanitized.email !== current?.email && !isValidStudentEmail(sanitized.email)) {
-      throw badRequest(ELMS_EMAIL_ERROR);
+
+    const targetCourse = sanitized.course || current?.course;
+    if (sanitized.section !== undefined) {
+      sanitized.section = canonicalSection(sanitized.section, targetCourse);
     }
-    if (sanitized.section !== undefined && sanitized.section !== current?.section && !isValidSection(sanitized.section)) {
+
+    if (sanitized.studentId !== undefined) {
+      sanitized.studentId = String(sanitized.studentId || '').trim();
+      if (sanitized.studentId !== current?.studentId && !isValidStudentId(sanitized.studentId)) {
+        throw badRequest(STUDENT_ID_ERROR);
+      }
+    }
+
+    if (sanitized.email !== undefined && sanitized.email !== current?.email) {
+      const emailErr = validateStudentEmailMatch({
+        email: sanitized.email,
+        studentId: sanitized.studentId || current?.studentId,
+        lastName: sanitized.lastName || current?.lastName
+      });
+      if (emailErr) throw badRequest(emailErr);
+    }
+
+    const currentCanonicalSection = canonicalSection(current?.section, current?.course);
+    if (
+      sanitized.section !== undefined &&
+      sanitized.section !== current?.section &&
+      sanitized.section !== currentCanonicalSection &&
+      !isValidSection(sanitized.section, targetCourse)
+    ) {
       throw badRequest(ELMS_SECTION_ERROR);
+    }
+
+    if (sanitized.contactNumber !== undefined && !isValidContactNumber(sanitized.contactNumber)) {
+      throw badRequest(CONTACT_NUMBER_ERROR);
     }
 
     // Moving a student to another course also moves them to that course's
@@ -345,9 +442,10 @@ export const updateStudent = async (studentId, updateData) => {
       if (hoursCfg) sanitized.requiredHours = hoursCfg.requiredHours;
     }
 
-    // When assigning a student to a company, automatically populate supervisor and working schedule defaults
+    // When assigning a student to a company, validate program & slot rules and populate defaults
     if (sanitized.companyId) {
       const companyChanged = sanitized.companyId !== current?.companyId;
+      await validateCompanyForStudent(sanitized.companyId, targetCourse, companyChanged);
       const defaults = await resolveCompanyPlacementDefaults(sanitized.companyId, {
         supervisorName: sanitized.supervisorName || (!companyChanged ? current?.supervisorName : null),
         supervisorEmail: sanitized.supervisorEmail || (!companyChanged ? current?.supervisorEmail : null),
@@ -360,6 +458,8 @@ export const updateStudent = async (studentId, updateData) => {
       if (updateData.supervisorEmail === undefined) sanitized.supervisorEmail = null;
       if (updateData.supervisorName === undefined) sanitized.supervisorName = null;
       if (updateData.supervisorContact === undefined) sanitized.supervisorContact = null;
+      if (updateData.workingDays === undefined) sanitized.workingDays = null;
+      if (updateData.workingHours === undefined) sanitized.workingHours = null;
     }
 
     const updated = await prisma.student.update({

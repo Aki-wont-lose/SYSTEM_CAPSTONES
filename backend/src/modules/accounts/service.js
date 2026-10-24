@@ -1,7 +1,13 @@
 // src/modules/accounts/service.js
 import { PrismaClient } from '@prisma/client';
 import { hashPassword, generateTemporaryPassword } from '../../services/authService.js';
-import { isValidStaffEmail, STAFF_EMAIL_ERROR } from '../../utils/staffValidation.js';
+import {
+  isValidStaffEmail,
+  getStaffEmailError,
+  isValidContactNumber,
+  CONTACT_NUMBER_ERROR,
+  STAFF_EMAIL_ERROR
+} from '../../utils/staffValidation.js';
 import { isSuperAdmin } from '../../middleware/auth.js';
 import { studentScopeWhere } from '../../services/accessScope.js';
 
@@ -133,6 +139,11 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     throw error;
   }
   const normalizedContact = String(contactNumber || '').trim() || null;
+  if (normalizedContact && !isValidContactNumber(normalizedContact)) {
+    const error = new Error(CONTACT_NUMBER_ERROR);
+    error.status = 400;
+    throw error;
+  }
 
   if (normalizedRole === 'COORDINATOR' && !coordinatorCourse) {
     const error = new Error('Assigned course is required for a coordinator');
@@ -146,14 +157,18 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
   }
 
   const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-  if (existing) {
-    const error = new Error('An account with this email already exists');
+  if (existing && (!existing.isArchived || existing.role === 'STUDENT')) {
+    const error = new Error(
+      existing.role === 'STUDENT'
+        ? 'A student account with this email already exists'
+        : 'An account with this email already exists'
+    );
     error.status = 400;
     throw error;
   }
 
-  if (!isValidStaffEmail(normalizedEmail)) {
-    const error = new Error(STAFF_EMAIL_ERROR);
+  if (!isValidStaffEmail(normalizedEmail, normalizedRole)) {
+    const error = new Error(getStaffEmailError(normalizedRole));
     error.status = 400;
     throw error;
   }
@@ -165,21 +180,31 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
   const temporaryPassword = needsPassword ? generateTemporaryPassword() : null;
   const hashedPassword = needsPassword ? await hashPassword(temporaryPassword) : null;
 
-  const user = await prisma.user.create({
-    data: {
-      email: normalizedEmail,
-      password: hashedPassword,
-      role: normalizedRole,
-      isActive: true,
-      firstName: normalizedFirstName,
-      lastName: normalizedLastName,
-      contactNumber: normalizedContact,
-      mustChangePassword: needsPassword,
-      coordinatorCourse: normalizedRole === 'COORDINATOR' ? coordinatorCourse : null,
-      supervisorCompanyId: normalizedRole === 'SUPERVISOR' ? companyId : null
-    },
-    select: staffSelect
-  });
+  const accountData = {
+    email: normalizedEmail,
+    password: hashedPassword,
+    role: normalizedRole,
+    isActive: true,
+    isArchived: false,
+    archivedAt: null,
+    firstName: normalizedFirstName,
+    lastName: normalizedLastName,
+    contactNumber: normalizedContact,
+    mustChangePassword: needsPassword,
+    coordinatorCourse: normalizedRole === 'COORDINATOR' ? coordinatorCourse : null,
+    supervisorCompanyId: normalizedRole === 'SUPERVISOR' ? companyId : null
+  };
+
+  const user = existing
+    ? await prisma.user.update({
+        where: { id: existing.id },
+        data: accountData,
+        select: staffSelect
+      })
+    : await prisma.user.create({
+        data: accountData,
+        select: staffSelect
+      });
 
   const fullName = `${normalizedFirstName} ${normalizedLastName}`.trim();
   if (normalizedRole === 'SUPERVISOR' && companyId) {
@@ -268,13 +293,24 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
       // Same rule as create(), so an edit can never relax what create enforces.
       // Only applied when the address actually changes: legacy accounts seeded
       // before the rule existed stay editable.
-      if (!isValidStaffEmail(normalizedEmail)) {
-        const error = new Error(STAFF_EMAIL_ERROR);
+      const targetRole = updateData.role ? String(updateData.role).toUpperCase() : existing.role;
+      if (!isValidStaffEmail(normalizedEmail, targetRole)) {
+        const error = new Error(getStaffEmailError(targetRole));
         error.status = 400;
         throw error;
       }
     }
     data.email = normalizedEmail;
+  }
+
+  if (updateData.contactNumber !== undefined) {
+    const trimmedContact = String(updateData.contactNumber || '').trim() || null;
+    if (trimmedContact && !isValidContactNumber(trimmedContact)) {
+      const error = new Error(CONTACT_NUMBER_ERROR);
+      error.status = 400;
+      throw error;
+    }
+    data.contactNumber = trimmedContact;
   }
 
   if (updateData.role !== undefined) {
@@ -298,7 +334,6 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
   if (updateData.isActive !== undefined) data.isActive = Boolean(updateData.isActive);
   if (updateData.firstName !== undefined) data.firstName = String(updateData.firstName || '').trim() || null;
   if (updateData.lastName !== undefined) data.lastName = String(updateData.lastName || '').trim() || null;
-  if (updateData.contactNumber !== undefined) data.contactNumber = String(updateData.contactNumber || '').trim() || null;
   if (updateData.coordinatorCourse !== undefined) {
     data.coordinatorCourse = String(updateData.coordinatorCourse || '').trim().toUpperCase() || null;
   }

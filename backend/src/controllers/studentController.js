@@ -108,6 +108,12 @@ export const addStudent = asyncHandler(async (req, res) => {
     email,
     contactNumber,
     companyId,
+    supervisorName,
+    supervisorEmail,
+    supervisorContact,
+    workingDays,
+    workingHours,
+    ojt_status,
     role
   } = req.body;
 
@@ -148,7 +154,13 @@ export const addStudent = asyncHandler(async (req, res) => {
       section,
       email,
       contactNumber,
-      companyId: companyId || undefined
+      companyId: companyId || undefined,
+      supervisorName: supervisorName || undefined,
+      supervisorEmail: supervisorEmail || undefined,
+      supervisorContact: supervisorContact || undefined,
+      workingDays: workingDays || undefined,
+      workingHours: workingHours || undefined,
+      ojt_status: ojt_status || undefined
     },
     { email }
   );

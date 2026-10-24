@@ -151,6 +151,16 @@ const Companies = () => {
   // Coerce the form values and create or update the company
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const cleanContact = String(form.contactNumber || '').trim().replace(/[\s\-()]/g, '');
+    if (!/^(?:09\d{9}|\+?639\d{9}|\d{7,15})$/.test(cleanContact)) {
+      alert('Please enter a valid contact number (e.g., 09171234567).');
+      return;
+    }
+    const cleanEmail = String(form.email || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
+      alert('Please enter a valid company email address.');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -287,12 +297,12 @@ const Companies = () => {
               {editing ? 'Edit Company' : 'Add Company'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-3">
-              <input required placeholder="Company name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field text-sm py-3" />
-              <input placeholder="Address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input-field text-sm py-3" />
-              <input placeholder="Contact person" value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} className="input-field text-sm py-3" />
+              <input required placeholder="Company name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-field text-sm py-3" />
+              <input required placeholder="Address *" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input-field text-sm py-3" />
+              <input required placeholder="Contact person (Supervisor name) *" value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} className="input-field text-sm py-3" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input placeholder="Contact number" value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field text-sm py-3" />
-                <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field text-sm py-3" />
+                <input required placeholder="Contact number *" value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field text-sm py-3" />
+                <input required type="email" placeholder="Email *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field text-sm py-3" />
               </div>
               <input placeholder="Industry type" value={form.industryType} onChange={(e) => setForm({ ...form, industryType: e.target.value })} className="input-field text-sm py-3" />
               <input type="number" min="0" placeholder="Available slots" value={form.availableSlots} onChange={(e) => setForm({ ...form, availableSlots: e.target.value })} className="input-field text-sm py-3" />

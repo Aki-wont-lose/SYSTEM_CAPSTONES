@@ -19,11 +19,17 @@ import { PROGRAM_OPTIONS, courseLabel } from '../constants/programs';
 import {
   sectionsForProgram,
   sectionLabel,
+  canonicalSection,
   deriveYearLevel,
   formatYearLevel,
+  isValidStudentId,
   isValidStudentEmail,
+  validateStudentEmailMatch,
+  isValidContactNumber,
   isValidSection,
   generateSections,
+  STUDENT_ID_ERROR,
+  CONTACT_NUMBER_ERROR,
   ELMS_EMAIL_ERROR
 } from '../constants/studentRules';
 
@@ -116,10 +122,15 @@ const StudentManagement = () => {
   };
 
   const openEditModal = (student) => {
+    const normalizedSec = canonicalSection(student.section, student.course) || student.section || '';
     setForm({
       ...emptyForm,
       ...student,
-      companyId: student.companyId || ''
+      section: normalizedSec,
+      contactNumber: student.contactNumber === 'Not set' ? '' : (student.contactNumber || ''),
+      companyId: student.companyId || '',
+      workingDays: student.workingDays || (student.companyId ? 'Monday - Friday' : ''),
+      workingHours: student.workingHours || (student.companyId ? '8:00 AM - 5:00 PM' : '')
     });
     setSelectedStudent(student);
     setError('');
@@ -149,9 +160,43 @@ const StudentManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!isValidStudentId(form.studentId)) {
+      setError(STUDENT_ID_ERROR);
+      return;
+    }
     if (modalMode === 'add') {
-      if (!isValidStudentEmail(form.email)) { setError(ELMS_EMAIL_ERROR); return; }
-      if (!isValidSection(form.section)) { setError('Please select a valid section (e.g., BSIT 1-101).'); return; }
+      const emailErr = validateStudentEmailMatch({
+        email: form.email,
+        studentId: form.studentId,
+        lastName: form.lastName
+      });
+      if (emailErr) { setError(emailErr); return; }
+    }
+    if (!isValidSection(form.section, form.course)) {
+      setError('Please select a valid section (e.g., BSIT 1-101).');
+      return;
+    }
+    if (!isValidContactNumber(form.contactNumber)) {
+      setError(CONTACT_NUMBER_ERROR);
+      return;
+    }
+    if (form.companyId) {
+      const picked = companies.find((c) => c.id === form.companyId);
+      if (picked) {
+        if (picked.status === 'INACTIVE') {
+          setError(`${picked.name} is currently inactive.`);
+          return;
+        }
+        if (form.course && Array.isArray(picked.programs) && picked.programs.length > 0 && !picked.programs.includes(form.course)) {
+          setError(`${picked.name} only accepts ${picked.programs.join(', ')} interns (student is in ${form.course}).`);
+          return;
+        }
+        const isNewCompany = modalMode === 'add' || selectedStudent?.companyId !== form.companyId;
+        if (isNewCompany && picked.availableSlots != null && picked.availableSlots <= 0) {
+          setError(`${picked.name} has no open OJT slots available.`);
+          return;
+        }
+      }
     }
     setSaving(true);
     try {
@@ -330,7 +375,12 @@ const StudentManagement = () => {
   const sectionOptions = sectionsForProgram(form.course);
   const showLegacySection = form.section && !sectionOptions.includes(form.section);
   const detectedYearLevel = deriveYearLevel(form.section);
-  const emailInvalid = modalMode === 'add' && form.email.trim() !== '' && !isValidStudentEmail(form.email);
+  const studentIdInvalid = form.studentId.trim() !== '' && !isValidStudentId(form.studentId);
+  const emailValidationMessage = modalMode === 'add' && form.email.trim() !== ''
+    ? validateStudentEmailMatch({ email: form.email, studentId: form.studentId, lastName: form.lastName })
+    : null;
+  const emailInvalid = Boolean(emailValidationMessage);
+  const contactInvalid = form.contactNumber.trim() !== '' && !isValidContactNumber(form.contactNumber);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -506,7 +556,20 @@ const StudentManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID</label>
-              <input required value={form.studentId} onChange={(e) => setForm({ ...form, studentId: e.target.value })} className="input-field" />
+              <input
+                required
+                maxLength={6}
+                placeholder="6-digit ID (e.g., 352467)"
+                value={form.studentId}
+                onChange={(e) => setForm({ ...form, studentId: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                className={`input-field${studentIdInvalid ? ' border-red-300 focus:border-red-400' : ''}`}
+              />
+              {studentIdInvalid && (
+                <p className="flex items-start gap-1.5 text-xs text-red-600 mt-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{STUDENT_ID_ERROR}</span>
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">OJT Status</label>
@@ -520,7 +583,27 @@ const StudentManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course</label>
-              <select required value={form.course} onChange={(e) => setForm({ ...form, course: e.target.value, section: '' })} className="input-field">
+              <select
+                required
+                value={form.course}
+                onChange={(e) => {
+                  const nextCourse = e.target.value;
+                  const picked = companies.find((c) => c.id === form.companyId);
+                  const companyStillMatches =
+                    !picked ||
+                    !nextCourse ||
+                    !Array.isArray(picked.programs) ||
+                    picked.programs.length === 0 ||
+                    picked.programs.includes(nextCourse);
+                  setForm({
+                    ...form,
+                    course: nextCourse,
+                    section: '',
+                    companyId: companyStillMatches ? form.companyId : ''
+                  });
+                }}
+                className="input-field"
+              >
                 <option value="">Select a course</option>
                 {PROGRAM_OPTIONS.map((program) => (
                   <option key={program.value} value={program.value}>{program.label}</option>
@@ -552,19 +635,28 @@ const StudentManagement = () => {
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Year Level</label>
               <input readOnly tabIndex={-1} value={detectedYearLevel ? formatYearLevel(detectedYearLevel) : ''} placeholder="Auto-detected from section" className="input-field bg-sti-gray-light/60 text-sti-gray cursor-default" />
             </div>
-            {modalMode === 'edit' && (
-              <div>
-                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
-                <input value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
+              <input
+                placeholder="09171234567"
+                value={form.contactNumber || ''}
+                onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
+                className={`input-field${contactInvalid ? ' border-red-300 focus:border-red-400' : ''}`}
+              />
+              {contactInvalid && (
+                <p className="flex items-start gap-1.5 text-xs text-red-600 mt-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{CONTACT_NUMBER_ERROR}</span>
+                </p>
+              )}
+            </div>
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Email</label>
               <input required type="email" disabled={modalMode === 'edit'} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={`input-field disabled:bg-sti-gray-light${emailInvalid ? ' border-red-300 focus:border-red-400' : ''}`} />
               {modalMode === 'add' && emailInvalid && (
                 <p className="flex items-start gap-1.5 text-xs text-red-600 mt-1.5">
                   <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                  <span>{ELMS_EMAIL_ERROR}</span>
+                  <span>{emailValidationMessage || ELMS_EMAIL_ERROR}</span>
                 </p>
               )}
             </div>
@@ -588,9 +680,23 @@ const StudentManagement = () => {
                 className="input-field"
               >
                 <option value="">Not yet assigned</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                {companies
+                  .filter((c) => {
+                    if (c.id === form.companyId || c.id === selectedStudent?.companyId) return true;
+                    if (c.status === 'INACTIVE') return false;
+                    if (form.course && Array.isArray(c.programs) && c.programs.length > 0 && !c.programs.includes(form.course)) {
+                      return false;
+                    }
+                    return true;
+                  })
+                  .map((c) => {
+                    const noSlots = c.id !== selectedStudent?.companyId && c.availableSlots != null && c.availableSlots <= 0;
+                    return (
+                      <option key={c.id} value={c.id} disabled={noSlots}>
+                        {c.name}{noSlots ? ' (Full)' : ''}
+                      </option>
+                    );
+                  })}
               </select>
             </div>
             {form.companyId && (

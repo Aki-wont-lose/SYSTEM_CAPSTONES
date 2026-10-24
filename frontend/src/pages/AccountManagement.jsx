@@ -14,7 +14,12 @@ import {
   deleteStaffAccount
 } from '../services/accountService';
 import { getCompanies } from '../services/companyService';
-import { isValidStaffEmail, STAFF_EMAIL_ERROR } from '../constants/staffRules';
+import {
+  isValidStaffEmail,
+  getStaffEmailError,
+  isValidContactNumber,
+  CONTACT_NUMBER_ERROR
+} from '../constants/staffRules';
 import * as XLSX from 'xlsx';
 import StudentManagement from './StudentManagement';
 
@@ -80,8 +85,9 @@ const AccountManagement = () => {
   const tabLabel = TAB_LABELS[activeTab] || TAB_LABELS.SUPERVISOR;
 
   // Staff use the institutional <firstname>.<lastname>@stamaria.sti.edu.ph
-  // format. Only check while creating, matching the backend.
-  const staffEmailInvalid = modalMode === 'add' && form.email.trim() !== '' && !isValidStaffEmail(form.email);
+  // format for school staff; external company supervisors may use company email.
+  const staffEmailInvalid = modalMode === 'add' && form.email.trim() !== '' && !isValidStaffEmail(form.email, form.role);
+  const staffContactInvalid = (form.contactNumber || '').trim() !== '' && !isValidContactNumber(form.contactNumber);
 
   const selectTab = (key) => {
     setActiveTab(key);
@@ -208,8 +214,12 @@ const AccountManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (modalMode === 'add' && !isValidStaffEmail(form.email)) {
-      setError(STAFF_EMAIL_ERROR);
+    if (modalMode === 'add' && !isValidStaffEmail(form.email, form.role)) {
+      setError(getStaffEmailError(form.role));
+      return;
+    }
+    if ((form.contactNumber || '').trim() && !isValidContactNumber(form.contactNumber)) {
+      setError(CONTACT_NUMBER_ERROR);
       return;
     }
     setSaving(true);
@@ -648,7 +658,7 @@ const AccountManagement = () => {
             {staffEmailInvalid && (
               <p className="flex items-start gap-1.5 text-xs text-red-600 mt-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                <span>{STAFF_EMAIL_ERROR}</span>
+                <span>{getStaffEmailError(form.role)}</span>
               </p>
             )}
           </div>
@@ -681,12 +691,21 @@ const AccountManagement = () => {
             </div>
           )}
 
-          {modalMode === 'edit' && (
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
-              <input value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field" />
-            </div>
-          )}
+          <div>
+            <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
+            <input
+              placeholder="09171234567"
+              value={form.contactNumber || ''}
+              onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
+              className={`input-field${staffContactInvalid ? ' border-red-300 focus:border-red-400' : ''}`}
+            />
+            {staffContactInvalid && (
+              <p className="flex items-start gap-1.5 text-xs text-red-600 mt-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>{CONTACT_NUMBER_ERROR}</span>
+              </p>
+            )}
+          </div>
 
           {modalMode === 'edit' && (
             <div>

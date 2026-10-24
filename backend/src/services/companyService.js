@@ -93,18 +93,61 @@ export const getCompanyById = async (id) => {
   return company && !company.isArchived ? company : null;
 };
 
-export const createCompany = async (data) => {
-  if (!data.name) {
-    const error = new Error('Company name is required');
-    error.status = 400;
-    throw error;
+const COMPANY_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const COMPANY_PHONE_RE = /^(?:09\d{9}|\+?639\d{9}|\d{7,15})$/;
+
+const validateCompanyFields = (data, { isCreate = false } = {}) => {
+  const bad = (msg) => {
+    const err = new Error(msg);
+    err.status = 400;
+    return err;
+  };
+  if (isCreate || data.name !== undefined) {
+    if (!String(data.name || '').trim()) throw bad('Company name is required');
   }
+  if (isCreate) {
+    if (!String(data.address || '').trim()) throw bad('Company address is required');
+    if (!String(data.contactPerson || '').trim()) throw bad('Contact person (supervisor name) is required');
+    if (!String(data.contactNumber || '').trim()) throw bad('Company contact number is required');
+    if (!String(data.email || '').trim()) throw bad('Company email address is required');
+  }
+  if (data.email !== undefined && String(data.email || '').trim()) {
+    if (!COMPANY_EMAIL_RE.test(String(data.email).trim())) {
+      throw bad('Please enter a valid company email address');
+    }
+  }
+  if (data.contactNumber !== undefined && String(data.contactNumber || '').trim()) {
+    const cleaned = String(data.contactNumber).trim().replace(/[\s\-()]/g, '');
+    if (!COMPANY_PHONE_RE.test(cleaned)) {
+      throw bad('Please enter a valid company contact number (e.g., 09171234567)');
+    }
+  }
+  if (data.availableSlots !== undefined && Number(data.availableSlots) < 0) {
+    throw bad('Available slots cannot be negative');
+  }
+};
+
+export const createCompany = async (data) => {
+  validateCompanyFields(data, { isCreate: true });
   return prisma.company.create({ data: normalizeCompanyInput(data) });
 };
 
 export const updateCompany = async (id, data) => {
   try {
-    return await prisma.company.update({ where: { id }, data: normalizeCompanyInput(data) });
+    validateCompanyFields(data, { isCreate: false });
+    const updated = await prisma.company.update({ where: { id }, data: normalizeCompanyInput(data) });
+
+    // Sync updated company supervisor/contact details to students assigned to this company
+    const studentSync = {};
+    if (updated.contactPerson) studentSync.supervisorName = updated.contactPerson;
+    if (updated.contactNumber) studentSync.supervisorContact = updated.contactNumber;
+    if (Object.keys(studentSync).length > 0) {
+      await prisma.student.updateMany({
+        where: { companyId: id },
+        data: studentSync
+      });
+    }
+    return updated;
   } catch (error) {
     if (error.code === 'P2025') {
       const err = new Error('Company not found');
@@ -138,19 +181,49 @@ export const assignStudentToCompany = async (studentId, companyId) => {
   const [company, existingStudent, companySupervisor] = await Promise.all([
     prisma.company.findUnique({
       where: { id: companyId },
-      select: { isArchived: true, contactPerson: true, contactNumber: true, email: true }
+      select: {
+        name: true,
+        status: true,
+        isArchived: true,
+        programs: true,
+        availableSlots: true,
+        contactPerson: true,
+        contactNumber: true,
+        email: true
+      }
     }),
     prisma.student.findUnique({
       where: { id: studentId },
-      select: { workingDays: true, workingHours: true }
+      select: { course: true, companyId: true, workingDays: true, workingHours: true }
     }),
     prisma.user.findFirst({
       where: { role: 'SUPERVISOR', supervisorCompanyId: companyId, isArchived: false },
       select: { email: true, firstName: true, lastName: true, contactNumber: true }
     })
   ]);
-  if (!company || company.isArchived) {
-    const err = new Error('Company not found or archived');
+  if (!company || company.isArchived || company.status === 'INACTIVE') {
+    const err = new Error('Company not found or inactive');
+    err.status = 400;
+    throw err;
+  }
+  if (!existingStudent) {
+    const err = new Error('Student not found');
+    err.status = 404;
+    throw err;
+  }
+  const studentCourse = String(existingStudent.course || '').trim().toUpperCase();
+  if (
+    studentCourse &&
+    Array.isArray(company.programs) &&
+    company.programs.length > 0 &&
+    !company.programs.includes(studentCourse)
+  ) {
+    const err = new Error(`${company.name} only accepts ${company.programs.join(', ')} interns (student is in ${studentCourse}).`);
+    err.status = 400;
+    throw err;
+  }
+  if (existingStudent.companyId !== companyId && company.availableSlots != null && company.availableSlots <= 0) {
+    const err = new Error(`${company.name} has no open OJT slots available.`);
     err.status = 400;
     throw err;
   }
