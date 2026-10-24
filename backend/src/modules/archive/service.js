@@ -88,7 +88,7 @@ export const restoreStudent = async (studentId, user) => {
   try {
     await prisma.user.update({
       where: { id: student.userId },
-      data: { isArchived: false, archivedAt: null }
+      data: { isArchived: false, isActive: true, archivedAt: null }
     });
   } catch {
     // Login row already gone - the student record is still restored.
@@ -108,7 +108,7 @@ export const restoreCoordinator = async (userId) => {
 
   await prisma.user.update({
     where: { id: userId },
-    data: { isArchived: false, archivedAt: null }
+    data: { isArchived: false, isActive: true, archivedAt: null }
   });
 
   return { success: true, restored: true };

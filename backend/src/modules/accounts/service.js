@@ -511,7 +511,7 @@ export const deleteStaffAccount = async (userId, { requesterIsSuperAdmin = false
   // Soft-archive instead of hard delete so audit trails and history stay intact
   await prisma.user.update({
     where: { id: userId },
-    data: { isArchived: true, archivedAt: new Date() }
+    data: { isArchived: true, isActive: false, archivedAt: new Date() }
   });
   return { success: true, archived: true };
 };

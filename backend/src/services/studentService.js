@@ -512,7 +512,7 @@ export const deleteStudent = async (studentId) => {
     try {
       await prisma.user.update({
         where: { id: student.userId },
-        data: { isArchived: true, archivedAt: new Date() }
+        data: { isArchived: true, isActive: false, archivedAt: new Date() }
       });
     } catch (_) {
       // user already gone - ignore
