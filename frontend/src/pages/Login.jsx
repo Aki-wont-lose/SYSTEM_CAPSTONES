@@ -476,12 +476,6 @@ const Login = () => {
                   Log in with Office 365
                 </button>
                 <button
-                  onClick={() => setView('admin')}
-                  className="w-full min-h-[48px] py-3 px-4 rounded-xl border border-black/10 dark:border-white/10 text-sm font-semibold hover:bg-sti-gray-light dark:hover:bg-white/10 dark:text-white leading-snug"
-                >
-                  Admin Log in
-                </button>
-                <button
                   onClick={closeDialog}
                   className="w-full flex items-center justify-center gap-1.5 text-xs text-sti-gray hover:text-sti-gray-dark pt-1"
                 >
