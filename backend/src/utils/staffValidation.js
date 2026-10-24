@@ -10,7 +10,7 @@ const SCHOOL_STAFF_EMAIL_RE = /^[A-Za-z0-9]+(?:[._\-][A-Za-z0-9]+)*@(?:stamaria\
 const GENERAL_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export const STAFF_EMAIL_ERROR =
-  'Invalid ELMS email format. Please use your official school email (@stamaria.sti.edu.ph or @stamaria.edu.ph).';
+  'Invalid ELMS email format. Please use your official school email.';
 
 export const SUPERVISOR_EMAIL_ERROR =
   'Please enter a valid email address for the company supervisor.';
