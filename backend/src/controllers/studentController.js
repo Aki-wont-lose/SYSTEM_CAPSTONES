@@ -134,7 +134,7 @@ export const addStudent = asyncHandler(async (req, res) => {
     return res.status(201).json({
       success: true,
       message: `${role === 'COORDINATOR' ? 'Coordinator' : 'Supervisor'} account created`,
-      data: { account: result.user, temporaryPassword: result.temporaryPassword }
+      data: { account: result.user }
     });
   }
 
@@ -168,7 +168,7 @@ export const addStudent = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: 'Student created successfully',
-    data: { student: result.student, temporaryPassword: result.temporaryPassword }
+    data: { student: result.student }
   });
 });
 
@@ -232,20 +232,17 @@ export const batchCreateStudentsHandler = asyncHandler(async (req, res) => {
   if (!Array.isArray(students) || students.length === 0) {
     return res.status(400).json({ success: false, message: 'No students provided' });
   }
-  const results = { created: 0, failed: 0, errors: [], credentials: [] };
+  const results = { created: 0, failed: 0, errors: [] };
   for (const s of students) {
     try {
       if (!s.studentId || !s.firstName || !s.lastName || !s.email) {
         results.failed++; results.errors.push(`${s.email || 'unknown'}: missing required fields`); continue;
       }
-      const result = await createStudent(
+      await createStudent(
         { studentId: s.studentId, firstName: s.firstName, lastName: s.lastName, course: s.course, section: s.section, email: s.email, contactNumber: s.contactNumber, companyId: s.companyId || undefined },
         { email: s.email }
       );
       results.created++;
-      if (result.temporaryPassword) {
-        results.credentials.push({ email: s.email, temporaryPassword: result.temporaryPassword });
-      }
     } catch (e) {
       results.failed++;
       results.errors.push(`${s.email}: ${e.message}`);

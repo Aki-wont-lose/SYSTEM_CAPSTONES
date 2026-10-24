@@ -364,12 +364,6 @@ export const setRequirementCompletion = async (studentId, requirementId, complet
 
   assertStudentAccess(user, student);
 
-  if (requirement.program && requirement.program !== student.course) {
-    const error = new Error('This requirement does not apply to the student\'s program');
-    error.status = 400;
-    throw error;
-  }
-
   const existing = await prisma.submission.findFirst({
     where: { studentId, requirementId },
     orderBy: { submittedAt: 'desc' }
@@ -508,7 +502,7 @@ export const getGradingSummary = async (filters = {}, user = null) => {
   const rows = students.map((student) => {
     const studentSubs = byStudent.get(student.id) || new Map();
     const applicable = relevantRequirements.filter(
-      (req) => (!req.program || req.program === student.course)
+      (req) => !req.program || req.program === student.course || studentSubs.has(req.id)
     );
     const possiblePoints = applicable.reduce((sum, req) => sum + (req.maxScore || 0), 0);
 

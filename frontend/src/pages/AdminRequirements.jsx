@@ -276,7 +276,8 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
         await createRequirement(payload);
       }
       setShowModal(false);
-      loadData();
+      await loadData();
+      if (grading) await loadGrading(true);
     } catch (err) {
       setActionError(err.response?.data?.message || 'Failed to save requirement');
     } finally {
@@ -422,20 +423,32 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
         try{ await createRequirement(r); created++; }catch(e){ failed++; errors.push(`${r.title}: ${e.response?.data?.message||e.message}`); }
       }
       loadData();
+      if (grading) loadGrading(true);
       setBatchResult({ created, failed, errors });
     } catch(e){ setBatchResult({ created:0, failed:1, errors:[e.message||'Batch failed'] }); }
   };
 
   // Heading text for the currently selected tab
-  const tabTitle = tab === 'requirements' ? 'Templates' : tab === 'grading' ? 'Automated Grading' : tab === 'checklist' ? 'Requirement Checklist' : 'Submissions';
+  const tabTitle = tab === 'requirements' ? 'Templates' : tab === 'grading' ? 'Automated Grading' : tab === 'checklist' ? 'Student Record' : 'Submissions';
 
-  // Only show requirement columns that apply to at least one student in view.
+  const tabSubtitle = tab === 'requirements'
+    ? 'Document requirements per program'
+    : tab === 'grading'
+      ? 'Scores, missing deadlines, and auto-graded submissions'
+      : tab === 'checklist'
+        ? ''
+        : 'Student submissions';
+
+  // Show all created templates in Student Record (filtered by program filter when selected).
   const checklistRequirements = useMemo(() => {
-    if (!grading) return [];
-    const applicable = new Set();
-    (grading.rows || []).forEach((row) => (row.breakdown || []).forEach((cell) => applicable.add(cell.requirementId)));
-    return (grading.requirements || []).filter((req) => applicable.has(req.id));
-  }, [grading]);
+    const source = (grading?.requirements && grading.requirements.length > 0)
+      ? grading.requirements
+      : requirements;
+    if (!courseFilter) return source;
+    return source.filter((req) => !req.program || req.program === courseFilter);
+  }, [grading, requirements, courseFilter]);
+
+  const visibleTabCount = [!hideRequirements, !hideSubmissions, !hideChecklist, !hideGrading].filter(Boolean).length;
 
   // Apply the free-text template search across title, category, program, and description
   const templateQuery = templateSearch.trim().toLowerCase();
@@ -448,9 +461,9 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">{tabTitle}</h1>
-          <p className="text-sm text-sti-gray">
-            {tab === 'requirements' ? 'Document requirements per program' : tab === 'grading' ? 'Scores, missing deadlines, and auto-graded submissions' : tab === 'checklist' ? 'Tick each requirement as students pass it' : 'Student submissions'}
-          </p>
+          {tabSubtitle && (
+            <p className="text-sm text-sti-gray">{tabSubtitle}</p>
+          )}
         </div>
         {tab === 'requirements' && (
           <div className="flex gap-2 shrink-0 w-full sm:w-auto">
@@ -486,7 +499,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
         </div>
       )}
 
-      {!(hideRequirements && hideSubmissions && hideGrading) && (
+      {visibleTabCount > 1 && (
         <div className="flex gap-2 border-b border-black/5 dark:border-white/10 overflow-x-auto">
           {!hideRequirements && (
             <button
@@ -515,7 +528,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                 tab === 'checklist' ? 'border-sti-blue text-sti-blue' : 'border-transparent text-sti-gray hover:text-sti-gray-dark dark:hover:text-white'
               }`}
             >
-              Checklist
+              Student Record
             </button>
           )}
           {!hideGrading && (
@@ -666,9 +679,6 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                 <option value="BSAIS">BSAIS</option>
               </select>
             </div>
-            <p className="text-xs text-sti-gray">
-              Tick a box to mark it complete. <span className="text-sti-yellow-dark">Amber</span> = pending review, <span className="text-red-600">red</span> = rejected.
-            </p>
           </div>
 
           {!grading || grading.rows.length === 0 ? (
@@ -687,56 +697,57 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-black/5 dark:border-white/10 text-left">
-                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide sticky left-0 z-10 bg-white dark:bg-slate-800 min-w-[200px]">Student</th>
-                      <th className="px-4 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide">Program</th>
+                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide sticky left-0 z-10 bg-white dark:bg-slate-800 min-w-[200px] align-middle">Student</th>
+                      <th className="px-4 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide align-middle">Program</th>
                       {checklistRequirements.map((req) => (
-                        <th key={req.id} title={req.title} className="px-2 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-center min-w-[110px]">
-                          <span className="block max-w-[110px] truncate">{req.title}</span>
+                        <th key={req.id} title={req.title} className="px-3 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-center align-middle min-w-[110px]">
+                          <div className="flex items-center justify-center">
+                            <span className="block max-w-[120px] truncate text-center">{req.title}</span>
+                          </div>
                         </th>
                       ))}
-                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-center">Done</th>
+                      <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-center align-middle">Done</th>
                     </tr>
                   </thead>
                   <tbody>
                     {grading.rows.map((row) => (
                       <tr key={row.studentId} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5">
-                        <td className="px-6 py-3.5 sticky left-0 z-10 bg-white dark:bg-slate-800">
+                        <td className="px-6 py-3.5 sticky left-0 z-10 bg-white dark:bg-slate-800 align-middle">
                           <p className="font-medium text-sti-gray-dark dark:text-white">{row.name}</p>
                           <p className="text-xs text-sti-gray">{row.studentNumber}</p>
                         </td>
-                        <td className="px-4 py-3.5 text-sti-gray-dark dark:text-slate-200 whitespace-nowrap">{row.course} {sectionLabel(row.section, row.course)}</td>
+                        <td className="px-4 py-3.5 text-sti-gray-dark dark:text-slate-200 whitespace-nowrap align-middle">{row.course} {sectionLabel(row.section, row.course)}</td>
                         {checklistRequirements.map((req) => {
                           const cell = (row.breakdown || []).find((item) => item.requirementId === req.id);
-                          if (!cell) {
-                            return <td key={req.id} className="px-2 py-3.5 text-center text-sti-gray">—</td>;
-                          }
-                          const done = cell.state === 'COMPLETED';
-                          const pending = cell.state === 'PENDING';
-                          const rejected = cell.state === 'REJECTED';
+                          const done = cell?.state === 'COMPLETED';
+                          const pending = cell?.state === 'PENDING';
+                          const rejected = cell?.state === 'REJECTED';
                           const key = `${row.studentId}:${req.id}`;
                           return (
-                            <td key={req.id} className="px-2 py-3.5 text-center align-middle">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleCheck(row.studentId, req.id, !done)}
-                                disabled={togglingCheck === key}
-                                title={done ? 'Mark incomplete' : 'Mark complete'}
-                                className={`mx-auto inline-flex items-center justify-center w-7 h-7 rounded-lg border transition-colors disabled:opacity-50 ${
-                                  done
-                                    ? 'bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600'
-                                    : rejected
-                                      ? 'bg-red-50 border-red-300 text-red-600 dark:bg-red-950/40 dark:border-red-800'
-                                      : pending
-                                        ? 'bg-amber-50 border-amber-300 text-sti-yellow-dark dark:bg-amber-950/40 dark:border-amber-800'
-                                        : 'border-black/15 dark:border-white/20 text-transparent hover:border-sti-blue hover:text-sti-blue/30'
-                                }`}
-                              >
-                                {done ? <Check className="w-4 h-4" /> : rejected ? <X className="w-4 h-4" /> : pending ? <Clock className="w-3.5 h-3.5" /> : <Check className="w-4 h-4" />}
-                              </button>
+                            <td key={req.id} className="px-3 py-3.5 text-center align-middle">
+                              <div className="flex items-center justify-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleCheck(row.studentId, req.id, !done)}
+                                  disabled={togglingCheck === key}
+                                  title={done ? 'Mark incomplete' : 'Mark complete'}
+                                  className={`inline-flex items-center justify-center w-7 h-7 rounded-lg border transition-colors disabled:opacity-50 ${
+                                    done
+                                      ? 'bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600'
+                                      : rejected
+                                        ? 'bg-red-50 border-red-300 text-red-600 dark:bg-red-950/40 dark:border-red-800'
+                                        : pending
+                                          ? 'bg-amber-50 border-amber-300 text-sti-yellow-dark dark:bg-amber-950/40 dark:border-amber-800'
+                                          : 'border-black/15 dark:border-white/20 text-transparent hover:border-sti-blue hover:text-sti-blue/30'
+                                  }`}
+                                >
+                                  {done ? <Check className="w-4 h-4" /> : rejected ? <X className="w-4 h-4" /> : pending ? <Clock className="w-3.5 h-3.5" /> : <Check className="w-4 h-4" />}
+                                </button>
+                              </div>
                             </td>
                           );
                         })}
-                        <td className="px-6 py-3.5 text-center whitespace-nowrap">
+                        <td className="px-6 py-3.5 text-center whitespace-nowrap align-middle">
                           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
                             row.totalRequirements > 0 && row.completed === row.totalRequirements
                               ? 'bg-emerald-50 text-emerald-600'

@@ -324,8 +324,7 @@ export const createStudent = async (studentData, userData) => {
     });
 
     return {
-      student: hydrateStudentPlacement(student),
-      temporaryPassword: null
+      student: hydrateStudentPlacement(student)
     };
   } catch (error) {
     if (error.code === 'P2002') {

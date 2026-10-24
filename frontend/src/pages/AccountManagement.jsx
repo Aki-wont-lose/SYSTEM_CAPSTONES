@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, Pencil, Archive, KeyRound, Copy, Check, CheckCircle2, UserCheck, UserX, ArrowUpDown, ArrowUp, ArrowDown, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
+import { Search, Plus, Pencil, Archive, CheckCircle2, UserCheck, UserX, ArrowUpDown, ArrowUp, ArrowDown, Upload, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -100,7 +100,6 @@ const AccountManagement = () => {
   }, [initialTab]);
 
   const [credentials, setCredentials] = useState(null);
-  const [copied, setCopied] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -237,8 +236,7 @@ const AccountManagement = () => {
         });
         setCredentials({
           title: `${roleText(form.role)} account created`,
-          email: res.data.user.email,
-          password: res.data.temporaryPassword
+          email: res.data.user.email
         });
       } else {
         await updateStaffAccount(selected.id, {
@@ -280,23 +278,6 @@ const AccountManagement = () => {
     } catch (err) {
       setError(err.response?.data?.message || 'Could not archive the account.');
     } finally { setDeleting(false); }
-  };
-
-  const copyCredentials = async () => {
-    try {
-      await navigator.clipboard.writeText(`Email: ${credentials.email}\nTemporary password: ${credentials.password}`);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) { /* clipboard unavailable */ }
-  };
-
-  const copyBatchCredentials = async () => {
-    const text = batchResult.credentials.map((c) => `${c.email} — ${c.temporaryPassword}`).join('\n');
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) { /* clipboard unavailable */ }
   };
 
   const downloadBatchTemplate = () => {
@@ -736,21 +717,6 @@ const AccountManagement = () => {
               <p className="text-sm text-sti-gray mt-1 break-all">{credentials.email}</p>
             </div>
 
-            {credentials.password && (
-              <div className="text-left space-y-2">
-                <div className="flex gap-2 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-xs rounded-xl px-3 py-2.5 border border-amber-200 dark:border-amber-900">
-                  <KeyRound className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>Temporary password — shown only once. Share it securely.</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <p className="flex-1 text-sm font-mono text-sti-gray-dark dark:text-white bg-sti-gray-light dark:bg-slate-900 rounded-lg px-3 py-2 break-all">{credentials.password}</p>
-                  <Button type="button" variant="secondary" icon={copied ? Check : Copy} onClick={copyCredentials}>
-                    {copied ? 'Copied' : 'Copy'}
-                  </Button>
-                </div>
-              </div>
-            )}
-
             <Button variant="primary" className="w-full" onClick={() => setCredentials(null)}>Done</Button>
           </div>
         )}
@@ -784,23 +750,8 @@ const AccountManagement = () => {
               <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-xl">
                 <p className="text-xs font-semibold text-sti-blue">Tip: Required columns</p>
                 <p className="text-xs text-sti-gray mt-1">
-                  Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">role</code> (SUPERVISOR or COORDINATOR). Emails must use the school format <code className="bg-white dark:bg-slate-800 px-1 rounded">firstname.lastname@stamaria.sti.edu.ph</code>. Coordinators also need <code className="bg-white dark:bg-slate-800 px-1 rounded">program</code>, supervisors need <code className="bg-white dark:bg-slate-800 px-1 rounded">company</code> (exact company name). Spaces, underscores and dashes in headers are accepted. A temporary password is generated for every imported account.
+                  Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">role</code> (SUPERVISOR or COORDINATOR). Coordinators also need <code className="bg-white dark:bg-slate-800 px-1 rounded">program</code>, supervisors need <code className="bg-white dark:bg-slate-800 px-1 rounded">company</code> (exact company name). Spaces, underscores and dashes in headers are accepted.
                 </p>
-              </div>
-            )}
-            {batchResult.credentials?.length > 0 && (
-              <div>
-                <p className="text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-2">Generated temporary passwords</p>
-                <div className="max-h-48 overflow-y-auto bg-sti-gray-light dark:bg-slate-900 rounded-xl p-3 space-y-1">
-                  {batchResult.credentials.map((c) => (
-                    <p key={c.email} className="text-[11px] text-sti-gray-dark dark:text-slate-300 font-mono break-all border-b border-black/5 dark:border-white/10 last:border-0 py-1">{c.email} — {c.temporaryPassword}</p>
-                  ))}
-                </div>
-                <div className="flex justify-end mt-2">
-                  <Button variant="secondary" icon={copied ? Check : Copy} onClick={copyBatchCredentials}>
-                    {copied ? 'Copied' : 'Copy all'}
-                  </Button>
-                </div>
               </div>
             )}
             <div className="flex justify-end">

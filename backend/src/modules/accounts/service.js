@@ -156,8 +156,11 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     throw error;
   }
 
-  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
-  if (existing && (!existing.isArchived || existing.role === 'STUDENT')) {
+  const existing = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    include: { student: true }
+  });
+  if (existing && !existing.isArchived) {
     const error = new Error(
       existing.role === 'STUDENT'
         ? 'A student account with this email already exists'
@@ -173,16 +176,18 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     throw error;
   }
 
-  // Admins and coordinators sign in with their school Microsoft account, so no
-  // password is stored for them. Supervisors may not have a school Microsoft
-  // account, so they keep a generated temporary password as before.
-  const needsPassword = normalizedRole === 'SUPERVISOR';
-  const temporaryPassword = needsPassword ? generateTemporaryPassword() : null;
-  const hashedPassword = needsPassword ? await hashPassword(temporaryPassword) : null;
+  if (existing && existing.isArchived && existing.student) {
+    const stId = existing.student.id;
+    await prisma.submission.deleteMany({ where: { studentId: stId } });
+    await prisma.attendance.deleteMany({ where: { studentId: stId } });
+    await prisma.logEntry.deleteMany({ where: { studentId: stId } });
+    await prisma.weeklyTask.deleteMany({ where: { studentId: stId } });
+    await prisma.student.delete({ where: { id: stId } });
+  }
 
   const accountData = {
     email: normalizedEmail,
-    password: hashedPassword,
+    password: null,
     role: normalizedRole,
     isActive: true,
     isArchived: false,
@@ -190,7 +195,7 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     firstName: normalizedFirstName,
     lastName: normalizedLastName,
     contactNumber: normalizedContact,
-    mustChangePassword: needsPassword,
+    mustChangePassword: false,
     coordinatorCourse: normalizedRole === 'COORDINATOR' ? coordinatorCourse : null,
     supervisorCompanyId: normalizedRole === 'SUPERVISOR' ? companyId : null
   };
@@ -218,7 +223,7 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     });
   }
 
-  return { user, temporaryPassword, fullName, contactNumber: normalizedContact };
+  return { user, fullName, contactNumber: normalizedContact };
 };
 
 export const updateStaffAccount = async (userId, updateData, { requesterIsSuperAdmin = false, requesterId = null, requesterEmail = null } = {}) => {
@@ -385,7 +390,7 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
 };
 
 export const batchCreateStaffAccounts = async (accounts) => {
-  const results = { created: 0, failed: 0, errors: [], credentials: [] };
+  const results = { created: 0, failed: 0, errors: [] };
 
   for (const account of accounts) {
     const label = account.email || 'unknown row';
@@ -409,7 +414,7 @@ export const batchCreateStaffAccounts = async (accounts) => {
         companyId = company.id;
       }
 
-      const result = await createStaffAccount({
+      await createStaffAccount({
         email: account.email,
         firstName: account.firstName,
         lastName: account.lastName,
@@ -420,14 +425,6 @@ export const batchCreateStaffAccounts = async (accounts) => {
       });
 
       results.created += 1;
-      if (result.temporaryPassword) {
-        results.credentials.push({
-          email: result.user.email,
-          fullName: result.fullName,
-          contactNumber: result.contactNumber,
-          temporaryPassword: result.temporaryPassword
-        });
-      }
     } catch (err) {
       results.failed += 1;
       results.errors.push(`${label}: ${err.message}`);
