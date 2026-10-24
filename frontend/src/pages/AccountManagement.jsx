@@ -694,9 +694,10 @@ const AccountManagement = () => {
           <div>
             <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Contact Number</label>
             <input
-              placeholder="09171234567"
+              type="tel"
+              inputMode="numeric"
               value={form.contactNumber || ''}
-              onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
+              onChange={(e) => setForm({ ...form, contactNumber: e.target.value.replace(/[^0-9+\-\s()]/g, '') })}
               className={`input-field${staffContactInvalid ? ' border-red-300 focus:border-red-400' : ''}`}
             />
             {staffContactInvalid && (
