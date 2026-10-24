@@ -407,11 +407,11 @@ const Login = () => {
       </header>
 
       <main className="flex-1 flex flex-col">
-        <section className="w-full">
+        <section className="w-full overflow-hidden">
           <img
             src={heroImage.src}
             alt={heroImage.alt}
-            className="block w-full h-auto"
+            className="block w-full h-[250px] sm:h-[340px] md:h-[440px] lg:h-[540px] xl:h-[600px] object-cover object-center"
           />
         </section>
 
