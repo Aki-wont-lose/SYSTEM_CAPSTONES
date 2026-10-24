@@ -60,7 +60,7 @@ const StudentProfile = () => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (file.size > 4 * 1024 * 1024) { alert('Image too large (max 4MB)'); return; }
+    if (file.size > 3 * 1024 * 1024) { alert('Image too large — max 3MB.'); return; }
     const reader = new FileReader();
     reader.onload = async () => {
       const base64 = reader.result;

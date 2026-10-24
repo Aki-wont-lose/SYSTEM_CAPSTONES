@@ -1,9 +1,12 @@
 // modules/profile/service.js — profile domain (student + any user)
 import { getStudentByUserId, updateStudent } from '../../services/studentService.js';
 import { getMicrosoftIdentity } from '../../services/microsoftAuthService.js';
-import { isValidStaffEmail, STAFF_EMAIL_ERROR } from '../../utils/staffValidation.js';
+import { isValidStaffEmail, getStaffEmailError } from '../../utils/staffValidation.js';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
+
+const NAME_PATTERN = /^[A-Za-zÀ-ÖØ-öø-ÿ\s.'-]+$/;
+const CONTACT_PATTERN = /^09\d{9}$/;
 
 export const getMyProfile = async (userId) => {
   // profilePicture column may not exist yet until db push, so don't select it to avoid crash
@@ -60,8 +63,31 @@ export const updateMyProfile = async (userId, data) => {
   for (const field of STAFF_EDITABLE) {
     if (data[field] !== undefined) staffUpdate[field] = String(data[field] || '').trim() || null;
   }
+  if (data.firstName !== undefined || data.lastName !== undefined) {
+    const nextFirst = staffUpdate.firstName !== undefined ? staffUpdate.firstName : existingUser.firstName;
+    const nextLast = staffUpdate.lastName !== undefined ? staffUpdate.lastName : existingUser.lastName;
+    if (!nextFirst || !nextLast) {
+      const error = new Error('First name and last name are required.');
+      error.status = 400;
+      throw error;
+    }
+    if (!NAME_PATTERN.test(nextFirst) || !NAME_PATTERN.test(nextLast)) {
+      const error = new Error('Names may only contain letters, spaces, hyphens, and periods.');
+      error.status = 400;
+      throw error;
+    }
+  }
+  if (staffUpdate.contactNumber) {
+    const digits = staffUpdate.contactNumber.replace(/\D/g, '');
+    if (!CONTACT_PATTERN.test(digits)) {
+      const error = new Error('Contact number must be an 11-digit Philippine mobile number starting with 09.');
+      error.status = 400;
+      throw error;
+    }
+    staffUpdate.contactNumber = digits;
+  }
   if (staffUpdate.email !== undefined) {
-    const email = String(staffUpdate.email).trim().toLowerCase();
+    const email = String(staffUpdate.email || '').trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
       const error = new Error('Enter a valid email address');
       error.status = 400;
@@ -79,8 +105,8 @@ export const updateMyProfile = async (userId, data) => {
     // Staff sign in with this address via Microsoft, so it has to keep matching
     // the institutional rule create() enforces — otherwise a self-edit could
     // strand the account. Only enforced when the address actually changes.
-    if (existingUser.email !== email && !isValidStaffEmail(email)) {
-      const error = new Error(STAFF_EMAIL_ERROR);
+    if (existingUser.email !== email && !isValidStaffEmail(email, existingUser.role)) {
+      const error = new Error(getStaffEmailError(existingUser.role));
       error.status = 400;
       throw error;
     }

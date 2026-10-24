@@ -4,6 +4,9 @@ import Card from '../components/Card';
 import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
 import api from '../services/api';
+import { isValidStaffEmail, getStaffEmailError } from '../constants/staffRules';
+
+const NAME_PATTERN = /^[A-Za-zÀ-ÖØ-öø-ÿ\s.'-]+$/;
 
 // Let an admin view and update their profile, photo, and email
 const AdminProfile = () => {
@@ -49,15 +52,27 @@ const AdminProfile = () => {
   // Save the name changes
   const handleSaveDetails = async (e) => {
     e.preventDefault();
+    const firstName = String(details.firstName || '').trim();
+    const lastName = String(details.lastName || '').trim();
+    if (!firstName || !lastName) {
+      setToast({ tone: 'error', msg: 'First name and last name are required.' });
+      setTimeout(() => setToast(null), 3500);
+      return;
+    }
+    if (!NAME_PATTERN.test(firstName) || !NAME_PATTERN.test(lastName)) {
+      setToast({ tone: 'error', msg: 'Names may only contain letters, spaces, hyphens, and periods.' });
+      setTimeout(() => setToast(null), 3500);
+      return;
+    }
     setSavingDetails(true);
     try {
       const res = await api.put('/profile', {
-        firstName: details.firstName,
-        lastName: details.lastName
+        firstName,
+        lastName
       });
       const updated = res.data?.data || {};
-      setDetails(d => ({ ...d, firstName: updated.firstName ?? d.firstName, lastName: updated.lastName ?? d.lastName }));
-      updateUser({ firstName: updated.firstName, lastName: updated.lastName });
+      setDetails(d => ({ ...d, firstName: updated.firstName ?? firstName, lastName: updated.lastName ?? lastName }));
+      updateUser({ firstName: updated.firstName ?? firstName, lastName: updated.lastName ?? lastName });
       setToast({ tone: 'success', msg: 'Profile details saved' });
     } catch (err) {
       setToast({ tone: 'error', msg: err.response?.data?.message || 'Could not save your details' });
@@ -70,12 +85,18 @@ const AdminProfile = () => {
   // Save the sign-in email address
   const handleSaveEmail = async (e) => {
     e.preventDefault();
+    const cleanEmail = String(details.email || '').trim().toLowerCase();
+    if (!isValidStaffEmail(cleanEmail, user?.role)) {
+      setToast({ tone: 'error', msg: getStaffEmailError(user?.role) });
+      setTimeout(() => setToast(null), 3500);
+      return;
+    }
     setSavingEmail(true);
     try {
-      const res = await api.put('/profile', { email: details.email });
+      const res = await api.put('/profile', { email: cleanEmail });
       const updated = res.data?.data || {};
-      setDetails(d => ({ ...d, email: updated.email || d.email }));
-      updateUser({ email: updated.email || details.email });
+      setDetails(d => ({ ...d, email: updated.email || cleanEmail }));
+      updateUser({ email: updated.email || cleanEmail });
       setToast({ tone: 'success', msg: 'Email address saved. Use it to sign in next time.' });
     } catch (err) {
       setToast({ tone: 'error', msg: err.response?.data?.message || 'Could not save your email' });
@@ -90,7 +111,7 @@ const AdminProfile = () => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (file.size > 4*1024*1024) { alert('Max 4MB'); return; }
+    if (file.size > 3*1024*1024) { alert('Image too large — max 3MB.'); return; }
     const r = new FileReader(); r.onload = async () => {
       setSaving(true);
       try {

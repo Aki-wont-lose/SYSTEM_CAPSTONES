@@ -40,11 +40,13 @@ const normalizeRequirementInput = (data) => {
   for (const field of REQUIREMENT_FIELDS) {
     if (data[field] !== undefined) payload[field] = data[field];
   }
+  if (payload.title !== undefined) payload.title = String(payload.title || '').trim();
+  if (payload.description !== undefined) payload.description = String(payload.description || '').trim();
   payload.program = payload.program ? String(payload.program).toUpperCase() : null;
   payload.category = payload.category ? String(payload.category).trim() : null;
   payload.dueDate = resolveDueDate(payload);
-  if (payload.dueInDays != null) payload.dueInDays = Number(payload.dueInDays) || null;
-  if (payload.maxScore != null) payload.maxScore = Number(payload.maxScore) || 0;
+  if (payload.dueInDays != null) payload.dueInDays = Math.max(0, Number(payload.dueInDays) || 0) || null;
+  if (payload.maxScore != null) payload.maxScore = Math.max(0, Number(payload.maxScore) || 0);
   if (payload.sortOrder != null) payload.sortOrder = Number(payload.sortOrder) || 0;
   payload.cadence = String(payload.cadence || 'ONCE').toUpperCase() === 'WEEKLY' ? 'WEEKLY' : 'ONCE';
   if (payload.autoGradeOnSubmit != null) payload.autoGradeOnSubmit = Boolean(payload.autoGradeOnSubmit);
@@ -68,7 +70,7 @@ export const getAllRequirements = async (filters = {}) => {
 };
 
 export const createRequirement = async (data) => {
-  if (!data.title) {
+  if (!String(data.title || '').trim()) {
     const error = new Error('Requirement title is required');
     error.status = 400;
     throw error;

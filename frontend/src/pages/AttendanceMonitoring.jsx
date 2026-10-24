@@ -108,9 +108,13 @@ const AttendanceMonitoring = () => {
 
   const handleDecision = async (record, status) => {
     setActionError('');
+    if (status === 'REJECTED' && !String(remarks || '').trim()) {
+      setActionError('Please enter a reason for rejecting this DTR.');
+      return;
+    }
     setBusyId(record.id);
     try {
-      await reviewDtr(record.id, status, status === 'REJECTED' ? remarks : undefined);
+      await reviewDtr(record.id, status, status === 'REJECTED' ? remarks.trim() : undefined);
       setRejecting(null);
       setRemarks('');
       await loadQueue();

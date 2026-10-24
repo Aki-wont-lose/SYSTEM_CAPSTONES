@@ -91,8 +91,8 @@ const Requirements = ({ mode = 'all' }) => {
     e.target.value = '';
     if (!file) return;
 
-    if (file.size > 8 * 1024 * 1024) {
-      setError('File is too large (max 8MB).');
+    if (file.size > 3 * 1024 * 1024) {
+      setError('File is too large — max 3MB.');
       return;
     }
 

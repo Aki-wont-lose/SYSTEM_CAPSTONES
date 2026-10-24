@@ -31,13 +31,20 @@ export const getAllLogs = async (filters = {}, user = null) => {
 };
 
 export const createLog = async (studentId, date, taskDescription) => {
-  if (!taskDescription) {
+  const trimmedTask = String(taskDescription || '').trim();
+  if (!trimmedTask) {
     const error = new Error('Task description is required');
     error.status = 400;
     throw error;
   }
+  const logDate = new Date(date);
+  if (Number.isNaN(logDate.getTime())) {
+    const error = new Error('Invalid log date');
+    error.status = 400;
+    throw error;
+  }
   return prisma.logEntry.create({
-    data: { studentId, date: new Date(date), taskDescription, status: 'PENDING' }
+    data: { studentId, date: logDate, taskDescription: trimmedTask, status: 'PENDING' }
   });
 };
 
@@ -80,7 +87,8 @@ const assertStudentInScope = async (studentId, user) => {
 // could create log entries for any student in the institution by id.
 // The entry starts as ASSIGNED so it lives with the student until they submit it.
 export const assignTask = async (studentId, date, taskDescription, assignedBy, user = null, file = {}) => {
-  if (!taskDescription) {
+  const trimmedTask = String(taskDescription || '').trim();
+  if (!trimmedTask) {
     const error = new Error('Task description is required');
     error.status = 400;
     throw error;
@@ -90,7 +98,7 @@ export const assignTask = async (studentId, date, taskDescription, assignedBy, u
     data: {
       studentId,
       date: new Date(date),
-      taskDescription,
+      taskDescription: trimmedTask,
       assignedBy,
       status: 'ASSIGNED',
       assignedFile: file.assignedFile ?? null,
@@ -135,6 +143,12 @@ export const submitAssignedTask = async (id, studentId, fileName, fileData) => {
 };
 
 export const updateLog = async (id, studentId, taskDescription) => {
+  const trimmedTask = String(taskDescription || '').trim();
+  if (!trimmedTask) {
+    const error = new Error('Task description is required');
+    error.status = 400;
+    throw error;
+  }
   const log = await prisma.logEntry.findUnique({ where: { id } });
   if (!log) {
     const error = new Error('Log entry not found');
@@ -153,7 +167,7 @@ export const updateLog = async (id, studentId, taskDescription) => {
   }
   return prisma.logEntry.update({
     where: { id },
-    data: { taskDescription }
+    data: { taskDescription: trimmedTask }
   });
 };
 

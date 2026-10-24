@@ -260,11 +260,27 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   // Normalize the form into an API payload and create or update the requirement
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const trimmedTitle = String(form.title || '').trim();
+    if (!trimmedTitle) {
+      setActionError('Requirement title is required.');
+      return;
+    }
+    if (form.dueInDays !== '' && form.dueInDays != null && (Number.isNaN(Number(form.dueInDays)) || Number(form.dueInDays) < 0)) {
+      setActionError('Due in days cannot be negative.');
+      return;
+    }
+    if (form.maxScore !== '' && form.maxScore != null && (Number.isNaN(Number(form.maxScore)) || Number(form.maxScore) < 0)) {
+      setActionError('Max score cannot be negative.');
+      return;
+    }
     setSaving(true);
     setActionError('');
     try {
       const payload = {
         ...form,
+        title: trimmedTitle,
+        description: String(form.description || '').trim(),
+        category: String(form.category || '').trim(),
         program: form.program === 'ALL' ? null : form.program,
         dueInDays: form.dueInDays === '' ? null : Number(form.dueInDays),
         maxScore: Number(form.maxScore) || 0,
@@ -330,8 +346,12 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   // Reject a submission with the entered remarks
   const handleReject = async (id) => {
     setActionError('');
+    if (!String(remarks || '').trim()) {
+      setActionError('Please enter a reason for rejecting this submission.');
+      return;
+    }
     try {
-      await reviewSubmission(id, 'REJECTED', remarks);
+      await reviewSubmission(id, 'REJECTED', remarks.trim());
       setRejectingId(null);
       setRemarks('');
       loadData();
@@ -359,6 +379,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   const handleBatchFile = async (file) => {
     if (!file) return;
     setActionError('');
+    if (file.size > 3 * 1024 * 1024) { setBatchResult({ created: 0, failed: 1, errors: ['File too large — max 3MB.'] }); return; }
     const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
     const isCsv = file.name.toLowerCase().endsWith('.csv');
     if (!isExcel && !isCsv) { setBatchResult({ created: 0, failed: 1, errors: ['Please use CSV or Excel (.csv, .xlsx)'] }); return; }

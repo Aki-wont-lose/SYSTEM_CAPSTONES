@@ -46,6 +46,7 @@ const Companies = () => {
   // Parse a CSV/Excel file and bulk-create companies, reporting created and failed rows
   const handleBatchFile = async (file) => {
     if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { setBatchResult({ created: 0, failed: 1, errors: ['File too large — max 3MB.'] }); return; }
     const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
     const isCsv = file.name.toLowerCase().endsWith('.csv');
     if (!isExcel && !isCsv) { setBatchResult({ created: 0, failed: 1, errors: ['Please use CSV or Excel (.csv, .xlsx)'] }); return; }
@@ -155,21 +156,39 @@ const Companies = () => {
   // Coerce the form values and create or update the company
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const cleanName = String(form.name || '').trim();
+    const cleanAddress = String(form.address || '').trim();
+    const cleanContactPerson = String(form.contactPerson || '').trim();
+    if (!cleanName || !cleanAddress || !cleanContactPerson) {
+      alert('Company name, address, and contact person are required.');
+      return;
+    }
     const cleanContact = String(form.contactNumber || '').trim().replace(/[\s\-()]/g, '');
     if (!/^(?:09\d{9}|\+?639\d{9}|\d{7,15})$/.test(cleanContact)) {
       alert('Please enter a valid contact number (e.g., 09171234567).');
       return;
     }
-    const cleanEmail = String(form.email || '').trim();
+    const cleanEmail = String(form.email || '').trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleanEmail)) {
       alert('Please enter a valid company email address.');
+      return;
+    }
+    const slots = parseInt(form.availableSlots, 10) || 0;
+    if (slots < 0) {
+      alert('Available slots cannot be negative.');
       return;
     }
     setSaving(true);
     try {
       const payload = {
         ...form,
-        availableSlots: parseInt(form.availableSlots) || 0,
+        name: cleanName,
+        address: cleanAddress,
+        contactPerson: cleanContactPerson,
+        contactNumber: cleanContact,
+        email: cleanEmail,
+        industryType: String(form.industryType || '').trim(),
+        availableSlots: slots,
         latitude: form.latitude === '' ? null : parseFloat(form.latitude),
         longitude: form.longitude === '' ? null : parseFloat(form.longitude)
       };
@@ -305,7 +324,7 @@ const Companies = () => {
               <input required placeholder="Address *" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="input-field text-sm py-3" />
               <input required placeholder="Contact person (Supervisor name) *" value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} className="input-field text-sm py-3" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input required placeholder="Contact number *" value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value })} className="input-field text-sm py-3" />
+                <input required type="tel" inputMode="numeric" maxLength={15} placeholder="Contact number *" value={form.contactNumber} onChange={(e) => setForm({ ...form, contactNumber: e.target.value.replace(/[^\d+\s\-()]/g, '') })} className="input-field text-sm py-3" />
                 <input required type="email" placeholder="Email *" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-field text-sm py-3" />
               </div>
               <input placeholder="Industry type" value={form.industryType} onChange={(e) => setForm({ ...form, industryType: e.target.value })} className="input-field text-sm py-3" />

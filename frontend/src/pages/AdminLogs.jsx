@@ -81,8 +81,12 @@ const AdminLogs = () => {
 
   // Approve a log or request a revision, passing the comment only for revisions
   const handleReview = async (id, status) => {
+    if (status === 'REVISION_REQUESTED' && !String(comment || '').trim()) {
+      alert('Please specify what needs to be revised.');
+      return;
+    }
     try {
-      await reviewLogEntry(id, status, status === 'REVISION_REQUESTED' ? comment : undefined);
+      await reviewLogEntry(id, status, status === 'REVISION_REQUESTED' ? comment.trim() : undefined);
       setReviewingId(null);
       setComment('');
       loadData();
@@ -109,9 +113,14 @@ const AdminLogs = () => {
   // Create a task assignment for the chosen student
   const handleAssign = async (e) => {
     e.preventDefault();
+    const trimmedTask = String(assignForm.taskDescription || '').trim();
+    if (!trimmedTask) {
+      alert('Task description is required.');
+      return;
+    }
     setSaving(true);
     try {
-      await assignTaskToStudent(assignForm.studentId, assignForm.date, assignForm.taskDescription, assignFile.data, assignFile.name);
+      await assignTaskToStudent(assignForm.studentId, assignForm.date, trimmedTask, assignFile.data, assignFile.name);
       setShowAssign(false);
       setAssignForm({ studentId: '', date: new Date().toISOString().slice(0, 10), taskDescription: '' });
       setAssignFile({ data: null, name: null });

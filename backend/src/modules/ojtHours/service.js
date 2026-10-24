@@ -16,8 +16,8 @@ export const updateOjtHours = async (course, requiredHours) => {
     throw e;
   }
   const hours = Number(requiredHours);
-  if (!Number.isInteger(hours) || hours < 1) {
-    const e = new Error('requiredHours must be a positive integer');
+  if (!Number.isInteger(hours) || hours < 1 || hours > 2000) {
+    const e = new Error('requiredHours must be a whole number between 1 and 2000');
     e.status = 400;
     throw e;
   }

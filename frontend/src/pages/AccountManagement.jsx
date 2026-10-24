@@ -330,6 +330,7 @@ const AccountManagement = () => {
 
   const handleBatchFile = async (file) => {
     if (!file) return;
+    if (file.size > 3 * 1024 * 1024) { setBatchResult({ created: 0, failed: 1, errors: ['File too large — max 3MB.'] }); return; }
     const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
     const isCsv = file.name.toLowerCase().endsWith('.csv');
     if (!isExcel && !isCsv) { setBatchResult({ created: 0, failed: 1, errors: ['Please use CSV or Excel file (.csv, .xlsx)'] }); return; }

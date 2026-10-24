@@ -55,7 +55,9 @@ export const getAnnouncementById = async (id) => {
 };
 
 export const createAnnouncement = async (announcementData) => {
-  const { title, content, category = 'General', priority = 'NORMAL', isActive = true, image, images } = announcementData;
+  const { category = 'General', priority = 'NORMAL', isActive = true, image, images } = announcementData;
+  const title = String(announcementData.title || '').trim();
+  const content = String(announcementData.content || '').trim();
 
   if (!title || !content) {
     const error = new Error('Title and content are required');
@@ -98,6 +100,22 @@ export const createAnnouncement = async (announcementData) => {
 
 export const updateAnnouncement = async (id, updateData) => {
   try {
+    if (updateData.title !== undefined) {
+      updateData.title = String(updateData.title || '').trim();
+      if (!updateData.title) {
+        const err = new Error('Title cannot be empty');
+        err.status = 400;
+        throw err;
+      }
+    }
+    if (updateData.content !== undefined) {
+      updateData.content = String(updateData.content || '').trim();
+      if (!updateData.content) {
+        const err = new Error('Content cannot be empty');
+        err.status = 400;
+        throw err;
+      }
+    }
     // If status is being changed to active, set publishedAt
     if (updateData.isActive && !updateData.publishedAt) {
       updateData.publishedAt = new Date();

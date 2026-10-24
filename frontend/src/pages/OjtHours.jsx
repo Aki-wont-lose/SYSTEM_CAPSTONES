@@ -23,8 +23,15 @@ const OjtHours = () => {
 
   // Save every course's required hours in one go.
   const handleSave = async () => {
-    setSaving(true);
     setToast(null);
+    for (const row of hours) {
+      const val = Number(row.requiredHours);
+      if (!Number.isInteger(val) || val < 1 || val > 2000) {
+        setToast({ tone: 'error', msg: `Required hours for ${row.course} must be a whole number between 1 and 2000.` });
+        return;
+      }
+    }
+    setSaving(true);
     try {
       await Promise.all(hours.map((row) => updateOjtHours(row.course, Number(row.requiredHours))));
       setToast({ tone: 'success', msg: 'OJT hours saved' });
@@ -58,8 +65,10 @@ const OjtHours = () => {
                     <input
                       type="number"
                       min="1"
+                      max="2000"
+                      step="1"
                       value={row.requiredHours}
-                      onChange={(e) => setHours((list) => list.map((item) => item.course === row.course ? { ...item, requiredHours: e.target.value } : item))}
+                      onChange={(e) => setHours((list) => list.map((item) => item.course === row.course ? { ...item, requiredHours: e.target.value.replace(/[^\d]/g, '') } : item))}
                       className="input-field"
                     />
                     <span className="text-xs text-sti-gray shrink-0">hours</span>

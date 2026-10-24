@@ -93,13 +93,20 @@ const AnnouncementManagement = () => {
   // Create a new announcement or save edits to the one being edited
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const title = String(form.title || '').trim();
+    const content = String(form.content || '').trim();
+    if (!title || !content) {
+      setError('Title and content are required.');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
+      const payload = { ...form, title, content };
       if (editTarget) {
-        await updateAnnouncement(editTarget.id, form);
+        await updateAnnouncement(editTarget.id, payload);
       } else {
-        await createAnnouncement(form);
+        await createAnnouncement(payload);
       }
       setModalOpen(false);
       loadAnnouncements();

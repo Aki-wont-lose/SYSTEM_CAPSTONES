@@ -105,13 +105,23 @@ const MyLogs = () => {
   // Create a new log entry or save edits to the one being edited
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const trimmedTask = String(taskDescription || '').trim();
+    if (!trimmedTask) {
+      setError('Task description is required.');
+      return;
+    }
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (!editingLog && date > todayStr) {
+      setError('Log date cannot be in the future.');
+      return;
+    }
     setError('');
     setSaving(true);
     try {
       if (editingLog) {
-        await updateLogEntry(editingLog.id, taskDescription);
+        await updateLogEntry(editingLog.id, trimmedTask);
       } else {
-        await addLogEntry(date, taskDescription);
+        await addLogEntry(date, trimmedTask);
       }
       setShowModal(false);
       loadLogs();
@@ -240,6 +250,7 @@ const MyLogs = () => {
                   type="date"
                   required
                   disabled={!!editingLog}
+                  max={new Date().toISOString().slice(0, 10)}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                   className="input-field disabled:opacity-60"
