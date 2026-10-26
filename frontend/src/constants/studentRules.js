@@ -110,6 +110,19 @@ export const SECTIONS_BY_PROGRAM = SUPPORTED_PROGRAMS.reduce((acc, program) => {
   return acc;
 }, {});
 
+// OJT is only taken in the final year, so the Create/Edit Student form offers
+// just the 4th-year sections. The full catalog above is still accepted by
+// validation so older records (and their edits) keep working.
+export const OJT_YEAR_LEVEL = 4;
+
+export const OJT_SECTIONS_BY_PROGRAM = SUPPORTED_PROGRAMS.reduce((acc, program) => {
+  acc[program] = [1, 2, 3].map((block) => `${program} ${OJT_YEAR_LEVEL}-10${block}`);
+  return acc;
+}, {});
+
+export const ojtSectionsForProgram = (program) =>
+  OJT_SECTIONS_BY_PROGRAM[String(program || '').trim().toUpperCase()] || [];
+
 export const sectionsForProgram = (program) =>
   SECTIONS_BY_PROGRAM[String(program || '').trim().toUpperCase()] || [];
 
@@ -124,5 +137,9 @@ export const sectionLabel = (section, program) => {
   return value;
 };
 
-// Flat list of every official section (used by the CSV/XLSX import template).
+// Flat list of every official section (validation and legacy records).
 export const generateSections = () => SUPPORTED_PROGRAMS.flatMap((program) => SECTIONS_BY_PROGRAM[program]);
+
+// Flat list used by the CSV/XLSX import template, limited to the year that
+// actually takes OJT.
+export const generateOjtSections = () => SUPPORTED_PROGRAMS.flatMap((program) => OJT_SECTIONS_BY_PROGRAM[program]);

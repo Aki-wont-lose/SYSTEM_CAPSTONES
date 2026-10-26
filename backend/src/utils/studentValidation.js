@@ -77,7 +77,7 @@ export const isValidContactNumber = (value) => {
   return /^(?:09\d{9}|\+?639\d{9}|\d{7,11})$/.test(cleaned);
 };
 
-export const ELMS_SECTION_ERROR = 'Please select a valid section (e.g., BSIT 1-101).';
+export const ELMS_SECTION_ERROR = 'Please select a valid section (e.g., BSIT 4-101).';
 
 // Section format: "<PROGRAM> <year>-<block>", e.g. "BSIT 1-101".
 // Years are 1..4, blocks are 101..103.
@@ -114,6 +114,10 @@ export const deriveYearLevel = (section) => {
   const match = norm.match(SECTION_RE) || norm.match(LEGACY_SECTION_RE);
   return match ? Number(match[2]) : null;
 };
+
+// OJT is only taken by 4th-year students. New student records must use a
+// 4-1xx section; the full catalog stays valid for legacy records.
+export const OJT_YEAR_LEVEL = 4;
 
 export const YEAR_LEVEL_LABELS = { 1: '1st Year', 2: '2nd Year', 3: '3rd Year', 4: '4th Year' };
 export const formatYearLevel = (year) => YEAR_LEVEL_LABELS[year] || '';

@@ -16,7 +16,7 @@ import { getCompanies } from '../services/companyService';
 import { getStudentAttendanceForStaff, getStudentSummaryForStaff } from '../services/attendanceService';
 import { PROGRAM_OPTIONS } from '../constants/programs';
 import {
-  sectionsForProgram,
+  ojtSectionsForProgram,
   sectionLabel,
   canonicalSection,
   deriveYearLevel,
@@ -26,7 +26,7 @@ import {
   validateStudentEmailMatch,
   isValidContactNumber,
   isValidSection,
-  generateSections,
+  generateOjtSections,
   STUDENT_ID_ERROR,
   CONTACT_NUMBER_ERROR,
   ELMS_EMAIL_ERROR
@@ -163,7 +163,7 @@ const StudentManagement = () => {
       if (emailErr) { setError(emailErr); return; }
     }
     if (!isValidSection(form.section, form.course)) {
-      setError('Please select a valid section (e.g., BSIT 1-101).');
+      setError('Please select a valid section (e.g., BSIT 4-101).');
       return;
     }
     if (!isValidContactNumber(form.contactNumber)) {
@@ -281,12 +281,12 @@ const StudentManagement = () => {
       lastName: 'Cruz',
       email: 'cruz.352467@stamaria.sti.edu.ph',
       course: 'BSIT',
-      section: 'BSIT 1-101',
+      section: 'BSIT 4-101',
       contactNumber: '09171234567'
     }];
     const worksheet = XLSX.utils.json_to_sheet(sample, { header: ['studentId', 'firstName', 'lastName', 'email', 'course', 'section', 'contactNumber'] });
     const programsSheet = XLSX.utils.json_to_sheet(PROGRAM_OPTIONS.map((program) => ({ course: program.value })), { header: ['course'] });
-    const sectionsSheet = XLSX.utils.json_to_sheet(generateSections().map((section) => ({ section })), { header: ['section'] });
+    const sectionsSheet = XLSX.utils.json_to_sheet(generateOjtSections().map((section) => ({ section })), { header: ['section'] });
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
     XLSX.utils.book_append_sheet(workbook, programsSheet, 'Courses');
@@ -376,9 +376,9 @@ const StudentManagement = () => {
     } finally { setBatchLoading(false); }
   };
 
-  // Section options follow the selected course; year level is always derived
-  // from the section (never entered by hand).
-  const sectionOptions = sectionsForProgram(form.course);
+  // OJT is only taken in the 4th year, so the section picker offers just the
+  // 4-1xx options. Year level is always derived from the section.
+  const sectionOptions = ojtSectionsForProgram(form.course);
   const showLegacySection = form.section && !sectionOptions.includes(form.section);
   const detectedYearLevel = deriveYearLevel(form.section);
   const studentIdInvalid = form.studentId.trim() !== '' && !isValidStudentId(form.studentId);

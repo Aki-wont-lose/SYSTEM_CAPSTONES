@@ -7,6 +7,8 @@ import {
   isValidContactNumber,
   isValidSection,
   canonicalSection,
+  deriveYearLevel,
+  OJT_YEAR_LEVEL,
   ELMS_EMAIL_ERROR,
   STUDENT_ID_ERROR,
   CONTACT_NUMBER_ERROR,
@@ -327,6 +329,12 @@ export const createStudent = async (studentData, userData, actor = null) => {
   const normalizedSection = canonicalSection(studentData.section, course);
   if (!isValidSection(normalizedSection, course)) {
     throw badRequest(ELMS_SECTION_ERROR);
+  }
+  // OJT is a final-year subject: only 4th-year sections are accepted for new
+  // student records. Updates keep the legacy check so older sections stay
+  // editable without a data migration.
+  if (deriveYearLevel(normalizedSection) !== OJT_YEAR_LEVEL) {
+    throw badRequest('OJT is only available to 4th-year students. Please use a 4-1xx section.');
   }
 
   if (!isValidContactNumber(studentData.contactNumber)) {
