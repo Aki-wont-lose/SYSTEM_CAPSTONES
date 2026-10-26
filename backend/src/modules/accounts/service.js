@@ -10,6 +10,7 @@ import {
 } from '../../utils/staffValidation.js';
 import { isSuperAdmin } from '../../middleware/auth.js';
 import { studentScopeWhere } from '../../services/accessScope.js';
+import { SUPPORTED_PROGRAMS } from '../../utils/studentValidation.js';
 
 const prisma = new PrismaClient();
 
@@ -145,8 +146,16 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     throw error;
   }
 
-  if (normalizedRole === 'COORDINATOR' && !coordinatorCourse) {
+  const normalizedCourse = normalizedRole === 'COORDINATOR'
+    ? String(coordinatorCourse || '').trim().toUpperCase()
+    : null;
+  if (normalizedRole === 'COORDINATOR' && !normalizedCourse) {
     const error = new Error('Assigned course is required for a coordinator');
+    error.status = 400;
+    throw error;
+  }
+  if (normalizedCourse && !SUPPORTED_PROGRAMS.includes(normalizedCourse)) {
+    const error = new Error(`Course must be one of: ${SUPPORTED_PROGRAMS.join(', ')}`);
     error.status = 400;
     throw error;
   }
@@ -177,12 +186,14 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
   }
 
   if (existing && existing.isArchived && existing.student) {
-    const stId = existing.student.id;
-    await prisma.submission.deleteMany({ where: { studentId: stId } });
-    await prisma.attendance.deleteMany({ where: { studentId: stId } });
-    await prisma.logEntry.deleteMany({ where: { studentId: stId } });
-    await prisma.weeklyTask.deleteMany({ where: { studentId: stId } });
-    await prisma.student.delete({ where: { id: stId } });
+    // Never recycle an archived student's email by deleting their profile: that
+    // would cascade-delete attendance, submissions, logs and tasks and destroy
+    // the very history the brief requires us to preserve.
+    const error = new Error(
+      'This email belongs to an archived student account. Restore that student from the Archive page, or use a different email address.'
+    );
+    error.status = 409;
+    throw error;
   }
 
   const accountData = {
@@ -196,7 +207,7 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     lastName: normalizedLastName,
     contactNumber: normalizedContact,
     mustChangePassword: false,
-    coordinatorCourse: normalizedRole === 'COORDINATOR' ? coordinatorCourse : null,
+    coordinatorCourse: normalizedCourse,
     supervisorCompanyId: normalizedRole === 'SUPERVISOR' ? companyId : null
   };
 
@@ -341,6 +352,11 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
   if (updateData.lastName !== undefined) data.lastName = String(updateData.lastName || '').trim() || null;
   if (updateData.coordinatorCourse !== undefined) {
     data.coordinatorCourse = String(updateData.coordinatorCourse || '').trim().toUpperCase() || null;
+    if (data.coordinatorCourse && !SUPPORTED_PROGRAMS.includes(data.coordinatorCourse)) {
+      const error = new Error(`Course must be one of: ${SUPPORTED_PROGRAMS.join(', ')}`);
+      error.status = 400;
+      throw error;
+    }
   }
   if (updateData.supervisorCompanyId !== undefined) {
     data.supervisorCompanyId = updateData.supervisorCompanyId || null;

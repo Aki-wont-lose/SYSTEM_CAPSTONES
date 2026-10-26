@@ -62,7 +62,7 @@ const socials = [
 const features = [
   { image: '/features/feature-1.jpg', alt: 'Requirement guides, PDF templates and what is still due' },
   { image: '/features/feature-2.jpg', alt: 'Submitting weekly reports and getting graded faster' },
-  { image: '/features/feature-3.jpg', alt: 'Camera-verified time in and time out attendance' },
+  { image: '/features/feature-3.jpg', alt: 'Supervisor-recorded attendance and OJT hour progress' },
   { image: '/features/feature-4.jpg', alt: 'Messaging classmates, supervisors and coordinators' }
 ];
 

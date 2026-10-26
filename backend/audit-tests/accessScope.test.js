@@ -42,7 +42,7 @@ check(
 check(
   'SUPERVISOR matches company OR supervisor email',
   studentScopeWhere({ role: 'SUPERVISOR', supervisorCompanyId: 'c1', email: 's@x.com' }),
-  { OR: [{ companyId: 'c1' }, { supervisorEmail: 's@x.com' }] }
+  { OR: [{ companyId: 'c1' }, { supervisorEmail: { equals: 's@x.com', mode: 'insensitive' } }] }
 );
 check(
   'UNASSIGNED supervisor owns nothing - was the "show all" backdoor',

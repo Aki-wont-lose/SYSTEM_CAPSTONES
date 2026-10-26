@@ -18,15 +18,32 @@ export const getMonthlyAttendance = async (year, month) => {
   return response.data;
 };
 
-// Log time in with a camera photo
-export const timeIn = async (photo) => {
-  const response = await api.post('/attendance/time-in', { date: new Date(), photo });
+// Supervisor: record a student's time in. No photo verification any more.
+export const recordTimeIn = async ({ studentId, date, timeIn, status, notes }) => {
+  const response = await api.post('/attendance/record/time-in', {
+    studentId,
+    date,
+    timeIn,
+    status,
+    notes
+  });
   return response.data;
 };
 
-// Log time out with a camera photo
-export const timeOut = async (photo) => {
-  const response = await api.post('/attendance/time-out', { date: new Date(), photo });
+// Supervisor: record a student's time out.
+export const recordTimeOut = async ({ studentId, date, timeOut, notes }) => {
+  const response = await api.post('/attendance/record/time-out', {
+    studentId,
+    date,
+    timeOut,
+    notes
+  });
+  return response.data;
+};
+
+// Supervisor / Admin: correct an existing attendance record
+export const updateAttendanceRecord = async (attendanceId, payload) => {
+  const response = await api.put(`/attendance/${attendanceId}`, payload);
   return response.data;
 };
 
@@ -42,19 +59,19 @@ export const getStudentSummaryForStaff = async (studentId) => {
   return response.data;
 };
 
-// Submit a daily time record for staff review
-export const submitDtrForReview = async (attendanceId) => {
-  const response = await api.post(`/attendance/${attendanceId}/submit`);
+// Scoped attendance list for monitoring screens
+export const getAttendanceRecords = async (filters = {}) => {
+  const response = await api.get('/attendance/records', { params: filters });
   return response.data;
 };
 
-// Fetch the DTRs waiting for staff review
+// Fetch the legacy DTRs still waiting for a decision
 export const getDtrReviewQueue = async (filters = {}) => {
   const response = await api.get('/attendance/review-queue', { params: filters });
   return response.data;
 };
 
-// Approve or reject a DTR with remarks
+// Approve or reject a legacy submitted DTR with remarks
 export const reviewDtr = async (attendanceId, status, remarks) => {
   const response = await api.put(`/attendance/review/${attendanceId}`, { status, remarks });
   return response.data;

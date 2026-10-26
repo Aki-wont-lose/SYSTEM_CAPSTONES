@@ -5,7 +5,7 @@ import TopNav from '../components/TopNav';
 
 const titles = {
   '/dashboard': 'Dashboard',
-  '/my-dtr': 'My DTR',
+  '/my-dtr': 'My Attendance',
   '/my-logs': 'My Logs',
   '/requirements': 'Requirements',
   '/templates': 'Templates',

@@ -81,7 +81,7 @@ const StudentDashboard = () => {
 
   const student = summary?.student;
   const stats = summary?.attendance;
-  const requiredHours = student?.requiredHours || 486;
+  const requiredHours = stats?.requiredHours ?? student?.requiredHours ?? 0;
   const completedHours = stats?.totalHours ?? student?.completedHours ?? 0;
   const remainingHours = stats?.remainingHours ?? Math.max(0, requiredHours - completedHours);
 

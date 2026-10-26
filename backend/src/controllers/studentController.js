@@ -70,7 +70,10 @@ export const fetchMyProfile = asyncHandler(async (req, res) => {
 });
 
 // Lets a student edit their OWN profile — profilePicture allowed for gallery/default choices
-const SELF_EDITABLE_FIELDS = ['course', 'section', 'email', 'contactNumber', 'profilePicture'];
+// A student may only change their own contact details and photo. Course, section,
+// student ID, email (the Microsoft sign-in identity) and role are protected
+// academic/identity fields - the brief explicitly forbids self-service edits.
+const SELF_EDITABLE_FIELDS = ['contactNumber', 'profilePicture'];
 
 export const updateMyProfileSelf = asyncHandler(async (req, res) => {
   const student = await getStudentByUserId(req.user.userId);
@@ -162,7 +165,8 @@ export const addStudent = asyncHandler(async (req, res) => {
       workingHours: workingHours || undefined,
       ojt_status: ojt_status || undefined
     },
-    { email }
+    { email },
+    req.user
   );
 
   res.status(201).json({
@@ -188,7 +192,7 @@ export const updateStudentProfile = asyncHandler(async (req, res) => {
   delete updateData.userId;
   delete updateData.user;
 
-  const student = await updateStudent(id, updateData);
+  const student = await updateStudent(id, updateData, req.user);
 
   res.status(200).json({
     success: true,
@@ -240,7 +244,8 @@ export const batchCreateStudentsHandler = asyncHandler(async (req, res) => {
       }
       await createStudent(
         { studentId: s.studentId, firstName: s.firstName, lastName: s.lastName, course: s.course, section: s.section, email: s.email, contactNumber: s.contactNumber, companyId: s.companyId || undefined },
-        { email: s.email }
+        { email: s.email },
+        req.user
       );
       results.created++;
     } catch (e) {

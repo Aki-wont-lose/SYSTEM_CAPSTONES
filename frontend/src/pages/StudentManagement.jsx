@@ -73,7 +73,6 @@ const StudentManagement = () => {
   const [deleting, setDeleting] = useState(false);
   const [viewAttendance, setViewAttendance] = useState([]);
   const [viewSummary, setViewSummary] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [batchResult, setBatchResult] = useState(null);
   const [batchLoading, setBatchLoading] = useState(false);
@@ -116,7 +115,10 @@ const StudentManagement = () => {
   }, [search, statusFilter]);
 
   const openAddModal = (role = 'STUDENT') => {
-    setForm({ ...emptyForm, role });
+    // A coordinator only ever creates students in their own program, so the
+    // course is pre-filled and shown read-only instead of offering a choice.
+    const lockedCourse = user?.role === 'COORDINATOR' ? (user?.coordinatorCourse || '') : '';
+    setForm({ ...emptyForm, role, course: lockedCourse });
     setError('');
     setModalMode('add');
   };
@@ -372,8 +374,13 @@ const StudentManagement = () => {
         }).filter(Boolean);
       }
       if (!students.length) { setBatchResult({ created: 0, failed: 1, errors: ['No valid rows found - check headers: studentId, firstName, lastName, email, course, section are required'] }); return; }
+      // Coordinators always import into their own program, whatever the file says.
+      const lockedCourse = role === 'COORDINATOR' ? (user?.coordinatorCourse || '') : '';
+      const rowsToSend = lockedCourse
+        ? students.map((s) => ({ ...s, course: lockedCourse }))
+        : students;
       setBatchLoading(true);
-      const res = await batchCreateStudents(students);
+      const res = await batchCreateStudents(rowsToSend);
       setBatchResult(res.data);
       loadStudents();
     } catch(err){
@@ -594,35 +601,49 @@ const StudentManagement = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Course</label>
-              <select
-                required
-                value={form.course}
-                onChange={(e) => {
-                  const nextCourse = e.target.value;
-                  const picked = companies.find((c) => c.id === form.companyId);
-                  const companyStillMatches =
-                    !picked ||
-                    !nextCourse ||
-                    !Array.isArray(picked.programs) ||
-                    picked.programs.length === 0 ||
-                    picked.programs.includes(nextCourse);
-                  setForm({
-                    ...form,
-                    course: nextCourse,
-                    section: '',
-                    companyId: companyStillMatches ? form.companyId : ''
-                  });
-                }}
-                className="input-field"
-              >
-                <option value="">Select a course</option>
-                {PROGRAM_OPTIONS.map((program) => (
-                  <option key={program.value} value={program.value}>{program.label}</option>
-                ))}
-              </select>
+              {role === 'COORDINATOR' ? (
+                <input
+                  readOnly
+                  tabIndex={-1}
+                  value={form.course || user?.coordinatorCourse || ''}
+                  className="input-field bg-sti-gray-light/60 cursor-default"
+                />
+              ) : (
+                <select
+                  required
+                  value={form.course}
+                  onChange={(e) => {
+                    const nextCourse = e.target.value;
+                    const picked = companies.find((c) => c.id === form.companyId);
+                    const companyStillMatches =
+                      !picked ||
+                      !nextCourse ||
+                      !Array.isArray(picked.programs) ||
+                      picked.programs.length === 0 ||
+                      picked.programs.includes(nextCourse);
+                    setForm({
+                      ...form,
+                      course: nextCourse,
+                      section: '',
+                      companyId: companyStillMatches ? form.companyId : ''
+                    });
+                  }}
+                  className="input-field"
+                >
+                  <option value="">Select a course</option>
+                  {PROGRAM_OPTIONS.map((program) => (
+                    <option key={program.value} value={program.value}>{program.label}</option>
+                  ))}
+                </select>
+              )}
               {form.course && hoursByCourse[form.course] != null && (
                 <p className="text-xs text-sti-gray mt-1.5">
                   {courseLabel(form.course)} • {hoursByCourse[form.course]} required OJT hours (applied automatically)
+                </p>
+              )}
+              {role === 'COORDINATOR' && (
+                <p className="text-xs text-sti-gray mt-1.5">
+                  Assigned automatically from your academic program.
                 </p>
               )}
             </div>
@@ -775,50 +796,38 @@ const StudentManagement = () => {
               <div><p className="text-sti-gray text-xs mb-1">Supervisor</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.supervisorName || selectedStudent.company?.contactPerson || 'Not yet assigned'}</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Working Schedule</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{[selectedStudent.workingDays || (selectedStudent.company ? 'Monday - Friday' : ''), selectedStudent.workingHours || (selectedStudent.company ? '8:00 AM - 5:00 PM' : '')].filter(Boolean).join(' • ') || '—'}</p></div>
             </div>
-            {/* DTR Monitoring - time in/out visible to supervisor/coordinator/admin with photo */}
+            {/* DTR Monitoring - attendance is recorded by the supervisor and read-only here */}
             <div className="pt-3 border-t border-black/5 dark:border-white/10">
-              <h4 className="font-bold text-sti-gray-dark dark:text-white text-sm mb-3 flex items-center gap-2"><Clock className="w-4 h-4 text-sti-blue" /> Time In / Time Out History</h4>
+              <h4 className="font-bold text-sti-gray-dark dark:text-white text-sm mb-3 flex items-center gap-2"><Clock className="w-4 h-4 text-sti-blue" /> Attendance History</h4>
               {viewAttendance.length === 0 ? (
-                <p className="text-sm text-sti-gray text-center py-4">No time records yet</p>
+                <p className="text-sm text-sti-gray text-center py-4">No attendance records yet</p>
               ) : (
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {viewAttendance.map(a => (
-                    <div key={a.id} className="flex items-center justify-between p-3 rounded-xl bg-sti-gray-light/50 dark:bg-white/5 text-xs">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sti-gray-dark dark:text-white">{new Date(a.date).toLocaleDateString()}</p>
-                        <p className="text-sti-gray flex items-center gap-1"><CalendarDays className="w-3 h-3" /> {a.timeIn ? new Date(a.timeIn).toLocaleTimeString() : '—'} → {a.timeOut ? new Date(a.timeOut).toLocaleTimeString() : 'Not yet'}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-right">
-                          <p className="font-bold text-sti-gray-dark dark:text-white">{a.renderedHours?.toFixed(2)}h</p>
-                          <p className={`text-[10px] px-2 py-0.5 rounded-full ${a.status==='PRESENT' ? 'bg-sti-blue-50 text-sti-blue' : 'bg-yellow-50 text-sti-yellow-dark'}`}>{a.status}</p>
+                  {viewAttendance.map(a => {
+                    const incomplete = !a.timeIn || !a.timeOut;
+                    return (
+                      <div key={a.id} className="flex items-center justify-between p-3 rounded-xl bg-sti-gray-light/50 dark:bg-white/5 text-xs">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sti-gray-dark dark:text-white">{new Date(a.date).toLocaleDateString()}</p>
+                          <p className="text-sti-gray flex items-center gap-1">
+                            <CalendarDays className="w-3 h-3" />
+                            {a.timeIn ? new Date(a.timeIn).toLocaleTimeString() : <span className="text-amber-600 font-semibold">No time in</span>}
+                            <span>→</span>
+                            {a.timeOut ? new Date(a.timeOut).toLocaleTimeString() : <span className="text-amber-600 font-semibold">No time out</span>}
+                          </p>
+                          {a.reviewedByName && <p className="text-[10px] text-sti-gray mt-0.5">Recorded by {a.reviewedByName}</p>}
                         </div>
-                        {(a.timeInPhoto || a.timeOutPhoto) && (
-                          <button onClick={()=>setPhotoPreview(a)} className="p-1.5 rounded-lg bg-white dark:bg-slate-700 border hover:bg-sti-gray-light"><Eye className="w-3.5 h-3.5 text-sti-blue" /></button>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <p className="font-bold text-sti-gray-dark dark:text-white">
+                              {incomplete ? <span className="text-amber-600">Incomplete</span> : `${a.renderedHours?.toFixed(2)}h`}
+                            </p>
+                            <p className={`text-[10px] px-2 py-0.5 rounded-full ${a.status==='PRESENT' ? 'bg-sti-blue-50 text-sti-blue' : 'bg-yellow-50 text-sti-yellow-dark'}`}>{a.status}</p>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              {photoPreview && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={()=>setPhotoPreview(null)}>
-                  <div className="bg-white dark:bg-slate-800 rounded-2xl p-4 max-w-md w-full" onClick={e=>e.stopPropagation()}>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-bold text-sm">{new Date(photoPreview.date).toLocaleDateString()}</h4>
-                      <button onClick={()=>setPhotoPreview(null)} className="p-1 rounded-full hover:bg-sti-gray-light"><X className="w-4 h-4" /></button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-xs text-sti-gray mb-1">Time In</p>
-                        {photoPreview.timeInPhoto ? <img src={photoPreview.timeInPhoto} className="rounded-lg w-full aspect-square object-cover" /> : <div className="rounded-lg bg-sti-gray-light h-32 flex items-center justify-center text-xs">No photo</div>}
-                      </div>
-                      <div>
-                        <p className="text-xs text-sti-gray mb-1">Time Out</p>
-                        {photoPreview.timeOutPhoto ? <img src={photoPreview.timeOutPhoto} className="rounded-lg w-full aspect-square object-cover" /> : <div className="rounded-lg bg-sti-gray-light h-32 flex items-center justify-center text-xs">No photo</div>}
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
               )}
             </div>

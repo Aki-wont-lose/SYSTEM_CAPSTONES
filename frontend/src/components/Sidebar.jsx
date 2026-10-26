@@ -10,6 +10,7 @@ const linksByRole = {
     ]},
     { section: 'Management', links: [
       { to: '/admin/accounts', label: 'Account Management', icon: Users },
+      { to: '/admin/attendance', label: 'Attendance', icon: Clock },
       { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
       { to: '/admin/announcements', label: 'Announcements', icon: Megaphone },
     ]},
@@ -53,7 +54,7 @@ const linksByRole = {
     ]},
     { section: 'Management', links: [
       { to: '/supervisor/students', label: 'Students', icon: Users },
-      { to: '/supervisor/attendance', label: 'Attendance', icon: Clock },
+      { to: '/supervisor/attendance', label: 'Record Attendance', icon: Clock },
     ]},
     { section: 'Academic', links: [
       { to: '/supervisor/submissions', label: 'Submissions', icon: ClipboardList },
@@ -69,7 +70,7 @@ const linksByRole = {
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     ]},
     { section: 'My OJT', links: [
-      { to: '/my-dtr', label: 'My DTR', icon: Clock },
+      { to: '/my-dtr', label: 'My Attendance', icon: Clock },
       { to: '/my-logs', label: 'My Logs', icon: ClipboardList },
       { to: '/schedule', label: 'Schedule', icon: CalendarDays },
       { to: '/find-company', label: 'Find Company', icon: MapPinned },

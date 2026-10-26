@@ -22,6 +22,52 @@ const badRequest = (message) => {
   return err;
 };
 
+const forbidden = (message) => {
+  const err = new Error(message);
+  err.status = 403;
+  return err;
+};
+
+// A coordinator owns exactly one academic program. Their token carries it as
+// `coordinatorCourse`; it is re-read from the database on every request by
+// verifyToken, so it cannot be forged by editing the browser state.
+// Exported so the authorization rule can be unit-tested without a database.
+export const coordinatorCourseFor = (actor) => {
+  if (actor?.role !== 'COORDINATOR') return null;
+  if (!actor.coordinatorCourse) {
+    throw forbidden('Your account has no assigned academic program. Ask the administrator to assign one before creating students.');
+  }
+  return actor.coordinatorCourse;
+};
+
+// Server-side duplicate gate. The database still has the final say (unique email
+// on User, unique studentId on Student), but these checks produce a message an
+// administrator can act on instead of a raw Prisma P2002 error.
+const assertStudentIdentityAvailable = async ({ studentId, email }) => {
+  const byStudentId = await prisma.student.findUnique({
+    where: { studentId },
+    select: { id: true, firstName: true, lastName: true, isArchived: true }
+  });
+
+  if (byStudentId) {
+    const name = `${byStudentId.firstName || ''} ${byStudentId.lastName || ''}`.trim();
+    throw badRequest(
+      `Student ID ${studentId} already belongs to ${name || 'an existing record'}${byStudentId.isArchived ? ' (archived)' : ''}. Open that record instead of creating a new one.`
+    );
+  }
+
+  const byEmail = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true, role: true }
+  });
+
+  if (byEmail) {
+    throw badRequest(
+      'This email address is already registered in SIMES. Sign in with it, or use a different email address.'
+    );
+  }
+};
+
 // Emails are case-insensitive, so store one canonical form. Validated input that
 // passed with surrounding whitespace or mixed case is normalized before it is
 // persisted, otherwise Microsoft sign-in silently fails to match the account.
@@ -207,6 +253,24 @@ export const getStudentById = async (studentId) => {
       },
       company: true,
       attendance: {
+        select: {
+          id: true,
+          studentId: true,
+          date: true,
+          timeIn: true,
+          timeOut: true,
+          renderedHours: true,
+          status: true,
+          notes: true,
+          reviewStatus: true,
+          reviewRemarks: true,
+          reviewedById: true,
+          reviewedByName: true,
+          submittedAt: true,
+          reviewedAt: true,
+          createdAt: true,
+          updatedAt: true
+        },
         orderBy: { date: 'desc' },
         take: 30
       }
@@ -233,7 +297,7 @@ export const getStudentByUserId = async (userId) => {
   return hydrateStudentPlacement(student);
 };
 
-export const createStudent = async (studentData, userData) => {
+export const createStudent = async (studentData, userData, actor = null) => {
   const cleanStudentId = String(studentData.studentId || '').trim();
   if (!isValidStudentId(cleanStudentId)) {
     throw badRequest(STUDENT_ID_ERROR);
@@ -249,8 +313,19 @@ export const createStudent = async (studentData, userData) => {
     throw badRequest(emailError);
   }
 
-  const normalizedSection = canonicalSection(studentData.section, studentData.course);
-  if (!isValidSection(normalizedSection, studentData.course)) {
+  // A coordinator may only create students in their own program. A forged course
+  // in the request body is rejected outright, never silently honoured.
+  const lockedCourse = coordinatorCourseFor(actor);
+  if (lockedCourse && studentData.course && String(studentData.course).toUpperCase() !== lockedCourse) {
+    throw forbidden(`You can only create students for your assigned program (${lockedCourse}).`);
+  }
+  const course = lockedCourse || studentData.course;
+  if (!course) {
+    throw badRequest('Academic program is required.');
+  }
+
+  const normalizedSection = canonicalSection(studentData.section, course);
+  if (!isValidSection(normalizedSection, course)) {
     throw badRequest(ELMS_SECTION_ERROR);
   }
 
@@ -259,68 +334,74 @@ export const createStudent = async (studentData, userData) => {
   }
 
   if (studentData.companyId) {
-    await validateCompanyForStudent(studentData.companyId, studentData.course, true);
+    await validateCompanyForStudent(studentData.companyId, course, true);
   }
+
+  // Reject a duplicate before creating anything, so a failed attempt never leaves
+  // a login account behind without a student profile.
+  await assertStudentIdentityAvailable({ studentId: cleanStudentId, email });
 
   // Look up required OJT hours for this course from the admin-maintained config
   let requiredHours = null;
-  if (studentData.course) {
-    const hoursCfg = await prisma.ojtHoursConfig.findUnique({
-      where: { course: studentData.course },
-      select: { requiredHours: true }
-    });
-    if (hoursCfg) requiredHours = hoursCfg.requiredHours;
+  const hoursCfg = await prisma.ojtHoursConfig.findUnique({
+    where: { course },
+    select: { requiredHours: true }
+  });
+  if (hoursCfg) requiredHours = hoursCfg.requiredHours;
+
+  let placementDefaults = {
+    supervisorName: studentData.supervisorName || null,
+    supervisorEmail: studentData.supervisorEmail ? normalizeEmail(studentData.supervisorEmail) : null,
+    supervisorContact: studentData.supervisorContact || null,
+    workingDays: studentData.workingDays || null,
+    workingHours: studentData.workingHours || null
+  };
+  if (studentData.companyId) {
+    placementDefaults = await resolveCompanyPlacementDefaults(studentData.companyId, placementDefaults);
+  }
+
+  const sanitizedCreate = {};
+  for (const field of STAFF_EDITABLE_STUDENT_FIELDS) {
+    if (studentData[field] !== undefined) sanitizedCreate[field] = studentData[field];
   }
 
   try {
-    // Students sign in with Microsoft only, so no password is stored for them.
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: null,
-        role: 'STUDENT',
-        mustChangePassword: false
-      }
-    });
+    // The login and the profile are created together: either both exist or
+    // neither does, so a duplicate can never leave an orphan account.
+    const student = await prisma.$transaction(async (tx) => {
+      // Students sign in with Microsoft only, so no password is stored for them.
+      const user = await tx.user.create({
+        data: {
+          email,
+          password: null,
+          role: 'STUDENT',
+          mustChangePassword: false
+        }
+      });
 
-    let placementDefaults = {
-      supervisorName: studentData.supervisorName || null,
-      supervisorEmail: studentData.supervisorEmail ? normalizeEmail(studentData.supervisorEmail) : null,
-      supervisorContact: studentData.supervisorContact || null,
-      workingDays: studentData.workingDays || null,
-      workingHours: studentData.workingHours || null
-    };
-    if (studentData.companyId) {
-      placementDefaults = await resolveCompanyPlacementDefaults(studentData.companyId, placementDefaults);
-    }
-
-    const sanitizedCreate = {};
-    for (const field of STAFF_EDITABLE_STUDENT_FIELDS) {
-      if (studentData[field] !== undefined) sanitizedCreate[field] = studentData[field];
-    }
-
-    // Create student record
-    const student = await prisma.student.create({
-      data: {
-        ...sanitizedCreate,
-        studentId: cleanStudentId,
-        section: normalizedSection,
-        email,
-        ...placementDefaults,
-        contactNumber: studentData.contactNumber ? String(studentData.contactNumber).trim() : '',
-        requiredHours: requiredHours ?? studentData.requiredHours ?? null,
-        userId: user.id
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            isActive: true
-          }
+      return tx.student.create({
+        data: {
+          ...sanitizedCreate,
+          course,
+          studentId: cleanStudentId,
+          section: normalizedSection,
+          email,
+          ...placementDefaults,
+          contactNumber: studentData.contactNumber ? String(studentData.contactNumber).trim() : '',
+          requiredHours: requiredHours ?? studentData.requiredHours ?? undefined,
+          userId: user.id
         },
-        company: true
-      }
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              isActive: true
+            }
+          },
+          company: true
+        }
+      });
     });
 
     return {
@@ -328,10 +409,18 @@ export const createStudent = async (studentData, userData) => {
     };
   } catch (error) {
     if (error.code === 'P2002') {
-      const field = error.meta?.target?.[0];
-      const err = new Error(`${field} already exists`);
-      err.status = 400;
-      throw err;
+      // Race condition: another request created the same student between the
+      // pre-check and this write. The database constraint is the authority.
+      const target = Array.isArray(error.meta?.target)
+        ? error.meta.target.join(',')
+        : String(error.meta?.target || '');
+      if (target.includes('studentId')) {
+        throw badRequest(`Student ID ${cleanStudentId} already has a record.`);
+      }
+      if (target.includes('email')) {
+        throw badRequest('This email address is already registered in SIMES.');
+      }
+      throw badRequest('A student with these details already exists.');
     }
     throw error;
   }
@@ -367,7 +456,7 @@ export const STAFF_EDITABLE_STUDENT_FIELDS = [
   'workingHours'
 ];
 
-export const updateStudent = async (studentId, updateData) => {
+export const updateStudent = async (studentId, updateData, actor = null) => {
   try {
     const sanitized = {};
     for (const field of STAFF_EDITABLE_STUDENT_FIELDS) {
@@ -375,12 +464,24 @@ export const updateStudent = async (studentId, updateData) => {
     }
     if (sanitized.email !== undefined) sanitized.email = normalizeEmail(sanitized.email);
 
+    // Coordinators cannot move a student out of their program, and cannot edit
+    // the institution-wide hour requirement.
+    const lockedCourse = coordinatorCourseFor(actor);
+    if (lockedCourse) {
+      if (sanitized.course !== undefined && String(sanitized.course).toUpperCase() !== lockedCourse) {
+        throw forbidden(`You can only manage students in your assigned program (${lockedCourse}).`);
+      }
+      sanitized.course = lockedCourse;
+      delete sanitized.requiredHours;
+    }
+
     // Validate email/section only when they actually change, so legacy records
     // (e.g. section "IT-401") stay editable without forcing a data migration,
     // while any NEW value must follow the strict ELMS rules.
     const current = await prisma.student.findUnique({
       where: { id: studentId },
       select: {
+        userId: true,
         studentId: true,
         firstName: true,
         lastName: true,
@@ -395,6 +496,12 @@ export const updateStudent = async (studentId, updateData) => {
         workingHours: true
       }
     });
+
+    if (!current) {
+      const err = new Error('Student not found');
+      err.status = 404;
+      throw err;
+    }
 
     const targetCourse = sanitized.course || current?.course;
     if (sanitized.section !== undefined) {
@@ -461,26 +568,68 @@ export const updateStudent = async (studentId, updateData) => {
       if (updateData.workingHours === undefined) sanitized.workingHours = null;
     }
 
-    const updated = await prisma.student.update({
-      where: { id: studentId },
-      data: sanitized,
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            isActive: true
-          }
-        },
-        company: true
+    const emailChanged = sanitized.email !== undefined && sanitized.email !== current?.email;
+    if (emailChanged) {
+      // The sign-in identity lives on User. Changing only the profile would leave
+      // the student unable to sign in with the corrected address, so both rows
+      // move together. Uniqueness is checked first for a readable message.
+      const duplicate = await prisma.user.findUnique({
+        where: { email: sanitized.email },
+        select: { id: true }
+      });
+      if (duplicate && duplicate.id !== current?.userId) {
+        throw badRequest('This email address is already registered in SIMES.');
       }
-    });
+    }
+
+    const include = {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          isActive: true
+        }
+      },
+      company: true
+    };
+
+    // The profile and its login email change atomically: either both are
+    // corrected or neither is.
+    const updated = emailChanged
+      ? await prisma.$transaction(async (tx) => {
+          await tx.user.update({
+            where: { id: current.userId },
+            data: { email: sanitized.email }
+          });
+          return tx.student.update({
+            where: { id: studentId },
+            data: sanitized,
+            include
+          });
+        })
+      : await prisma.student.update({
+          where: { id: studentId },
+          data: sanitized,
+          include
+        });
     return hydrateStudentPlacement(updated);
   } catch (error) {
     if (error.code === 'P2025') {
       const err = new Error('Student not found');
       err.status = 404;
       throw err;
+    }
+    if (error.code === 'P2002') {
+      const target = Array.isArray(error.meta?.target)
+        ? error.meta.target.join(',')
+        : String(error.meta?.target || '');
+      if (target.includes('studentId')) {
+        throw badRequest(`Student ID ${updateData.studentId} already belongs to another student.`);
+      }
+      if (target.includes('email')) {
+        throw badRequest('This email address is already registered in SIMES.');
+      }
+      throw badRequest('A student with these details already exists.');
     }
     throw error;
   }

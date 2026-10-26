@@ -92,6 +92,7 @@ function App() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/accounts" element={<AccountManagement />} />
         <Route path="/admin/students" element={<Navigate to="/admin/accounts?tab=students" replace />} />
+        <Route path="/admin/attendance" element={<AttendanceMonitoring />} />
         <Route path="/admin/templates" element={<Templates />} />
         <Route path="/admin/submissions" element={<Submissions />} />
         <Route path="/admin/requirements" element={<AdminRequirements />} />

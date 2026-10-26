@@ -33,7 +33,9 @@ export const updateMyProfile = async (userId, data) => {
   // If student exists, update student (for STUDENT) including profilePicture
   const student = await getStudentByUserId(userId);
   if (student) {
-    const SELF_EDITABLE = ['course','section','email','contactNumber','profilePicture'];
+    // Course, section and email are protected academic/identity fields: a student
+    // may only change their contact number and profile photo themselves.
+    const SELF_EDITABLE = ['contactNumber', 'profilePicture'];
     const updateData = {};
     for (const f of SELF_EDITABLE) if (data[f] !== undefined) updateData[f] = data[f];
     // also allow profilePicture for student even if not in selfie? handle separately

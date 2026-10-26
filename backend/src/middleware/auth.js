@@ -64,6 +64,8 @@ const lookupUser = (userId) =>
     select: {
       id: true,
       email: true,
+      firstName: true,
+      lastName: true,
       role: true,
       isActive: true,
       isArchived: true,
@@ -108,6 +110,8 @@ export const verifyToken = (req, res, next) => {
         req.user = {
           userId: user.id,
           email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
           role: user.role,
           mustChangePassword: user.mustChangePassword,
           coordinatorCourse: user.coordinatorCourse,

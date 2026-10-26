@@ -2,14 +2,14 @@
 import { PrismaClient } from '@prisma/client';
 import {
   getAttendanceHistory,
-  recordTimeIn,
-  recordTimeOut,
+  recordTimeInForStudent,
+  recordTimeOutForStudent,
   updateAttendanceRecord,
   getMonthlyAttendance,
   getStudentSummary,
-  submitDtrForReview,
   reviewDtr,
-  getDtrReviewQueue
+  getDtrReviewQueue,
+  getAttendanceRecords
 } from '../services/attendanceService.js';
 import { getStudentByUserId, getStudentById } from '../services/studentService.js';
 import { assertStudentAccess } from '../services/accessScope.js';
@@ -38,40 +38,36 @@ export const fetchAttendanceHistory = asyncHandler(async (req, res) => {
   });
 });
 
-// POST /attendance/time-in - record a student's time in with a photo
-export const timeIn = asyncHandler(async (req, res) => {
-  const student = await getStudentByUserId(req.user.userId);
+// POST /attendance/record/time-in - the assigned supervisor records a time in.
+// The student is chosen by id, so the object-level scope check below decides
+// whether this supervisor may touch that student at all.
+export const recordAttendanceTimeIn = asyncHandler(async (req, res) => {
+  const { studentId, date, timeIn, status, notes } = req.body || {};
 
-  if (!student) {
-    return res.status(404).json({
-      success: false,
-      message: 'Student profile not found'
-    });
+  if (!studentId) {
+    return res.status(400).json({ success: false, message: 'A student must be selected.' });
   }
 
-  const { date, photo } = req.body;
-  const attendance = await recordTimeIn(student.id, date || new Date(), photo);
+  const student = await requireStudentInScope(req.user, studentId);
+  const attendance = await recordTimeInForStudent(student, { date, timeIn, status, notes }, req.user);
 
-  res.status(200).json({
+  res.status(201).json({
     success: true,
     message: 'Time in recorded successfully',
     data: attendance
   });
 });
 
-// POST /attendance/time-out - record a student's time out with a photo
-export const timeOut = asyncHandler(async (req, res) => {
-  const student = await getStudentByUserId(req.user.userId);
+// POST /attendance/record/time-out - the assigned supervisor records a time out
+export const recordAttendanceTimeOut = asyncHandler(async (req, res) => {
+  const { studentId, date, timeOut, notes } = req.body || {};
 
-  if (!student) {
-    return res.status(404).json({
-      success: false,
-      message: 'Student profile not found'
-    });
+  if (!studentId) {
+    return res.status(400).json({ success: false, message: 'A student must be selected.' });
   }
 
-  const { date, photo } = req.body;
-  const attendance = await recordTimeOut(student.id, date || new Date(), photo);
+  const student = await requireStudentInScope(req.user, studentId);
+  const attendance = await recordTimeOutForStudent(student, { date, timeOut, notes }, req.user);
 
   res.status(200).json({
     success: true,
@@ -129,14 +125,12 @@ export const fetchStudentSummary = asyncHandler(async (req, res) => {
   });
 });
 
-// PUT /attendance/:id - update an attendance record (staff, or student on their own draft)
+// PUT /attendance/:id - correct an attendance record (Supervisor / Admin only)
 export const updateAttendance = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   // Object-level authorization: a caller may only touch a record belonging to a
-  // student in their scope. Previously any authenticated user (including a STUDENT)
-  // could rewrite anyone's timeIn/timeOut/reviewStatus by changing the id in the URL.
-  const student = await getStudentByUserId(req.user.userId);
+  // student in their scope. Students have no write path at all.
   const target = await prisma.attendance.findUnique({
     where: { id },
     select: {
@@ -149,19 +143,11 @@ export const updateAttendance = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Attendance record not found' });
   }
 
-  // A student may only edit their own record, and only while it is still a draft.
-  if (req.user.role === 'STUDENT') {
-    if (!student || target.student.id !== student.id) {
-      return res.status(403).json({ success: false, message: 'You do not have access to this record.' });
-    }
-    if (target.reviewStatus && target.reviewStatus !== 'DRAFT') {
-      return res.status(403).json({ success: false, message: 'This record has already been submitted for review.' });
-    }
-  } else {
-    assertStudentAccess(req.user, target.student, 'You do not have access to this record.');
-  }
+  assertStudentAccess(req.user, target.student, 'You do not have access to this record.');
 
-  const updated = await updateAttendanceRecord(id, req.body);
+  // req.user is passed as the actor so the correction is stamped (last modified
+  // by) and recorded in the audit log.
+  const updated = await updateAttendanceRecord(id, req.body, req.user);
 
   res.status(200).json({
     success: true,
@@ -188,7 +174,7 @@ export const fetchStudentAttendanceForStaff = asyncHandler(async (req, res) => {
   const { studentId } = req.params;
   const { limit = 30 } = req.query;
   // Scope check: these routes are role-gated, but without this any supervisor could
-  // read any student's timeInPhoto/timeOutPhoto by changing studentId in the URL.
+  // read or record attendance for any student by changing studentId in the URL.
   await requireStudentInScope(req.user, studentId);
   const attendance = await getAttendanceHistory(studentId, parseInt(limit));
   res.status(200).json({ success: true, data: attendance });
@@ -203,17 +189,10 @@ export const fetchStudentSummaryForStaff = asyncHandler(async (req, res) => {
 });
 
 // POST /attendance/:id/submit - submit a finished DTR for supervisor approval
-export const submitForReview = asyncHandler(async (req, res) => {
-  const student = await getStudentByUserId(req.user.userId);
-  if (!student) {
-    return res.status(404).json({ success: false, message: 'Student profile not found' });
-  }
+// Removed: attendance is now recorded by the supervisor, so there is nothing for
+// a student to submit. The route is gone as well.
 
-  const record = await submitDtrForReview(req.params.id, student.id);
-  res.status(200).json({ success: true, message: 'DTR submitted for approval', data: record });
-});
-
-// PUT /attendance/review/:id - approve or reject a submitted DTR
+// PUT /attendance/review/:id - approve or reject a legacy submitted DTR
 export const reviewDtrRecord = asyncHandler(async (req, res) => {
   const { status, remarks } = req.body;
   // Scope check before approving/rejecting: without this any supervisor could act
@@ -239,5 +218,15 @@ export const reviewDtrRecord = asyncHandler(async (req, res) => {
 export const fetchReviewQueue = asyncHandler(async (req, res) => {
   const { status, course, studentId, from, to, limit } = req.query;
   const data = await getDtrReviewQueue({ status, course, studentId, from, to, limit }, req.user);
+  res.status(200).json({ success: true, data });
+});
+
+// GET /attendance/records - scoped attendance list for monitoring screens
+export const fetchAttendanceRecords = asyncHandler(async (req, res) => {
+  const { studentId, status, reviewStatus, course, incomplete, from, to, limit } = req.query;
+  const data = await getAttendanceRecords(
+    { studentId, status, reviewStatus, course, incomplete, from, to, limit },
+    req.user
+  );
   res.status(200).json({ success: true, data });
 });

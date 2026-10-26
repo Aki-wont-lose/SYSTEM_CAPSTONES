@@ -2,7 +2,7 @@
 // Same UI for all, limited by role: STUDENT owns, COORDINATOR/SUPERVISOR review, ADMIN full
 import express from 'express';
 import { fetchMyLogs, fetchAllLogs, addLog, addAssignedTask, submitMyTask, editLog, reviewLogEntry, removeLog, removeLogAsStaff } from '../../controllers/logEntryController.js';
-import { fetchAttendanceHistory, timeIn, timeOut, fetchMonthlyAttendance, fetchStudentSummary, updateAttendance } from '../../controllers/attendanceController.js';
+import { fetchAttendanceHistory, fetchMonthlyAttendance, fetchStudentSummary, updateAttendance } from '../../controllers/attendanceController.js';
 import { verifyRole } from '../../middleware/auth.js';
 
 const router = express.Router();
@@ -23,12 +23,11 @@ router.delete('/:id', removeLog);
 // ADMIN + COORDINATOR + SUPERVISOR can delete any log entry
 router.delete('/:id/staff', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), removeLogAsStaff);
 
-// DTR / attendance — kept under /logs/dtr for organisation but also mounted at /attendance for backward compat
+// DTR / attendance — kept under /logs/dtr for organisation but also mounted at /attendance for backward compat.
+// Students are read-only; only the supervisor records time in/out (via /attendance/record/*).
 router.get('/dtr/history', fetchAttendanceHistory);
 router.get('/dtr/summary', fetchStudentSummary);
 router.get('/dtr/monthly', fetchMonthlyAttendance);
-router.post('/dtr/time-in', timeIn);
-router.post('/dtr/time-out', timeOut);
-router.put('/dtr/:id', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), updateAttendance);
+router.put('/dtr/:id', verifyRole(['ADMIN','SUPERVISOR']), updateAttendance);
 
 export default router;
