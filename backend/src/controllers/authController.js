@@ -9,7 +9,8 @@ import {
 import { loginWithMicrosoft } from '../services/microsoftAuthService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
-// Direct email + password login — Admin accounts only.
+// Direct email + password login for any account that has a password set
+// (the superadmin, plus the seeded staff accounts used for the demo).
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
