@@ -11,11 +11,16 @@ import {
   parseAnnouncementPhotos
 } from '../services/announcementService';
 import { compressImage } from '../services/imageService';
+import { useAuth } from '../hooks/useAuth';
 
 const emptyForm = { title: '', content: '', image: null, images: null, isActive: true };
 
 // Create, edit, and delete announcements shown on student dashboards
 const AnnouncementManagement = () => {
+  const { user } = useAuth();
+  // Announcement writes are ADMIN-only in the API, so coordinators get a
+  // read-only list instead of buttons that would always fail.
+  const canManage = user?.role === 'ADMIN';
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -143,9 +148,11 @@ const AnnouncementManagement = () => {
             <p className="text-xs text-sti-gray">Visible on student dashboards</p>
           </div>
         </div>
-        <Button variant="primary" icon={Plus} onClick={openAddModal} className="w-full sm:w-auto shrink-0">
-          New Announcement
-        </Button>
+        {canManage && (
+          <Button variant="primary" icon={Plus} onClick={openAddModal} className="w-full sm:w-auto shrink-0">
+            New Announcement
+          </Button>
+        )}
       </Card>
 
       {loading ? (
@@ -154,7 +161,9 @@ const AnnouncementManagement = () => {
         </div>
       ) : announcements.length === 0 ? (
         <Card>
-          <p className="text-sm text-sti-gray py-12 text-center">No announcements yet. Create your first one.</p>
+          <p className="text-sm text-sti-gray py-12 text-center">
+            {canManage ? 'No announcements yet. Create your first one.' : 'No announcements yet.'}
+          </p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -169,12 +178,16 @@ const AnnouncementManagement = () => {
                     {a.isActive ? 'Published' : 'Draft'}
                   </span>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => openEditModal(a)} className="p-2 rounded-lg hover:bg-sti-gray-light text-sti-gray hover:text-sti-blue transition-colors">
-                      <Pencil className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setDeleteTarget(a)} className="p-2 rounded-lg hover:bg-red-50 text-sti-gray hover:text-red-600 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {canManage && (
+                      <>
+                        <button onClick={() => openEditModal(a)} className="p-2 rounded-lg hover:bg-sti-gray-light text-sti-gray hover:text-sti-blue transition-colors">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setDeleteTarget(a)} className="p-2 rounded-lg hover:bg-red-50 text-sti-gray hover:text-red-600 transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
