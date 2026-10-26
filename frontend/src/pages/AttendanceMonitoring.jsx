@@ -67,11 +67,6 @@ const todayValue = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-const nowValue = () => {
-  const d = new Date();
-  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
 const toTimeInput = (dateStr) => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
@@ -116,16 +111,29 @@ const AttendanceMonitoring = () => {
   const [actionError, setActionError] = useState('');
   const [busyId, setBusyId] = useState(null);
 
-  // Supervisor recording form
+  // Supervisor recording form. The time fields start empty on purpose: an empty
+  // field means "use the current time", so a plain click on Record time in / out
+  // always stamps the moment of the click instead of a stale page-load value.
   const [form, setForm] = useState({
     studentId: '',
     date: todayValue(),
-    timeIn: nowValue(),
-    timeOut: nowValue(),
+    timeIn: '',
+    timeOut: '',
     status: 'PRESENT'
   });
   const [formBusy, setFormBusy] = useState(null);
   const [formMessage, setFormMessage] = useState(null);
+  // The selected student's recent records, used to show what is already saved
+  // for the chosen day without pre-filling (and later re-saving) an old time.
+  const [studentRecords, setStudentRecords] = useState([]);
+  const [clock, setClock] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const dayRecord = studentRecords.find((r) => recordDay(r.date) === form.date) || null;
 
   // Inline correction of an existing record
   const [editing, setEditing] = useState(null);
@@ -190,25 +198,24 @@ const AttendanceMonitoring = () => {
     }
   };
 
-  const handleFormStudentChange = async (studentId) => {
-    setForm((f) => ({ ...f, studentId }));
-    setFormMessage(null);
-    if (!studentId) return;
-    // Prefill the day's existing times so the supervisor can see what is already
-    // saved before recording a time out or correcting a mistake.
+  const loadStudentRecords = async (studentId) => {
+    if (!studentId) {
+      setStudentRecords([]);
+      return;
+    }
     try {
       const res = await getStudentAttendanceForStaff(studentId, 30);
-      const record = (res.data || []).find((r) => recordDay(r.date) === form.date);
-      if (record) {
-        setForm((f) => ({
-          ...f,
-          studentId,
-          timeIn: toTimeInput(record.timeIn) || f.timeIn,
-          timeOut: toTimeInput(record.timeOut) || f.timeOut,
-          status: record.status || f.status
-        }));
-      }
-    } catch { /* prefill is a convenience only */ }
+      setStudentRecords(res.data || []);
+    } catch {
+      setStudentRecords([]);
+    }
+  };
+
+  const handleFormStudentChange = async (studentId) => {
+    setForm((f) => ({ ...f, studentId, timeIn: '', timeOut: '', status: 'PRESENT' }));
+    setFormMessage(null);
+    setStudentRecords([]);
+    await loadStudentRecords(studentId);
   };
 
   const handleRecord = async (mode) => {
@@ -217,12 +224,32 @@ const AttendanceMonitoring = () => {
       setFormMessage({ type: 'error', text: 'Select a student first.' });
       return;
     }
-    if (mode === 'in' && !form.timeIn) {
-      setFormMessage({ type: 'error', text: 'Enter the time in.' });
+
+    const isToday = form.date === todayValue();
+    const timeValue = mode === 'in' ? form.timeIn : form.timeOut;
+
+    // A blank time means "now". That only makes sense for today, so a past or
+    // future day still needs an explicit time.
+    if (!isToday && !timeValue) {
+      setFormMessage({
+        type: 'error',
+        text: `Enter the time ${mode === 'in' ? 'in' : 'out'} for ${form.date}. Only today can use the current time.`
+      });
       return;
     }
-    if (mode === 'out' && !form.timeOut) {
-      setFormMessage({ type: 'error', text: 'Enter the time out.' });
+
+    if (mode === 'in' && dayRecord?.timeIn) {
+      setFormMessage({
+        type: 'error',
+        text: `Time in is already saved for ${formatDay(form.date)}. Use Corrections below to change it.`
+      });
+      return;
+    }
+    if (mode === 'out' && dayRecord?.timeOut) {
+      setFormMessage({
+        type: 'error',
+        text: `Time out is already saved for ${formatDay(form.date)}. Use Corrections below to change it.`
+      });
       return;
     }
 
@@ -235,15 +262,17 @@ const AttendanceMonitoring = () => {
           timeIn: toIso(form.date, form.timeIn),
           status: form.status
         });
-        setFormMessage({ type: 'success', text: 'Time in saved successfully.' });
+        setFormMessage({ type: 'success', text: `Time in saved for ${timeValue || clock.toLocaleTimeString()}.` });
       } else {
         await recordTimeOut({
           studentId: form.studentId,
           date: form.date,
           timeOut: toIso(form.date, form.timeOut)
         });
-        setFormMessage({ type: 'success', text: 'Time out saved successfully.' });
+        setFormMessage({ type: 'success', text: `Time out saved for ${timeValue || clock.toLocaleTimeString()}.` });
       }
+      setForm((f) => ({ ...f, timeIn: '', timeOut: '' }));
+      await loadStudentRecords(form.studentId);
       await loadQueue();
       if (selected?.id === form.studentId) handleSelect(selected);
     } catch (e) {
@@ -317,8 +346,25 @@ const AttendanceMonitoring = () => {
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-sti-blue-50 text-sti-blue">Supervisor</span>
           </div>
           <p className="text-xs text-sti-gray mb-4">
-            No photo is required. Time in and time out are saved immediately and count toward the student's approved hours.
+            No photo is required. Click <strong>Record time in</strong> or <strong>Record time out</strong> and the
+            current time is stamped automatically. Leave a time blank to use now; type a time only to record an
+            earlier one.
           </p>
+
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mb-4 text-xs text-sti-gray">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-sti-blue">
+              <Clock className="w-3.5 h-3.5" />
+              Current time: {clock.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </span>
+            <span>{clock.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</span>
+            {dayRecord && (
+              <span className="inline-flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                Already saved for {formatDay(form.date)}: in {dayRecord.timeIn ? formatTime(dayRecord.timeIn) : '—'}
+                {' · '}out {dayRecord.timeOut ? formatTime(dayRecord.timeOut) : '—'}
+              </span>
+            )}
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <label className="block">
@@ -347,7 +393,7 @@ const AttendanceMonitoring = () => {
               />
             </label>
             <label className="block">
-              <span className="block text-xs font-semibold text-sti-gray mb-1">Time in</span>
+              <span className="block text-xs font-semibold text-sti-gray mb-1">Time in (optional)</span>
               <input
                 type="time"
                 value={form.timeIn}
@@ -356,7 +402,7 @@ const AttendanceMonitoring = () => {
               />
             </label>
             <label className="block">
-              <span className="block text-xs font-semibold text-sti-gray mb-1">Time out</span>
+              <span className="block text-xs font-semibold text-sti-gray mb-1">Time out (optional)</span>
               <input
                 type="time"
                 value={form.timeOut}
@@ -379,8 +425,32 @@ const AttendanceMonitoring = () => {
           </div>
 
           <div className="flex flex-wrap gap-2 mt-4">
-            <Button icon={LogIn} loading={formBusy === 'in'} onClick={() => handleRecord('in')}>Save time in</Button>
-            <Button variant="secondary" icon={LogOutIcon} loading={formBusy === 'out'} onClick={() => handleRecord('out')}>Save time out</Button>
+            <Button
+              icon={LogIn}
+              loading={formBusy === 'in'}
+              onClick={() => handleRecord('in')}
+              disabled={!form.studentId || Boolean(dayRecord?.timeIn)}
+            >
+              Record time in
+            </Button>
+            <Button
+              variant="secondary"
+              icon={LogOutIcon}
+              loading={formBusy === 'out'}
+              onClick={() => handleRecord('out')}
+              disabled={!form.studentId || !dayRecord?.timeIn || Boolean(dayRecord?.timeOut)}
+            >
+              Record time out
+            </Button>
+            <span className="self-center text-xs text-sti-gray">
+              {!form.studentId
+                ? 'Select a student to enable recording.'
+                : !dayRecord?.timeIn
+                  ? 'Record time in first; time out unlocks afterwards.'
+                  : dayRecord?.timeOut
+                    ? 'Both times are saved for this day.'
+                    : 'Time out unlocks once time in is saved.'}
+            </span>
           </div>
 
           {formMessage && (
