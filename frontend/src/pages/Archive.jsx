@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Archive, ArchiveRestore, Search, GraduationCap, Users, Building2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Archive, ArchiveRestore, Search, GraduationCap, Users, UserCog, Building2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { useAuth } from '../hooks/useAuth';
-import { getArchivedRecords, restoreStudent, restoreCoordinator, restoreCompany } from '../services/archiveService';
+import { getArchivedRecords, restoreStudent, restoreCoordinator, restoreSupervisor, restoreCompany } from '../services/archiveService';
 import { courseLabel } from '../constants/programs';
 
 const PAGE_SIZES = [10, 50, 100, 'ALL'];
@@ -19,7 +19,7 @@ const coordinatorName = (member) => [member.firstName, member.lastName].filter(B
 const ArchivePage = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
-  const [records, setRecords] = useState({ students: [], coordinators: [], companies: [] });
+  const [records, setRecords] = useState({ students: [], coordinators: [], supervisors: [], companies: [] });
   const [activeTab, setActiveTab] = useState('students');
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState({ key: 'name', direction: 'asc' });
@@ -33,6 +33,7 @@ const ArchivePage = () => {
     () => [
       { key: 'students', label: 'Students', icon: GraduationCap },
       ...(isAdmin ? [{ key: 'coordinators', label: 'Coordinators', icon: Users }] : []),
+      ...(isAdmin ? [{ key: 'supervisors', label: 'Supervisors', icon: UserCog }] : []),
       { key: 'companies', label: 'Companies', icon: Building2 }
     ],
     [isAdmin]
@@ -46,6 +47,7 @@ const ArchivePage = () => {
       setRecords({
         students: data?.students || [],
         coordinators: data?.coordinators || [],
+        supervisors: data?.supervisors || [],
         companies: data?.companies || []
       });
     } catch (err) {
@@ -80,6 +82,10 @@ const ArchivePage = () => {
       if (key === 'name') return coordinatorName(item).toLowerCase();
       if (key === 'course') return (item.coordinatorCourse ? courseLabel(item.coordinatorCourse) : '').toLowerCase();
     }
+    if (activeTab === 'supervisors') {
+      if (key === 'name') return coordinatorName(item).toLowerCase();
+      if (key === 'company') return (item.supervisorCompany?.name || '').toLowerCase();
+    }
     if (activeTab === 'companies') {
       if (key === 'name') return (item.name || '').toLowerCase();
       if (key === 'industry') return (item.industryType || '').toLowerCase();
@@ -101,6 +107,11 @@ const ArchivePage = () => {
           }
           if (activeTab === 'coordinators') {
             return [coordinatorName(item), item.email, item.coordinatorCourse]
+              .filter(Boolean)
+              .some((value) => String(value).toLowerCase().includes(term));
+          }
+          if (activeTab === 'supervisors') {
+            return [coordinatorName(item), item.email, item.supervisorCompany?.name]
               .filter(Boolean)
               .some((value) => String(value).toLowerCase().includes(term));
           }
@@ -149,7 +160,7 @@ const ArchivePage = () => {
   };
 
   const handleRestore = async (type, item) => {
-    const label = type === 'students' ? studentName(item) : type === 'coordinators' ? coordinatorName(item) : item.name;
+    const label = type === 'students' ? studentName(item) : type === 'companies' ? item.name : coordinatorName(item);
     if (!window.confirm(`Restore ${label}? They will appear in the active lists again.`)) return;
 
     const key = `${type}:${item.id}`;
@@ -157,6 +168,7 @@ const ArchivePage = () => {
     try {
       if (type === 'students') await restoreStudent(item.id);
       else if (type === 'coordinators') await restoreCoordinator(item.id);
+      else if (type === 'supervisors') await restoreSupervisor(item.id);
       else await restoreCompany(item.id);
       await load();
     } catch (err) {
@@ -264,6 +276,12 @@ const ArchivePage = () => {
                       <SortHeader label="Course" sortKey="course" />
                     </>
                   )}
+                  {activeTab === 'supervisors' && (
+                    <>
+                      <SortHeader label="Account" sortKey="name" />
+                      <SortHeader label="Company" sortKey="company" />
+                    </>
+                  )}
                   {activeTab === 'companies' && (
                     <>
                       <SortHeader label="Company" sortKey="name" />
@@ -301,6 +319,17 @@ const ArchivePage = () => {
                           </td>
                           <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
                             {item.coordinatorCourse ? courseLabel(item.coordinatorCourse) : '—'}
+                          </td>
+                        </>
+                      )}
+                      {activeTab === 'supervisors' && (
+                        <>
+                          <td className="px-6 py-3.5">
+                            <p className="font-medium text-sti-gray-dark dark:text-white">{coordinatorName(item)}</p>
+                            <p className="text-xs text-sti-gray break-all">{item.email}</p>
+                          </td>
+                          <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
+                            {item.supervisorCompany?.name || '—'}
                           </td>
                         </>
                       )}

@@ -16,6 +16,11 @@ export const restoreCoordinator = async (id) => {
   return response.data;
 };
 
+export const restoreSupervisor = async (id) => {
+  const response = await api.post(`/archive/supervisors/${id}/restore`);
+  return response.data;
+};
+
 export const restoreCompany = async (id) => {
   const response = await api.post(`/archive/companies/${id}/restore`);
   return response.data;

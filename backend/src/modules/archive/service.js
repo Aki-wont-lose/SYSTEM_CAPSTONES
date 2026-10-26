@@ -47,6 +47,25 @@ export const getArchivedRecords = async (user) => {
     });
   }
 
+  // Supervisors were previously invisible here: once archived they could not be
+  // found or restored from the UI at all.
+  let supervisors = [];
+  if (isAdmin) {
+    supervisors = await prisma.user.findMany({
+      where: { isArchived: true, role: 'SUPERVISOR' },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        archivedAt: true,
+        supervisorCompany: { select: { name: true } }
+      },
+      orderBy: { archivedAt: 'desc' }
+    });
+  }
+
   const companies = isAdmin || isCoordinator
     ? await prisma.company.findMany({
         where: { isArchived: true },
@@ -55,7 +74,7 @@ export const getArchivedRecords = async (user) => {
       })
     : [];
 
-  return { students, coordinators, companies };
+  return { students, coordinators, supervisors, companies };
 };
 
 export const restoreStudent = async (studentId, user) => {
@@ -104,6 +123,23 @@ export const restoreCoordinator = async (userId) => {
   });
 
   if (!user || user.role !== 'COORDINATOR') throw notFound('Coordinator account not found');
+  if (!user.isArchived) return { success: true, restored: false };
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { isArchived: false, isActive: true, archivedAt: null }
+  });
+
+  return { success: true, restored: true };
+};
+
+export const restoreSupervisor = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, isArchived: true }
+  });
+
+  if (!user || user.role !== 'SUPERVISOR') throw notFound('Supervisor account not found');
   if (!user.isArchived) return { success: true, restored: false };
 
   await prisma.user.update({

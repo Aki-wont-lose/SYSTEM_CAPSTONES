@@ -5,6 +5,7 @@ import {
   fetchArchivedRecords,
   restoreArchivedStudent,
   restoreArchivedCoordinator,
+  restoreArchivedSupervisor,
   restoreArchivedCompany
 } from './controller.js';
 
@@ -13,6 +14,7 @@ const router = express.Router();
 router.get('/', verifyRole(['ADMIN', 'COORDINATOR']), fetchArchivedRecords);
 router.post('/students/:id/restore', verifyRole(['ADMIN', 'COORDINATOR']), restoreArchivedStudent);
 router.post('/coordinators/:id/restore', verifyRole(['ADMIN']), restoreArchivedCoordinator);
+router.post('/supervisors/:id/restore', verifyRole(['ADMIN']), restoreArchivedSupervisor);
 router.post('/companies/:id/restore', verifyRole(['ADMIN', 'COORDINATOR']), restoreArchivedCompany);
 
 export default router;
