@@ -70,7 +70,8 @@ export const isValidContactNumber = (value) => {
 
 const SECTION_RE = /^([A-Z]+)\s+([1-4])-(10[1-3])$/;
 const LEGACY_SECTION_RE = /^(?:([A-Z]+)[\s\-]+)?([1-4])-(10[1-3])$/;
-const normalizeSection = (section) => String(section || '').trim().toUpperCase();
+const normalizeSection = (section) =>
+  String(section || '').trim().replace(/\s+/g, ' ').toUpperCase();
 
 export const canonicalSection = (section, program) => {
   const norm = normalizeSection(section);
