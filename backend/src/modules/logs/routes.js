@@ -28,6 +28,6 @@ router.delete('/:id/staff', verifyRole(['ADMIN','COORDINATOR','SUPERVISOR']), re
 router.get('/dtr/history', fetchAttendanceHistory);
 router.get('/dtr/summary', fetchStudentSummary);
 router.get('/dtr/monthly', fetchMonthlyAttendance);
-router.put('/dtr/:id', verifyRole(['ADMIN','SUPERVISOR']), updateAttendance);
+router.put('/dtr/:id', verifyRole(['SUPERVISOR']), updateAttendance);
 
 export default router;

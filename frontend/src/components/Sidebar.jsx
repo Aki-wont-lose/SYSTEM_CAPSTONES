@@ -10,7 +10,6 @@ const linksByRole = {
     ]},
     { section: 'Management', links: [
       { to: '/admin/accounts', label: 'Account Management', icon: Users },
-      { to: '/admin/attendance', label: 'Attendance', icon: Clock },
       { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
       { to: '/admin/announcements', label: 'Announcements', icon: Megaphone },
     ]},

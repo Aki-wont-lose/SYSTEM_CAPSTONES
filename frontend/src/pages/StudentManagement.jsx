@@ -144,6 +144,8 @@ const StudentManagement = () => {
     setModalMode('view');
     setViewAttendance([]);
     setViewSummary(null);
+    // Admin has no attendance access; only fetch for the roles that track it.
+    if (user?.role === 'ADMIN') return;
     try {
       const [attRes, sumRes] = await Promise.all([
         getStudentAttendanceForStaff(student.id, 20),
@@ -783,7 +785,7 @@ const StudentManagement = () => {
               <div>
                 <p className="font-bold text-sti-gray-dark dark:text-white">{selectedStudent.firstName} {selectedStudent.lastName}</p>
                 <p className="text-sm text-sti-gray">{selectedStudent.studentId} • {selectedStudent.email}</p>
-                {viewSummary && <p className="text-xs text-sti-blue font-medium mt-1">{viewSummary.totalHours}h rendered • {viewSummary.remainingHours}h left • {viewSummary.presentDays} days present</p>}
+                {user?.role !== 'ADMIN' && viewSummary && <p className="text-xs text-sti-blue font-medium mt-1">{viewSummary.totalHours}h rendered • {viewSummary.remainingHours}h left • {viewSummary.presentDays} days present</p>}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
@@ -796,7 +798,9 @@ const StudentManagement = () => {
               <div><p className="text-sti-gray text-xs mb-1">Supervisor</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{selectedStudent.supervisorName || selectedStudent.company?.contactPerson || 'Not yet assigned'}</p></div>
               <div><p className="text-sti-gray text-xs mb-1">Working Schedule</p><p className="font-medium text-sti-gray-dark dark:text-slate-200">{[selectedStudent.workingDays || (selectedStudent.company ? 'Monday - Friday' : ''), selectedStudent.workingHours || (selectedStudent.company ? '8:00 AM - 5:00 PM' : '')].filter(Boolean).join(' • ') || '—'}</p></div>
             </div>
-            {/* DTR Monitoring - attendance is recorded by the supervisor and read-only here */}
+            {/* DTR Monitoring - attendance is recorded by the supervisor and read-only here.
+                Admin has no attendance access, so the block is hidden for that role. */}
+            {user?.role !== 'ADMIN' && (
             <div className="pt-3 border-t border-black/5 dark:border-white/10">
               <h4 className="font-bold text-sti-gray-dark dark:text-white text-sm mb-3 flex items-center gap-2"><Clock className="w-4 h-4 text-sti-blue" /> Attendance History</h4>
               {viewAttendance.length === 0 ? (
@@ -831,6 +835,7 @@ const StudentManagement = () => {
                 </div>
               )}
             </div>
+            )}
           </div>
         )}
       </Modal>

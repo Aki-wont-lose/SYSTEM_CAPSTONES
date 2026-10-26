@@ -7,7 +7,6 @@ const titles = {
   '/admin/dashboard': 'Admin Dashboard',
   '/admin/accounts': 'Account Management',
   '/admin/students': 'Students',
-  '/admin/attendance': 'Attendance',
   '/admin/requirements': 'Requirements',
   '/admin/templates': 'Templates',
   '/admin/submissions': 'Submissions',

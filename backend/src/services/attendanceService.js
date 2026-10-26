@@ -445,7 +445,7 @@ const REVIEW_TRANSITIONS = {
 
 export const canTransitionReview = (from, to) => (REVIEW_TRANSITIONS[from] || []).includes(to);
 
-// Supervisor / Coordinator / Admin approves or rejects a submitted DTR
+// The supervisor decides a legacy submitted DTR (Admin has no attendance access)
 export const reviewDtr = async (attendanceId, reviewer, status, remarks) => {
   if (!['APPROVED', 'REJECTED'].includes(status)) {
     const error = new Error('Status must be APPROVED or REJECTED');

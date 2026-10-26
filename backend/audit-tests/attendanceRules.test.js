@@ -80,12 +80,39 @@ check(
     && /verifyRole\(\[\s*'SUPERVISOR'\s*\]\)/.test(lineFor("router.post('/record/time-out'"))
 );
 check(
-  'corrections exclude COORDINATOR',
-  /verifyRole\(\[\s*'ADMIN'\s*,\s*'SUPERVISOR'\s*\]\)/.test(lineFor("router.put('/:id'"))
+  'corrections are SUPERVISOR-only',
+  /verifyRole\(\[\s*'SUPERVISOR'\s*\]\)/.test(lineFor("router.put('/:id'"))
 );
 check(
-  'the legacy review endpoint excludes COORDINATOR',
-  /verifyRole\(\[\s*'SUPERVISOR'\s*,\s*'ADMIN'\s*\]\)/.test(lineFor("router.put('/review/:id'"))
+  'the legacy review endpoint is SUPERVISOR-only',
+  /verifyRole\(\[\s*'SUPERVISOR'\s*\]\)/.test(lineFor("router.put('/review/:id'"))
+);
+
+console.log('\n== admin has no attendance access ==');
+const staffReads = [
+  "router.get('/records'",
+  "router.get('/student/:studentId/history'",
+  "router.get('/student/:studentId/summary'",
+  "router.get('/review-queue'"
+];
+check(
+  'staff monitoring reads allow COORDINATOR and SUPERVISOR only',
+  staffReads.every((needle) =>
+    /verifyRole\(\[\s*'COORDINATOR'\s*,\s*'SUPERVISOR'\s*\]\)/.test(lineFor(needle))
+  )
+);
+check(
+  'no attendance route grants ADMIN',
+  routeLines.every((line) => !/'ADMIN'/.test(line))
+);
+
+const logsRoutes = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'modules', 'logs', 'routes.js'),
+  'utf8'
+);
+check(
+  'the legacy /logs/dtr/:id correction is SUPERVISOR-only',
+  /router\.put\('\/dtr\/:id',\s*verifyRole\(\[\s*'SUPERVISOR'\s*\]\)/.test(logsRoutes)
 );
 
 console.log(`\n${fail === 0 ? 'ALL PASS' : 'FAILURES PRESENT'}  passed=${pass} failed=${fail}`);

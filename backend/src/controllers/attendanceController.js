@@ -125,7 +125,7 @@ export const fetchStudentSummary = asyncHandler(async (req, res) => {
   });
 });
 
-// PUT /attendance/:id - correct an attendance record (Supervisor / Admin only)
+// PUT /attendance/:id - correct an attendance record (Supervisor only)
 export const updateAttendance = asyncHandler(async (req, res) => {
   const { id } = req.params;
 

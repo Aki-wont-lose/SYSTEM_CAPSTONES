@@ -89,15 +89,14 @@ const AttendanceMonitoring = () => {
   const { user } = useAuth();
   // A coordinator owns exactly one program, so the backend already restricts
   // every record to that course. Offering them a program picker would suggest a
-  // choice that does not exist. Admins span every program and supervisors span
-  // every program at their company, so both keep the course filter.
+  // choice that does not exist. A supervisor spans every program at their
+  // company, so they keep the course filter. Admin never reaches this page.
   const canPickProgram = user?.role !== 'COORDINATOR';
-  // Only the company supervisor creates attendance entries. Admin is audit-only:
-  // it can review the records and correct a mistake, but it cannot record time in
-  // or time out. Coordinators monitor their own program and never write.
+  // Only the company supervisor creates and corrects attendance. Coordinators
+  // monitor their own program and never write. Admin has no attendance access.
   const canRecord = user?.role === 'SUPERVISOR';
-  const canCorrect = user?.role === 'SUPERVISOR' || user?.role === 'ADMIN';
-  const canReview = user?.role === 'SUPERVISOR' || user?.role === 'ADMIN';
+  const canCorrect = user?.role === 'SUPERVISOR';
+  const canReview = user?.role === 'SUPERVISOR';
 
   const [students, setStudents] = useState([]);
   const [search, setSearch] = useState('');
@@ -300,9 +299,7 @@ const AttendanceMonitoring = () => {
         <p className="text-sm text-sti-gray">
           {user?.role === 'SUPERVISOR'
             ? 'Record and manage the attendance of the students assigned to your company.'
-            : user?.role === 'ADMIN'
-              ? 'Audit attendance across the institution. Admin reviews and corrects records; time in and time out are entered only by the company supervisor.'
-              : `Monitor the attendance records of the ${user?.coordinatorCourse || ''} students assigned to you.`.trim()}
+            : `Monitor the attendance records of the ${user?.coordinatorCourse || ''} students assigned to you.`.trim()}
         </p>
       </div>
 

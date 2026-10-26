@@ -41,7 +41,7 @@ export const recordTimeOut = async ({ studentId, date, timeOut, notes }) => {
   return response.data;
 };
 
-// Supervisor / Admin: correct an existing attendance record
+// Supervisor: correct an existing attendance record (Admin has no access)
 export const updateAttendanceRecord = async (attendanceId, payload) => {
   const response = await api.put(`/attendance/${attendanceId}`, payload);
   return response.data;
