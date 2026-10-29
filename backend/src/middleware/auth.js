@@ -155,6 +155,23 @@ export const verifyRole = (allowedRoles) => {
   };
 };
 
+// The super admin shares the ADMIN role in the database, so verifyRole(['ADMIN'])
+// alone would still let them use administrator-only modules. Announcements are
+// explicitly an ADMIN responsibility, so those routes compose this guard after
+// verifyRole to carve the super admin back out.
+export const denySuperAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Unauthorized' });
+  }
+  if (req.user.isSuperAdmin) {
+    return res.status(403).json({
+      success: false,
+      message: 'Forbidden: This module is managed by Administrators, not the Super Admin'
+    });
+  }
+  next();
+};
+
 export const verifySuperAdmin = (req, res, next) => {
   // SUPER_ADMIN_EMAIL is the single top-level operator; only that account may
   // perform destructive, institution-wide actions such as purging the audit log.

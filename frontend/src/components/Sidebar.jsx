@@ -85,9 +85,21 @@ const linksByRole = {
   ],
 };
 
+// Modules the super admin is explicitly excluded from. Announcements are an
+// ADMIN responsibility; the super admin only shares the ADMIN role in the DB.
+const SUPER_ADMIN_HIDDEN_LINKS = new Set(['/admin/announcements']);
+
 const Sidebar = ({ role, isOpen, onClose }) => {
   const { user } = useAuth();
-  const sections = linksByRole[role] || linksByRole.STUDENT;
+  const baseSections = linksByRole[role] || linksByRole.STUDENT;
+  const sections = user?.isSuperAdmin
+    ? baseSections
+        .map(({ section, links }) => ({
+          section,
+          links: links.filter((link) => !SUPER_ADMIN_HIDDEN_LINKS.has(link.to)),
+        }))
+        .filter(({ links }) => links.length > 0)
+    : baseSections;
   const roleLabel = user?.isSuperAdmin ? 'Super Admin' : (role ? role.charAt(0) + role.slice(1).toLowerCase() : '');
 
   const staffFullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();

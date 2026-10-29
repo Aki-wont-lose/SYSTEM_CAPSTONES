@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Megaphone } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
@@ -18,9 +19,13 @@ const emptyForm = { title: '', content: '', image: null, images: null, isActive:
 // Create, edit, and delete announcements shown on student dashboards
 const AnnouncementManagement = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  // Announcements belong to the ADMIN role. The super admin shares that role in
+  // the database but is excluded from this module, so they are sent back to the
+  // dashboard instead of seeing a page whose requests would return 403.
   // Announcement writes are ADMIN-only in the API, so coordinators get a
   // read-only list instead of buttons that would always fail.
-  const canManage = user?.role === 'ADMIN';
+  const canManage = user?.role === 'ADMIN' && !user?.isSuperAdmin;
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -48,8 +53,15 @@ const AnnouncementManagement = () => {
   };
 
   useEffect(() => {
+    if (user?.isSuperAdmin) {
+      navigate('/admin/dashboard', { replace: true });
+      return;
+    }
     loadAnnouncements();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.isSuperAdmin]);
+
+  if (user?.isSuperAdmin) return null;
 
   // Reset the form and open the modal for a new announcement
   const openAddModal = () => {
