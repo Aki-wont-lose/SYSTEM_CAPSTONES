@@ -11,6 +11,8 @@ import {
 import { isSuperAdmin } from '../../middleware/auth.js';
 import { studentScopeWhere } from '../../services/accessScope.js';
 import { SUPPORTED_PROGRAMS } from '../../utils/studentValidation.js';
+import { verifySchoolAccountForCreation } from '../../services/graphDirectoryService.js';
+import { isSchoolAccountRole, roleEmailError } from '../../services/microsoftAccountPolicy.js';
 
 const prisma = new PrismaClient();
 
@@ -31,6 +33,12 @@ const staffSelect = {
   supervisorCompanyId: true,
   createdAt: true,
   supervisorCompany: { select: { id: true, name: true } },
+  linkedAccounts: {
+    where: { provider: 'MICROSOFT' },
+    select: { email: true, createdAt: true },
+    orderBy: { createdAt: 'desc' },
+    take: 1
+  },
   _count: { select: { receivedMessages: true } }
 };
 
@@ -102,8 +110,17 @@ export const listStaff = async ({ role, search, includeInactive = true, requeste
         return byCompany || byEmail;
       }).length;
     }
+    const { linkedAccounts = [], ...rest } = member;
+    const verifiedLink = linkedAccounts[0] || null;
     return {
-      ...member,
+      ...rest,
+      // Verified means a Microsoft sign-in has succeeded for this account. The
+      // email format/domain alone never sets this flag. (A Graph-confirmed
+      // creation is reported separately in the create response; it still needs
+      // the person's first sign-in to prove ownership.)
+      microsoftVerified: Boolean(verifiedLink),
+      microsoftVerifiedAt: verifiedLink?.createdAt || null,
+      microsoftVerifiedEmail: verifiedLink?.email || null,
       isSuperAdmin: isSuperAdmin(member),
       assignedStudents
     };
@@ -196,6 +213,11 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     throw error;
   }
 
+  // Same Microsoft verification gate as student creation. ADMIN and COORDINATOR
+  // must exist in the school tenant when Graph is configured; SUPERVISOR is
+  // exempt and is verified by its first successful Microsoft sign-in.
+  const microsoftVerification = await verifySchoolAccountForCreation(normalizedEmail, normalizedRole);
+
   const accountData = {
     email: normalizedEmail,
     password: null,
@@ -234,7 +256,7 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     });
   }
 
-  return { user, fullName, contactNumber: normalizedContact };
+  return { user, fullName, contactNumber: normalizedContact, microsoftVerification };
 };
 
 export const updateStaffAccount = async (userId, updateData, { requesterIsSuperAdmin = false, requesterId = null, requesterEmail = null } = {}) => {
@@ -315,6 +337,9 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
         error.status = 400;
         throw error;
       }
+      // Never allow an edit to point a school role at a mailbox Microsoft does
+      // not know about. Same gate as create; supervisors are exempt.
+      await verifySchoolAccountForCreation(normalizedEmail, targetRole);
     }
     data.email = normalizedEmail;
   }
@@ -346,6 +371,21 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
   }
 
   const nextRole = data.role || existing.role;
+
+  // A role change must re-apply the Microsoft account policy even when the email
+  // itself is unchanged: otherwise a supervisor with a personal Outlook address
+  // could be promoted to coordinator and keep a non-school sign-in.
+  if (data.role && data.role !== existing.role) {
+    const roleMessage = roleEmailError({ email: data.email || existing.email, role: nextRole });
+    if (roleMessage) {
+      const error = new Error(roleMessage);
+      error.status = 400;
+      throw error;
+    }
+    if (isSchoolAccountRole(nextRole) && !data.email) {
+      await verifySchoolAccountForCreation(existing.email, nextRole);
+    }
+  }
 
   if (updateData.isActive !== undefined) data.isActive = Boolean(updateData.isActive);
   if (updateData.firstName !== undefined) data.firstName = String(updateData.firstName || '').trim() || null;
@@ -455,6 +495,14 @@ export const resetAccountPassword = async (userId, { requesterIsSuperAdmin = fal
   if (!existing) {
     const error = new Error('Account not found');
     error.status = 404;
+    throw error;
+  }
+
+  // Students are Microsoft-only. Issuing a password here would let them bypass
+  // the school-account verification that happens on Microsoft sign-in.
+  if (existing.role === 'STUDENT') {
+    const error = new Error('Student accounts sign in with Microsoft Office 365; passwords cannot be issued here.');
+    error.status = 400;
     throw error;
   }
 

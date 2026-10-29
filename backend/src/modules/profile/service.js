@@ -1,6 +1,7 @@
 // modules/profile/service.js — profile domain (student + any user)
 import { getStudentByUserId, updateStudent } from '../../services/studentService.js';
 import { getMicrosoftIdentity } from '../../services/microsoftAuthService.js';
+import { assertMicrosoftLoginAllowed } from '../../services/microsoftAccountPolicy.js';
 import { isValidStaffEmail, getStaffEmailError } from '../../utils/staffValidation.js';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
@@ -187,6 +188,24 @@ export const getLinkedAccounts = async (userId) => {
 
 export const linkMicrosoftAccount = async (userId, idToken) => {
   const identity = await getMicrosoftIdentity(idToken);
+
+  // An account may only link a Microsoft identity that the role policy allows.
+  // Without this, a staff member could attach a personal Outlook.com account
+  // and use it to sign in later, bypassing the school-account requirement.
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, role: true }
+  });
+  if (!user) {
+    const error = new Error('Account not found');
+    error.status = 404;
+    throw error;
+  }
+  assertMicrosoftLoginAllowed({
+    email: identity.email,
+    role: user.role,
+    tenantId: identity.tid
+  });
 
   const owner = await prisma.linkedAccount.findUnique({
     where: { provider_providerId: { provider: 'MICROSOFT', providerId: identity.providerId } }

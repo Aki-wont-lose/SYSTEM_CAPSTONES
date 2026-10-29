@@ -15,6 +15,7 @@ import {
   ELMS_SECTION_ERROR
 } from '../utils/studentValidation.js';
 import { studentScopeWhere } from './accessScope.js';
+import { verifySchoolAccountForCreation } from './graphDirectoryService.js';
 
 const prisma = new PrismaClient();
 
@@ -349,6 +350,13 @@ export const createStudent = async (studentData, userData, actor = null) => {
   // a login account behind without a student profile.
   await assertStudentIdentityAvailable({ studentId: cleanStudentId, email });
 
+  // Microsoft account verification. A school-domain format alone is NOT proof
+  // that the mailbox exists, so when the Graph directory is configured this
+  // rejects accounts Microsoft does not know about. When it is not configured
+  // the account is created explicitly unverified and only becomes verified after
+  // the student's first Microsoft sign-in. Company supervisors are exempt.
+  const microsoftVerification = await verifySchoolAccountForCreation(email, 'STUDENT');
+
   // Look up required OJT hours for this course from the admin-maintained config
   let requiredHours = null;
   const hoursCfg = await prisma.ojtHoursConfig.findUnique({
@@ -413,7 +421,8 @@ export const createStudent = async (studentData, userData, actor = null) => {
     });
 
     return {
-      student: hydrateStudentPlacement(student)
+      student: hydrateStudentPlacement(student),
+      microsoftVerification
     };
   } catch (error) {
     if (error.code === 'P2002') {
@@ -588,6 +597,10 @@ export const updateStudent = async (studentId, updateData, actor = null) => {
       if (duplicate && duplicate.id !== current?.userId) {
         throw badRequest('This email address is already registered in SIMES.');
       }
+
+      // The same Microsoft verification gate as create, so an admin cannot
+      // create a valid account and then edit it to a non-existent mailbox.
+      await verifySchoolAccountForCreation(sanitized.email, 'STUDENT');
     }
 
     const include = {

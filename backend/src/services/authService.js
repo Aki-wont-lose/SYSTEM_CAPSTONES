@@ -33,7 +33,15 @@ export const loginUser = async (email, password) => {
   // Case-insensitive so changing your own email in Profile can never lock you out of sign-in
   const user = await prisma.user.findFirst({
     where: { email: { equals: String(email || '').trim(), mode: 'insensitive' } },
-    include: { student: true }
+    include: {
+      student: true,
+      linkedAccounts: {
+        where: { provider: 'MICROSOFT' },
+        select: { email: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 1
+      }
+    }
   });
 
   if (!user) {
@@ -53,6 +61,16 @@ export const loginUser = async (email, password) => {
   if (!user.isActive) {
     await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN_FAILED', entity: 'Account', description: `Sign-in blocked for a disabled account (${user.email})` });
     const error = new Error('Account is disabled. Contact the OJT coordinator.');
+    error.status = 403;
+    throw error;
+  }
+
+  // Student accounts are Microsoft-only by policy. Without this guard a student
+  // could set a password through change-password / reset and sign in without
+  // ever proving ownership of the school mailbox.
+  if (user.role === 'STUDENT') {
+    await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN_FAILED', entity: 'Account', description: `Password sign-in blocked for student account (${user.email})` });
+    const error = new Error('Student accounts must sign in with Microsoft Office 365.');
     error.status = 403;
     throw error;
   }
@@ -86,6 +104,10 @@ export const loginUser = async (email, password) => {
       coordinatorCourse: user.coordinatorCourse,
       supervisorCompanyId: user.supervisorCompanyId,
       isSuperAdmin: isSuperAdmin(user),
+      // "Verified" means a Microsoft sign-in has succeeded for this account.
+      // A password sign-in never sets this flag.
+      microsoftVerified: Boolean(user.linkedAccounts?.length),
+      microsoftVerifiedAt: user.linkedAccounts?.[0]?.createdAt || null,
       student: user.student
     }
   };
@@ -102,6 +124,12 @@ export const changePassword = async (userId, currentPassword, newPassword) => {
   if (!user) {
     const error = new Error('Account not found');
     error.status = 404;
+    throw error;
+  }
+
+  if (user.role === 'STUDENT') {
+    const error = new Error('Student accounts sign in with Microsoft Office 365, so they do not use a password.');
+    error.status = 403;
     throw error;
   }
 

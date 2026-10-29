@@ -172,7 +172,12 @@ export const addStudent = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     message: 'Student created successfully',
-    data: { student: result.student }
+    data: {
+      student: result.student,
+      // Tells the caller whether the mailbox was directory-verified, or whether
+      // it will only be verified on the student's first Microsoft sign-in.
+      microsoftVerification: result.microsoftVerification
+    }
   });
 });
 

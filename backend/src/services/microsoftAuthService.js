@@ -13,6 +13,7 @@ import jwksClient from 'jwks-rsa';
 import { PrismaClient } from '@prisma/client';
 import { generateToken, isSuperAdmin } from '../middleware/auth.js';
 import { recordAudit } from './auditLogService.js';
+import { assertMicrosoftLoginAllowed } from './microsoftAccountPolicy.js';
 
 const prisma = new PrismaClient();
 
@@ -94,7 +95,15 @@ export const getMicrosoftIdentity = async (idToken) => {
     throw error;
   }
 
-  return { providerId: decoded.oid || decoded.sub, email, name: decoded.name || null };
+  return {
+    providerId: decoded.oid || decoded.sub,
+    email,
+    name: decoded.name || null,
+    // `tid` is the Microsoft 365 tenant that issued the token. It lets the
+    // server prove a school account really belongs to the school organization
+    // when MS_SCHOOL_TENANT_ID is configured.
+    tid: decoded.tid || null
+  };
 };
 
 export const loginWithMicrosoft = async (idToken) => {
@@ -119,13 +128,6 @@ export const loginWithMicrosoft = async (idToken) => {
       where: { email: { equals: email, mode: 'insensitive' } },
       include: { student: true }
     });
-    if (user) {
-      await prisma.linkedAccount.upsert({
-        where: { provider_providerId: { provider: 'MICROSOFT', providerId: identity.providerId } },
-        create: { userId: user.id, provider: 'MICROSOFT', providerId: identity.providerId, email },
-        update: { userId: user.id, email }
-      });
-    }
   }
 
   if (!user) {
@@ -144,6 +146,37 @@ export const loginWithMicrosoft = async (idToken) => {
     const error = new Error('Account is disabled. Contact the OJT coordinator.');
     error.status = 403;
     throw error;
+  }
+
+  // Role-based Microsoft account policy, enforced on the server:
+  //   STUDENT / ADMIN / COORDINATOR -> school account only
+  //   SUPERVISOR                    -> personal Microsoft account allowed
+  // Microsoft has already proven that this person controls the account; this
+  // check decides whether that proven identity may act as the local role.
+  assertMicrosoftLoginAllowed({
+    email: identity.email,
+    role: user.role,
+    tenantId: identity.tid
+  });
+
+  // A successful Microsoft authentication is the verification event: it proves
+  // the mailbox exists and belongs to the person signing in. Record the link so
+  // later sign-ins keep working even if the email casing or address changes.
+  await prisma.linkedAccount.upsert({
+    where: { provider_providerId: { provider: 'MICROSOFT', providerId: identity.providerId } },
+    create: { userId: user.id, provider: 'MICROSOFT', providerId: identity.providerId, email },
+    update: { userId: user.id, email }
+  });
+
+  if (!linked) {
+    await recordAudit({
+      userId: user.id,
+      userEmail: user.email,
+      userRole: user.role,
+      action: 'LINK',
+      entity: 'Account',
+      description: `Microsoft account ${identity.email} verified by successful sign-in`
+    });
   }
 
   const token = generateToken(user.id, user.email, user.role, {
@@ -167,6 +200,13 @@ export const loginWithMicrosoft = async (idToken) => {
       coordinatorCourse: user.coordinatorCourse,
       supervisorCompanyId: user.supervisorCompanyId,
       isSuperAdmin: isSuperAdmin(user),
+      microsoftVerified: true,
+      microsoftVerifiedAt: new Date().toISOString(),
+      microsoftVerification: {
+        status: 'VERIFIED',
+        source: 'microsoft-signin',
+        tenantId: identity.tid || null
+      },
       student: user.student
     }
   };
