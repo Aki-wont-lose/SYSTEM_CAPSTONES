@@ -55,12 +55,21 @@ export const getContactUsers = async (currentUserId) => {
     const current = conversationByUser.get(otherUserId) || {
       unreadCount: 0,
       lastMessageAt: null,
-      lastMessagePreview: null
+      lastMessagePreview: null,
+      // Folder bucketing for the mail-style inbox needs to know which direction
+      // the traffic went, not just that a conversation exists.
+      lastMessageIsMine: false,
+      hasSent: false,
+      hasReceived: false
     };
-    if (message.receiverId === currentUserId && !message.isRead) current.unreadCount += 1;
+    const isMine = message.senderId === currentUserId;
+    if (isMine) current.hasSent = true;
+    else current.hasReceived = true;
+    if (!isMine && !message.isRead) current.unreadCount += 1;
     if (!current.lastMessageAt || message.createdAt > current.lastMessageAt) {
       current.lastMessageAt = message.createdAt;
       current.lastMessagePreview = message.content.startsWith('data:image') ? 'Photo' : message.content.slice(0, 80);
+      current.lastMessageIsMine = isMine;
     }
     conversationByUser.set(otherUserId, current);
   }
@@ -80,6 +89,9 @@ export const getContactUsers = async (currentUserId) => {
       displayName: name,
       studentId: u.student?.studentId || null,
       hasConversation: !!conversation,
+      hasSent: conversation?.hasSent || false,
+      hasReceived: conversation?.hasReceived || false,
+      lastMessageIsMine: conversation?.lastMessageIsMine || false,
       unreadCount: conversation?.unreadCount || 0,
       lastMessageAt: conversation?.lastMessageAt || null,
       lastMessagePreview: conversation?.lastMessagePreview || null
