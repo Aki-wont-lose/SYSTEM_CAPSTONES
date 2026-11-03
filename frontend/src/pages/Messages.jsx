@@ -84,8 +84,23 @@ const Messages = () => {
   const [composeBody, setComposeBody] = useState('');
   const [composing, setComposing] = useState(false);
 
-  const bottomRef = useRef(null);
+  const scrollRef = useRef(null);
+  const loadedThreadRef = useRef(null);
+  const messageCountRef = useRef(0);
   const fileRef = useRef(null);
+
+  // Follow the newest message only when the reader is already at the bottom,
+  // so the 3s poll cannot yank the pane while someone reads older mail.
+  const scrollToBottom = (behavior = 'smooth') => {
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior });
+  };
+
+  const isNearBottom = () => {
+    const el = scrollRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+  };
 
   const showToast = (message) => {
     setToast(message);
@@ -108,9 +123,21 @@ const Messages = () => {
     setReadingLoading(true);
     try {
       const res = await getConversation(contactId);
-      setMessages(res.data || []);
+      const incoming = res.data || [];
+      const isNewThread = loadedThreadRef.current !== contactId;
+      const grew = incoming.length > messageCountRef.current;
+      const newestIsMine = incoming[incoming.length - 1]?.senderId === currentUserId;
+      const shouldFollow = isNewThread || (grew && isNearBottom());
+
+      setMessages(incoming);
       setContacts((current) => current.map((c) => (c.id === contactId ? { ...c, unreadCount: 0 } : c)));
-      setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+
+      loadedThreadRef.current = contactId;
+      messageCountRef.current = incoming.length;
+
+      if (shouldFollow || (grew && newestIsMine)) {
+        setTimeout(() => scrollToBottom(isNewThread ? 'auto' : 'smooth'), 60);
+      }
     } catch (error) {
       console.error(error);
     } finally {
@@ -126,6 +153,8 @@ const Messages = () => {
 
   useEffect(() => {
     setMessages([]);
+    loadedThreadRef.current = null;
+    messageCountRef.current = 0;
     if (!selectedId) return undefined;
     loadConversation(selectedId);
     const interval = setInterval(() => loadConversation(selectedId), 3000);
@@ -180,6 +209,7 @@ const Messages = () => {
       setText('');
       setAttachment(null);
       await refreshAfterSend(selectedId);
+      setTimeout(() => scrollToBottom('smooth'), 60);
     } catch (error) {
       showToast(error.response?.data?.message || 'Failed to send message');
     } finally {
@@ -468,7 +498,7 @@ const Messages = () => {
                 </button>
               </div>
 
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-sti-gray-light/30 p-3 dark:bg-slate-900/40 sm:p-4">
+              <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-sti-gray-light/30 p-3 dark:bg-slate-900/40 sm:p-4">
                 {readingLoading && messages.length === 0 && (
                   <div className="flex justify-center py-10">
                     <div className="h-6 w-6 animate-spin rounded-full border-2 border-sti-blue border-t-transparent" />
@@ -520,7 +550,6 @@ const Messages = () => {
                     </article>
                   );
                 })}
-                <div ref={bottomRef} />
               </div>
 
               {attachment && (
