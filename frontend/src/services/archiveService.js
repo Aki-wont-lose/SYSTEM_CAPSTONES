@@ -25,3 +25,24 @@ export const restoreCompany = async (id) => {
   const response = await api.post(`/archive/companies/${id}/restore`);
   return response.data;
 };
+
+// Permanent deletion (admin only). The API refuses records that are not archived.
+export const deleteStudentPermanently = async (id) => {
+  const response = await api.delete(`/archive/students/${id}`);
+  return response.data;
+};
+
+export const deleteCoordinatorPermanently = async (id) => {
+  const response = await api.delete(`/archive/coordinators/${id}`);
+  return response.data;
+};
+
+export const deleteSupervisorPermanently = async (id) => {
+  const response = await api.delete(`/archive/supervisors/${id}`);
+  return response.data;
+};
+
+export const deleteCompanyPermanently = async (id) => {
+  const response = await api.delete(`/archive/companies/${id}`);
+  return response.data;
+};

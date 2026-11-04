@@ -1,9 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Archive, ArchiveRestore, Search, GraduationCap, Users, UserCog, Building2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Archive, ArchiveRestore, Search, GraduationCap, Users, UserCog, Building2, ArrowUpDown, ArrowUp, ArrowDown, Trash2, AlertTriangle } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import Modal from '../components/Modal';
 import { useAuth } from '../hooks/useAuth';
-import { getArchivedRecords, restoreStudent, restoreCoordinator, restoreSupervisor, restoreCompany } from '../services/archiveService';
+import {
+  getArchivedRecords,
+  restoreStudent,
+  restoreCoordinator,
+  restoreSupervisor,
+  restoreCompany,
+  deleteStudentPermanently,
+  deleteCoordinatorPermanently,
+  deleteSupervisorPermanently,
+  deleteCompanyPermanently
+} from '../services/archiveService';
 import { courseLabel } from '../constants/programs';
 
 const PAGE_SIZES = [10, 50, 100, 'ALL'];
@@ -28,6 +39,9 @@ const ArchivePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [restoring, setRestoring] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const tabs = useMemo(
     () => [
@@ -159,8 +173,11 @@ const ArchivePage = () => {
     );
   };
 
+  const recordName = (type, item) =>
+    type === 'students' ? studentName(item) : type === 'companies' ? item.name : coordinatorName(item);
+
   const handleRestore = async (type, item) => {
-    const label = type === 'students' ? studentName(item) : type === 'companies' ? item.name : coordinatorName(item);
+    const label = recordName(type, item);
     if (!window.confirm(`Restore ${label}? They will appear in the active lists again.`)) return;
 
     const key = `${type}:${item.id}`;
@@ -175,6 +192,25 @@ const ArchivePage = () => {
       setError(err.response?.data?.message || 'Could not restore this record.');
     } finally {
       setRestoring('');
+    }
+  };
+
+  const handleDeletePermanently = async () => {
+    if (!deleteTarget) return;
+    const { type, item } = deleteTarget;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      if (type === 'students') await deleteStudentPermanently(item.id);
+      else if (type === 'coordinators') await deleteCoordinatorPermanently(item.id);
+      else if (type === 'supervisors') await deleteSupervisorPermanently(item.id);
+      else await deleteCompanyPermanently(item.id);
+      setDeleteTarget(null);
+      await load();
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || 'Could not delete this record.');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -345,7 +381,7 @@ const ArchivePage = () => {
                       )}
                       <td className="px-6 py-3.5 whitespace-nowrap text-sti-gray">{formatDate(item.archivedAt)}</td>
                       <td className="px-6 py-3.5">
-                        <div className="flex justify-end">
+                        <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="secondary"
                             icon={ArchiveRestore}
@@ -355,6 +391,19 @@ const ArchivePage = () => {
                           >
                             Restore
                           </Button>
+                          {isAdmin && (
+                            <Button
+                              variant="danger"
+                              icon={Trash2}
+                              onClick={() => {
+                                setDeleteError('');
+                                setDeleteTarget({ type: activeTab, item });
+                              }}
+                              className="text-xs px-3 py-2"
+                            >
+                              Delete
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -379,6 +428,45 @@ const ArchivePage = () => {
           </div>
         )}
       </Card>
+
+      <Modal
+        isOpen={Boolean(deleteTarget)}
+        onClose={() => { if (!deleting) setDeleteTarget(null); }}
+        title="Delete permanently"
+      >
+        <div className="space-y-4">
+          <div className="flex gap-3 rounded-xl border border-red-100 bg-red-50 p-3 dark:border-red-900/40 dark:bg-red-950/30">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+            <div className="text-sm text-red-700 dark:text-red-300">
+              <p className="font-semibold">This cannot be undone.</p>
+              <p className="mt-1">
+                Restoring is no longer possible once a record is deleted. Its history is removed with it.
+              </p>
+            </div>
+          </div>
+
+          <p className="text-sm text-sti-gray-dark dark:text-slate-200">
+            Permanently delete{' '}
+            <strong>{deleteTarget ? recordName(deleteTarget.type, deleteTarget.item) : ''}</strong>
+            {deleteTarget?.type === 'students'
+              ? ' — the student profile, DTR, submissions, logs, weekly tasks and messages will be removed.'
+              : deleteTarget?.type === 'companies'
+                ? ' — this only works when no student or supervisor is still linked to the company.'
+                : ' — the account and its messages will be removed.'}
+          </p>
+
+          {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="secondary" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="danger" icon={Trash2} onClick={handleDeletePermanently} loading={deleting}>
+              Delete permanently
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

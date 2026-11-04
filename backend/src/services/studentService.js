@@ -232,14 +232,32 @@ export const getAllStudents = async (filters = {}) => {
         select: {
           id: true,
           email: true,
-          isActive: true
+          isActive: true,
+          // A Microsoft link only exists after a successful Microsoft sign-in,
+          // so it doubles as the verification flag shown in the UI.
+          linkedAccounts: {
+            where: { provider: 'MICROSOFT' },
+            select: { email: true, createdAt: true },
+            orderBy: { createdAt: 'desc' },
+            take: 1
+          }
         }
       },
       company: true
     },
     orderBy: { createdAt: 'desc' }
   });
-  return rows.map(hydrateStudentPlacement);
+  return rows.map((row) => {
+    const { linkedAccounts = [], ...user } = row.user || {};
+    const link = linkedAccounts[0] || null;
+    return hydrateStudentPlacement({
+      ...row,
+      user,
+      microsoftVerified: Boolean(link),
+      microsoftVerifiedAt: link?.createdAt || null,
+      microsoftVerifiedEmail: link?.email || null
+    });
+  });
 };
 
 export const getStudentById = async (studentId) => {
