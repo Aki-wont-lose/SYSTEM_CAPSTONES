@@ -223,7 +223,7 @@ const ArchivePage = () => {
           <Archive className="w-5 h-5 text-sti-blue" /> Archive
         </h1>
         <p className="text-sm text-sti-gray">
-          Archived accounts and companies are hidden from the active lists but keep all of their history. Restore any record at any time.
+          Archived accounts and companies are hidden from the active lists but keep all of their history. Restore any record at any time, or delete it permanently if it was only test data.
         </p>
       </div>
 
@@ -440,7 +440,7 @@ const ArchivePage = () => {
             <div className="text-sm text-red-700 dark:text-red-300">
               <p className="font-semibold">This cannot be undone.</p>
               <p className="mt-1">
-                Restoring is no longer possible once a record is deleted. Its history is removed with it.
+                Deleting removes the record and its history from the database. It will not appear in the archive again.
               </p>
             </div>
           </div>
