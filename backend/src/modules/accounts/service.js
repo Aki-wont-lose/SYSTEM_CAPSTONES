@@ -111,16 +111,8 @@ export const listStaff = async ({ role, search, includeInactive = true, requeste
       }).length;
     }
     const { linkedAccounts = [], ...rest } = member;
-    const verifiedLink = linkedAccounts[0] || null;
     return {
       ...rest,
-      // Verified means a Microsoft sign-in has succeeded for this account. The
-      // email format/domain alone never sets this flag. (A Graph-confirmed
-      // creation is reported separately in the create response; it still needs
-      // the person's first sign-in to prove ownership.)
-      microsoftVerified: Boolean(verifiedLink),
-      microsoftVerifiedAt: verifiedLink?.createdAt || null,
-      microsoftVerifiedEmail: verifiedLink?.email || null,
       isSuperAdmin: isSuperAdmin(member),
       assignedStudents
     };

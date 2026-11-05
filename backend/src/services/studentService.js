@@ -249,13 +249,9 @@ export const getAllStudents = async (filters = {}) => {
   });
   return rows.map((row) => {
     const { linkedAccounts = [], ...user } = row.user || {};
-    const link = linkedAccounts[0] || null;
     return hydrateStudentPlacement({
       ...row,
-      user,
-      microsoftVerified: Boolean(link),
-      microsoftVerifiedAt: link?.createdAt || null,
-      microsoftVerifiedEmail: link?.email || null
+      user
     });
   });
 };
