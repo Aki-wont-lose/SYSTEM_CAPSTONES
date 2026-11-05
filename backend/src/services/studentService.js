@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import {
   isValidStudentEmail,
   isValidStudentId,
+  isValidPersonName,
   validateStudentEmailMatch,
   isValidContactNumber,
   isValidSection,
@@ -11,6 +12,7 @@ import {
   OJT_YEAR_LEVEL,
   ELMS_EMAIL_ERROR,
   STUDENT_ID_ERROR,
+  PERSON_NAME_ERROR,
   CONTACT_NUMBER_ERROR,
   ELMS_SECTION_ERROR
 } from '../utils/studentValidation.js';
@@ -315,6 +317,15 @@ export const getStudentByUserId = async (userId) => {
 };
 
 export const createStudent = async (studentData, userData, actor = null) => {
+  const cleanFirstName = String(studentData.firstName || '').trim();
+  const cleanLastName = String(studentData.lastName || '').trim();
+  if (!cleanFirstName || !cleanLastName) {
+    throw badRequest('First name and last name are required.');
+  }
+  if (!isValidPersonName(cleanFirstName) || !isValidPersonName(cleanLastName)) {
+    throw badRequest(PERSON_NAME_ERROR);
+  }
+
   const cleanStudentId = String(studentData.studentId || '').trim();
   if (!isValidStudentId(cleanStudentId)) {
     throw badRequest(STUDENT_ID_ERROR);
@@ -537,6 +548,19 @@ export const updateStudent = async (studentId, updateData, actor = null) => {
     const targetCourse = sanitized.course || current?.course;
     if (sanitized.section !== undefined) {
       sanitized.section = canonicalSection(sanitized.section, targetCourse);
+    }
+
+    if (sanitized.firstName !== undefined) {
+      sanitized.firstName = String(sanitized.firstName || '').trim();
+      if (!sanitized.firstName || !isValidPersonName(sanitized.firstName)) {
+        throw badRequest(PERSON_NAME_ERROR);
+      }
+    }
+    if (sanitized.lastName !== undefined) {
+      sanitized.lastName = String(sanitized.lastName || '').trim();
+      if (!sanitized.lastName || !isValidPersonName(sanitized.lastName)) {
+        throw badRequest(PERSON_NAME_ERROR);
+      }
     }
 
     if (sanitized.studentId !== undefined) {

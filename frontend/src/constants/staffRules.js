@@ -9,7 +9,17 @@ export const STAFF_EMAIL_ERROR =
   'Invalid ELMS email format. Please use your official school email.';
 
 export const SUPERVISOR_EMAIL_ERROR =
-  'Please enter a valid email address for the company supervisor.';
+  'Please enter a valid Microsoft email address for the company supervisor.';
+
+export const PERSON_NAME_ERROR =
+  'Names may only contain letters, spaces, hyphens, and periods.';
+
+const PERSON_NAME_RE = /^[A-Za-zÀ-ÖØ-öø-ÿ\s.'-]+$/;
+
+export const isValidPersonName = (value) => {
+  const cleaned = String(value || '').trim();
+  return Boolean(cleaned) && PERSON_NAME_RE.test(cleaned);
+};
 
 export const isValidStaffEmail = (email, role = null) => {
   const cleaned = String(email || '').trim();
@@ -24,11 +34,11 @@ export const getStaffEmailError = (role = null) =>
   String(role || '').toUpperCase() === 'SUPERVISOR' ? SUPERVISOR_EMAIL_ERROR : STAFF_EMAIL_ERROR;
 
 export const CONTACT_NUMBER_ERROR =
-  'Please enter a valid contact number (e.g., 09171234567 or +639171234567).';
+  'Please enter a valid Philippine mobile number (e.g., 09171234567 or +639171234567).';
 
 export const isValidContactNumber = (value) => {
   const raw = String(value || '').trim();
   if (!raw || raw === 'Not set') return true;
   const cleaned = raw.replace(/[\s\-()]/g, '');
-  return /^(?:09\d{9}|\+?639\d{9}|\d{7,11})$/.test(cleaned);
+  return /^(?:09\d{9}|\+?639\d{9})$/.test(cleaned);
 };

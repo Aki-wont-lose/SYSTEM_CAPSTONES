@@ -4,7 +4,9 @@ import { hashPassword, generateTemporaryPassword } from '../../services/authServ
 import {
   isValidStaffEmail,
   getStaffEmailError,
+  isValidPersonName,
   isValidContactNumber,
+  PERSON_NAME_ERROR,
   CONTACT_NUMBER_ERROR,
   STAFF_EMAIL_ERROR
 } from '../../utils/staffValidation.js';
@@ -145,6 +147,11 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
   const normalizedLastName = String(lastName || '').trim();
   if (!normalizedFirstName || !normalizedLastName) {
     const error = new Error('First name and last name are required');
+    error.status = 400;
+    throw error;
+  }
+  if (!isValidPersonName(normalizedFirstName) || !isValidPersonName(normalizedLastName)) {
+    const error = new Error(PERSON_NAME_ERROR);
     error.status = 400;
     throw error;
   }
@@ -380,8 +387,24 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
   }
 
   if (updateData.isActive !== undefined) data.isActive = Boolean(updateData.isActive);
-  if (updateData.firstName !== undefined) data.firstName = String(updateData.firstName || '').trim() || null;
-  if (updateData.lastName !== undefined) data.lastName = String(updateData.lastName || '').trim() || null;
+  if (updateData.firstName !== undefined) {
+    const cleanFirst = String(updateData.firstName || '').trim() || null;
+    if (!cleanFirst || !isValidPersonName(cleanFirst)) {
+      const error = new Error(PERSON_NAME_ERROR);
+      error.status = 400;
+      throw error;
+    }
+    data.firstName = cleanFirst;
+  }
+  if (updateData.lastName !== undefined) {
+    const cleanLast = String(updateData.lastName || '').trim() || null;
+    if (!cleanLast || !isValidPersonName(cleanLast)) {
+      const error = new Error(PERSON_NAME_ERROR);
+      error.status = 400;
+      throw error;
+    }
+    data.lastName = cleanLast;
+  }
   if (updateData.coordinatorCourse !== undefined) {
     data.coordinatorCourse = String(updateData.coordinatorCourse || '').trim().toUpperCase() || null;
     if (data.coordinatorCourse && !SUPPORTED_PROGRAMS.includes(data.coordinatorCourse)) {

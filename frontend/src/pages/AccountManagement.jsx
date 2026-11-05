@@ -17,7 +17,9 @@ import { getCompanies } from '../services/companyService';
 import {
   isValidStaffEmail,
   getStaffEmailError,
+  isValidPersonName,
   isValidContactNumber,
+  PERSON_NAME_ERROR,
   CONTACT_NUMBER_ERROR
 } from '../constants/staffRules';
 import * as XLSX from 'xlsx';
@@ -213,6 +215,10 @@ const AccountManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isValidPersonName(form.firstName) || !isValidPersonName(form.lastName)) {
+      setError(PERSON_NAME_ERROR);
+      return;
+    }
     if (modalMode === 'add' && !isValidStaffEmail(form.email, form.role)) {
       setError(getStaffEmailError(form.role));
       return;

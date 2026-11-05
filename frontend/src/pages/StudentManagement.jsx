@@ -21,12 +21,14 @@ import {
   canonicalSection,
   deriveYearLevel,
   formatYearLevel,
+  isValidPersonName,
   isValidStudentId,
   isValidStudentEmail,
   validateStudentEmailMatch,
   isValidContactNumber,
   isValidSection,
   generateOjtSections,
+  PERSON_NAME_ERROR,
   STUDENT_ID_ERROR,
   CONTACT_NUMBER_ERROR,
   ELMS_EMAIL_ERROR
@@ -150,6 +152,10 @@ const StudentManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!isValidPersonName(form.firstName) || !isValidPersonName(form.lastName)) {
+      setError(PERSON_NAME_ERROR);
+      return;
+    }
     if (!isValidStudentId(form.studentId)) {
       setError(STUDENT_ID_ERROR);
       return;

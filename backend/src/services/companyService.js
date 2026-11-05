@@ -129,12 +129,34 @@ const validateCompanyFields = (data, { isCreate = false } = {}) => {
 
 export const createCompany = async (data) => {
   validateCompanyFields(data, { isCreate: true });
-  return prisma.company.create({ data: normalizeCompanyInput(data) });
+  const cleanName = String(data.name || '').trim();
+  const existing = await prisma.company.findFirst({
+    where: { isArchived: false, name: { equals: cleanName, mode: 'insensitive' } },
+    select: { id: true }
+  });
+  if (existing) {
+    const err = new Error('A partner company with this name already exists');
+    err.status = 400;
+    throw err;
+  }
+  return prisma.company.create({ data: normalizeCompanyInput({ ...data, name: cleanName }) });
 };
 
 export const updateCompany = async (id, data) => {
   try {
     validateCompanyFields(data, { isCreate: false });
+    if (data.name !== undefined) {
+      const cleanName = String(data.name || '').trim();
+      const existing = await prisma.company.findFirst({
+        where: { isArchived: false, name: { equals: cleanName, mode: 'insensitive' }, NOT: { id } },
+        select: { id: true }
+      });
+      if (existing) {
+        const err = new Error('A partner company with this name already exists');
+        err.status = 400;
+        throw err;
+      }
+    }
     const updated = await prisma.company.update({ where: { id }, data: normalizeCompanyInput(data) });
 
     // Sync updated company supervisor/contact details to students assigned to this company
