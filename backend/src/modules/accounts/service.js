@@ -382,7 +382,7 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
       error.status = 400;
       throw error;
     }
-    if (isSchoolAccountRole(nextRole) && !data.email) {
+    if (!data.email) {
       await verifySchoolAccountForCreation(existing.email, nextRole);
     }
   }

@@ -2,6 +2,7 @@
 import { getStudentByUserId, updateStudent } from '../../services/studentService.js';
 import { getMicrosoftIdentity } from '../../services/microsoftAuthService.js';
 import { assertMicrosoftLoginAllowed } from '../../services/microsoftAccountPolicy.js';
+import { verifySchoolAccountForCreation } from '../../services/graphDirectoryService.js';
 import { isValidStaffEmail, getStaffEmailError } from '../../utils/staffValidation.js';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
@@ -108,10 +109,13 @@ export const updateMyProfile = async (userId, data) => {
     // Staff sign in with this address via Microsoft, so it has to keep matching
     // the institutional rule create() enforces — otherwise a self-edit could
     // strand the account. Only enforced when the address actually changes.
-    if (existingUser.email !== email && !isValidStaffEmail(email, existingUser.role)) {
-      const error = new Error(getStaffEmailError(existingUser.role));
-      error.status = 400;
-      throw error;
+    if (existingUser.email !== email) {
+      if (!isValidStaffEmail(email, existingUser.role)) {
+        const error = new Error(getStaffEmailError(existingUser.role));
+        error.status = 400;
+        throw error;
+      }
+      await verifySchoolAccountForCreation(email, existingUser.role);
     }
     staffUpdate.email = email;
   }

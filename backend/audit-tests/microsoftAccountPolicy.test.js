@@ -170,19 +170,38 @@ await withEnv(
 );
 
 console.log('\n== Graph directory availability ==');
+const stubFetch = (handler) => {
+  const original = global.fetch;
+  global.fetch = handler;
+  return () => {
+    global.fetch = original;
+  };
+};
+
+const jsonResponse = (status, body) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => body
+});
+
 await withEnv(
   { MS_GRAPH_TENANT_ID: undefined, MS_GRAPH_CLIENT_ID: undefined, MS_GRAPH_CLIENT_SECRET: undefined },
   async () => {
-    const config = getGraphConfigStatus();
-    check('Graph is reported as not configured', config.configured === false);
-    check('no credentials means no secret is ever sent', config.clientSecretPresent === false);
+    const restore = stubFetch(async () => jsonResponse(200, {}));
+    try {
+      const config = getGraphConfigStatus();
+      check('Graph is reported as not configured', config.configured === false);
+      check('no credentials means no secret is ever sent', config.clientSecretPresent === false);
 
-    const lookup = await lookupSchoolMailbox(SCHOOL_EMAIL);
-    check('lookup returns not-configured instead of guessing', lookup.status === 'not-configured');
+      const lookup = await lookupSchoolMailbox(SCHOOL_EMAIL);
+      check('lookup returns not-configured instead of guessing', lookup.status === 'not-configured');
 
-    const supervisor = await verifySchoolAccountForCreation(PERSONAL_EMAIL, 'SUPERVISOR');
-    check('supervisor creation does not require the directory', supervisor.status === 'not-required');
-    check('supervisor is never auto-verified at creation', supervisor.verified === false);
+      const supervisor = await verifySchoolAccountForCreation(PERSONAL_EMAIL, 'SUPERVISOR');
+      check('supervisor creation falls back to not-required when lookup is unavailable', supervisor.status === 'not-required');
+      check('supervisor is never auto-verified without a lookup result', supervisor.verified === false);
+    } finally {
+      restore();
+    }
   }
 );
 
@@ -209,9 +228,14 @@ await withEnv(
     MS_GRAPH_CLIENT_SECRET: undefined
   },
   async () => {
-    const result = await verifySchoolAccountForCreation(FAKE_SCHOOL_EMAIL, 'STUDENT');
-    check('warn + no credentials does not reject (preserves creation)', result.status === 'unverified');
-    check('warn + no credentials never claims verified', result.verified === false);
+    const restore = stubFetch(async () => jsonResponse(200, {}));
+    try {
+      const result = await verifySchoolAccountForCreation(FAKE_SCHOOL_EMAIL, 'STUDENT');
+      check('warn + no credentials does not reject (preserves creation)', result.status === 'unverified');
+      check('warn + no credentials never claims verified', result.verified === false);
+    } finally {
+      restore();
+    }
   }
 );
 
@@ -223,12 +247,17 @@ await withEnv(
     MS_GRAPH_CLIENT_SECRET: undefined
   },
   async () => {
-    check(
-      'enforce + no credentials fails closed with 503',
-      await throwsStatus(() => verifySchoolAccountForCreation(FAKE_SCHOOL_EMAIL, 'STUDENT'), 503)
-    );
-    const supervisor = await verifySchoolAccountForCreation(PERSONAL_EMAIL, 'SUPERVISOR');
-    check('enforce never blocks a company supervisor', supervisor.status === 'not-required');
+    const restore = stubFetch(async () => jsonResponse(200, {}));
+    try {
+      check(
+        'enforce + no credentials fails closed with 503',
+        await throwsStatus(() => verifySchoolAccountForCreation(FAKE_SCHOOL_EMAIL, 'STUDENT'), 503)
+      );
+      const supervisor = await verifySchoolAccountForCreation(PERSONAL_EMAIL, 'SUPERVISOR');
+      check('enforce never blocks a company supervisor when lookup is unavailable', supervisor.status === 'not-required');
+    } finally {
+      restore();
+    }
   }
 );
 
@@ -256,20 +285,6 @@ await withEnv({ MS_SCHOOL_TENANT_ID: undefined }, () => {
 });
 
 console.log('\n== Graph path (mocked, no network) ==');
-const stubFetch = (handler) => {
-  const original = global.fetch;
-  global.fetch = handler;
-  return () => {
-    global.fetch = original;
-  };
-};
-
-const jsonResponse = (status, body) => ({
-  ok: status >= 200 && status < 300,
-  status,
-  json: async () => body
-});
-
 const graphEnv = {
   MS_ACCOUNT_VERIFY: 'enforce',
   MS_GRAPH_TENANT_ID: 'test-tenant',
@@ -372,16 +387,43 @@ await withEnv({ ...graphEnv, MS_ACCOUNT_VERIFY: 'warn' }, async () => {
   }
 });
 
-await withEnv(graphEnv, async () => {
-  let called = false;
-  const restore = stubFetch(async () => {
-    called = true;
-    return jsonResponse(500, {});
+await withEnv({ ...graphEnv, MS_ACCOUNT_VERIFY: 'warn' }, async () => {
+  const restore = stubFetch(async (url) => {
+    if (String(url).includes('GetCredentialType')) {
+      return jsonResponse(200, { IfExistsResult: 0, ThrottleStatus: 0 });
+    }
+    return jsonResponse(403, { error: { code: 'Authorization_RequestDenied' } });
   });
   try {
-    const result = await verifySchoolAccountForCreation(PERSONAL_EMAIL, 'SUPERVISOR');
-    check('supervisor never triggers a Graph call', called === false);
-    check('supervisor creation is not blocked by enforce mode', result.status === 'not-required');
+    const student = await verifySchoolAccountForCreation(SCHOOL_EMAIL, 'STUDENT');
+    const coordinator = await verifySchoolAccountForCreation(SCHOOL_EMAIL, 'COORDINATOR');
+    const admin = await verifySchoolAccountForCreation(SCHOOL_EMAIL, 'ADMIN');
+    const supervisor = await verifySchoolAccountForCreation(PERSONAL_EMAIL, 'SUPERVISOR');
+    check('GetCredentialType verifies STUDENT when Graph lacks permission', student.verified === true && student.source === 'microsoft-login');
+    check('GetCredentialType verifies COORDINATOR', coordinator.verified === true);
+    check('GetCredentialType verifies ADMIN', admin.verified === true);
+    check('GetCredentialType verifies SUPERVISOR', supervisor.verified === true && supervisor.source === 'microsoft-login');
+  } finally {
+    restore();
+  }
+});
+
+await withEnv({ ...graphEnv, MS_ACCOUNT_VERIFY: 'warn' }, async () => {
+  const restore = stubFetch(async (url) => {
+    if (String(url).includes('GetCredentialType')) {
+      return jsonResponse(200, { IfExistsResult: 1, ThrottleStatus: 0 });
+    }
+    return jsonResponse(403, { error: { code: 'Authorization_RequestDenied' } });
+  });
+  try {
+    check(
+      'GetCredentialType rejects non-existent school account (400)',
+      await throwsStatus(() => verifySchoolAccountForCreation(FAKE_SCHOOL_EMAIL, 'STUDENT'), 400)
+    );
+    check(
+      'GetCredentialType rejects non-existent supervisor Microsoft account (400)',
+      await throwsStatus(() => verifySchoolAccountForCreation('fake.supervisor@outlook.com', 'SUPERVISOR'), 400)
+    );
   } finally {
     restore();
   }

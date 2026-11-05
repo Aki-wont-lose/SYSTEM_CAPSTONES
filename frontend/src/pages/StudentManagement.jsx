@@ -487,18 +487,6 @@ const StudentManagement = () => {
                     <td className="px-6 py-3.5">
                       <p className="font-medium text-sti-gray-dark dark:text-white">{s.firstName} {s.lastName}</p>
                       <p className="text-xs text-sti-gray">{s.studentId} • {s.email}</p>
-                      <span
-                        className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          s.microsoftVerified
-                            ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300'
-                            : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-                        }`}
-                        title={s.microsoftVerified
-                          ? `Microsoft sign-in verified${s.microsoftVerifiedAt ? ` on ${new Date(s.microsoftVerifiedAt).toLocaleDateString()}` : ''}`
-                          : 'Has not signed in with a Microsoft account yet'}
-                      >
-                        {s.microsoftVerified ? 'Microsoft verified' : 'Not yet verified'}
-                      </span>
                     </td>
                     <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{s.course}<br /><span className="text-xs text-sti-gray">{sectionLabel(s.section, s.course)}</span></td>
                     <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{s.company?.name || '—'}</td>

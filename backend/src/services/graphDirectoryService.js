@@ -27,6 +27,7 @@ import {
 } from './microsoftAccountPolicy.js';
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
+const CREDENTIAL_TYPE_URL = 'https://login.microsoftonline.com/common/GetCredentialType';
 const LOOKUP_TIMEOUT_MS = 8000;
 const TOKEN_SAFETY_WINDOW_MS = 60 * 1000;
 
@@ -183,22 +184,77 @@ export const lookupSchoolMailbox = async (email) => {
   }
 };
 
-// The creation-time gate. Company supervisors are exempt (they may use personal
-// accounts and are verified by a successful Microsoft sign-in instead).
+// Live Microsoft identity check via login.microsoftonline.com/common/GetCredentialType.
+// Works for both school/work Entra ID accounts (@stamaria.sti.edu.ph) and
+// personal Microsoft accounts (Outlook, Hotmail, or third-party emails linked to MSA).
+//
+// IfExistsResult codes returned by Microsoft:
+//   0 = Account exists in primary identity provider (Entra ID for managed domains, MSA for consumer domains)
+//   1 = Account does not exist
+//   5 = Account exists as a personal Microsoft account (MSA) on an external domain
+//   6 = Account exists in both Entra ID (work/school) and personal Microsoft account (MSA)
+export const lookupMicrosoftAccountCredential = async (email, role) => {
+  const cleanedEmail = String(email || '').trim();
+  if (!cleanedEmail) {
+    return { status: 'error', detail: 'An email address is required for Microsoft verification.' };
+  }
+
+  try {
+    const response = await fetchWithTimeout(CREDENTIAL_TYPE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ Username: cleanedEmail, isOtherIdpSupported: true })
+    });
+
+    if (!response.ok) {
+      return { status: 'error', httpStatus: response.status };
+    }
+
+    const payload = await response.json();
+    if (!payload || typeof payload.IfExistsResult !== 'number') {
+      return { status: 'unavailable' };
+    }
+
+    if (payload.ThrottleStatus === 1) {
+      return { status: 'error', detail: 'Microsoft credential lookup was throttled.' };
+    }
+
+    const existsCode = payload.IfExistsResult;
+    if (isSchoolAccountRole(role)) {
+      if (existsCode === 0 || existsCode === 6) {
+        return {
+          status: 'found',
+          source: 'microsoft-login',
+          userPrincipalName: cleanedEmail
+        };
+      }
+      if (existsCode === 1 || existsCode === 5) {
+        return { status: 'not-found' };
+      }
+    } else {
+      if (existsCode === 0 || existsCode === 5 || existsCode === 6) {
+        return {
+          status: 'found',
+          source: 'microsoft-login',
+          userPrincipalName: cleanedEmail
+        };
+      }
+      if (existsCode === 1) {
+        return { status: 'not-found' };
+      }
+    }
+
+    return { status: 'unavailable' };
+  } catch (error) {
+    return { status: 'error', detail: error?.message || 'Unknown Microsoft credential lookup error' };
+  }
+};
+
+// The creation-time gate for STUDENT, COORDINATOR, ADMIN, and SUPERVISOR.
 //
 // Resolves to a verification descriptor, or throws when the account must not be
 // created. It NEVER returns verified:true based on the email format alone.
 export const verifySchoolAccountForCreation = async (email, role) => {
-  if (!isSchoolAccountRole(role)) {
-    return {
-      required: false,
-      verified: false,
-      status: 'not-required',
-      source: null,
-      message: 'Personal Microsoft accounts are allowed for this role and are verified on first Microsoft sign-in.'
-    };
-  }
-
   const mode = getVerificationMode();
   if (mode === 'off') {
     return {
@@ -208,6 +264,44 @@ export const verifySchoolAccountForCreation = async (email, role) => {
       source: null,
       reason: 'verification-disabled',
       message: 'Microsoft directory verification is turned off. This account stays unverified until its first Microsoft sign-in.'
+    };
+  }
+
+  if (!isSchoolAccountRole(role)) {
+    const credLookup = await lookupMicrosoftAccountCredential(email, role);
+    if (credLookup.status === 'found') {
+      return {
+        required: true,
+        verified: true,
+        status: 'verified',
+        source: 'microsoft-login',
+        directoryId: null,
+        displayName: null,
+        userPrincipalName: credLookup.userPrincipalName
+      };
+    }
+
+    if (credLookup.status === 'not-found') {
+      throw httpError(
+        400,
+        `This Microsoft account does not exist: ${email}. ` +
+          'Enter an active Microsoft account (such as Outlook, Hotmail, or a Microsoft-registered email) before creating the supervisor account.'
+      );
+    }
+
+    if (mode === 'enforce' && credLookup.status === 'error') {
+      throw httpError(
+        503,
+        `The Microsoft account lookup for ${email} failed${credLookup.httpStatus ? ` (HTTP ${credLookup.httpStatus})` : ''}. Please try again.`
+      );
+    }
+
+    return {
+      required: false,
+      verified: false,
+      status: 'not-required',
+      source: null,
+      message: 'Personal Microsoft accounts are allowed for this role and are verified on first Microsoft sign-in.'
     };
   }
 
@@ -232,6 +326,30 @@ export const verifySchoolAccountForCreation = async (email, role) => {
   }
 
   if (lookup.status === 'not-found') {
+    throw httpError(
+      400,
+      `This school email does not exist in the authorized Microsoft 365 tenant: ${email}. ` +
+        'Check the student/staff record in Microsoft 365 before creating the SIMES account.'
+    );
+  }
+
+  // When Graph is not configured or lacks tenant admin consent (HTTP 401/403),
+  // fall back to Microsoft's live GetCredentialType check so school accounts are
+  // still verified for existence before creation.
+  const credLookup = await lookupMicrosoftAccountCredential(email, role);
+  if (credLookup.status === 'found') {
+    return {
+      required: true,
+      verified: true,
+      status: 'verified',
+      source: 'microsoft-login',
+      directoryId: null,
+      displayName: null,
+      userPrincipalName: credLookup.userPrincipalName
+    };
+  }
+
+  if (credLookup.status === 'not-found') {
     throw httpError(
       400,
       `This school email does not exist in the authorized Microsoft 365 tenant: ${email}. ` +

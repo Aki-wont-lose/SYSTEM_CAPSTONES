@@ -540,18 +540,6 @@ const AccountManagement = () => {
                             {member.isSuperAdmin ? 'Super Admin' : roleText(member.role)}
                             {member.assignedStudents != null ? ` • ${member.assignedStudents} assigned` : ''}
                           </p>
-                          <span
-                            className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                              member.microsoftVerified
-                                ? 'bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-300'
-                                : 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300'
-                            }`}
-                            title={member.microsoftVerified
-                              ? `Microsoft sign-in verified${member.microsoftVerifiedAt ? ` on ${new Date(member.microsoftVerifiedAt).toLocaleDateString()}` : ''}`
-                              : 'Has not signed in with a Microsoft account yet'}
-                          >
-                            {member.microsoftVerified ? 'Microsoft verified' : 'Not yet verified'}
-                          </span>
                         </td>
                         <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
                           {member.role === 'COORDINATOR' ? (member.coordinatorCourse || '—') : (member.supervisorCompany?.name || '—')}
