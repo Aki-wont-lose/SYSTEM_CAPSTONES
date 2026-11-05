@@ -84,6 +84,9 @@ const Messages = () => {
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTo, setComposeTo] = useState('');
+  const [composeQuery, setComposeQuery] = useState('');
+  const [composeFocused, setComposeFocused] = useState(false);
+  const [composeHighlight, setComposeHighlight] = useState(0);
   const [composeBody, setComposeBody] = useState('');
   const [composing, setComposing] = useState(false);
 
@@ -255,6 +258,66 @@ const Messages = () => {
     [contacts, query]
   );
 
+  // Compose recipient picker: type to filter instead of scrolling a long select.
+  const composeSelected = contacts.find((c) => c.id === composeTo) || null;
+  const composeMatches = useMemo(() => {
+    const term = composeQuery.trim().toLowerCase();
+    const pool = [...contacts].sort((a, b) =>
+      String(a.displayName || a.email).localeCompare(String(b.displayName || b.email))
+    );
+    if (!term) return pool;
+    return pool.filter((contact) =>
+      `${contact.displayName || ''} ${contact.email || ''}`.toLowerCase().includes(term)
+    );
+  }, [contacts, composeQuery]);
+  const composeListOpen = composeOpen && composeFocused && !composeTo;
+
+  const openCompose = () => {
+    setComposeOpen(true);
+    setComposeQuery('');
+    setComposeHighlight(0);
+    setComposeFocused(false);
+  };
+
+  const closeCompose = () => {
+    setComposeOpen(false);
+    setComposeFocused(false);
+  };
+
+  const chooseComposeRecipient = (contact) => {
+    setComposeTo(contact.id);
+    setComposeQuery('');
+    setComposeHighlight(0);
+    setComposeFocused(false);
+  };
+
+  const clearComposeRecipient = () => {
+    setComposeTo('');
+    setComposeQuery('');
+    setComposeHighlight(0);
+    setComposeFocused(true);
+  };
+
+  const handleComposeKeyDown = (event) => {
+    if (!composeListOpen) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      setComposeHighlight((index) => Math.min(index + 1, Math.max(composeMatches.length - 1, 0)));
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      setComposeHighlight((index) => Math.max(index - 1, 0));
+    } else if (event.key === 'Enter') {
+      const match = composeMatches[composeHighlight];
+      if (match) {
+        event.preventDefault();
+        chooseComposeRecipient(match);
+      }
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      setComposeFocused(false);
+    }
+  };
+
   const openThread = (contact) => {
     // Reset synchronously. Without this the previous thread stayed on screen
     // (under the new contact's header) until the next fetch resolved.
@@ -329,17 +392,37 @@ const Messages = () => {
 
   const handleCompose = async (event) => {
     event.preventDefault();
-    if (!composeTo || !composeBody.trim() || composing) return;
-    const contact = contacts.find((c) => c.id === composeTo);
+    if (composing) return;
+
+    // If the user typed a full name or email but never clicked a suggestion,
+    // resolve it to a single exact match instead of rejecting the send.
+    const typed = composeQuery.trim().toLowerCase();
+    const exactMatch = !composeTo && typed
+      ? contacts.filter((c) =>
+          String(c.email || '').toLowerCase() === typed ||
+          String(c.displayName || '').toLowerCase() === typed
+        )
+      : [];
+    const recipientId = composeTo || (exactMatch.length === 1 ? exactMatch[0].id : '');
+
+    if (!recipientId) {
+      showToast('Pick a recipient from the list');
+      return;
+    }
+    if (!composeBody.trim()) return;
+
+    const contact = contacts.find((c) => c.id === recipientId);
     setComposing(true);
     try {
-      const res = await sendMessage(composeTo, composeBody.trim());
-      setComposeOpen(false);
+      const res = await sendMessage(recipientId, composeBody.trim());
+      closeCompose();
       setComposeBody('');
       setComposeTo('');
+      setComposeQuery('');
+      setComposeHighlight(0);
       await loadContacts();
       if (contact) openThread(contact);
-      showSentMessage(composeTo, res.data);
+      showSentMessage(recipientId, res.data);
       showToast('Message sent');
     } catch (error) {
       showToast(error.response?.data?.message || 'Failed to send message');
@@ -435,7 +518,7 @@ const Messages = () => {
         <aside className="hidden w-[204px] shrink-0 flex-col border-r border-black/5 bg-sti-gray-light/40 dark:border-white/10 dark:bg-slate-900/40 lg:flex">
           <div className="p-3">
             <button
-              onClick={() => setComposeOpen(true)}
+              onClick={openCompose}
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-sti-blue px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-sti-blue-dark"
             >
               <Pencil className="h-4 w-4" /> New message
@@ -500,7 +583,7 @@ const Messages = () => {
             <div className="mb-2 flex items-center justify-between">
               <p className="text-sm font-bold text-sti-gray-dark dark:text-white">{activeFolder.label}</p>
               <button
-                onClick={() => setComposeOpen(true)}
+                onClick={openCompose}
                 className="flex items-center gap-1 rounded-lg bg-sti-blue px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-sti-blue-dark lg:hidden"
               >
                 <Pencil className="h-3.5 w-3.5" /> New
@@ -739,24 +822,98 @@ const Messages = () => {
         </section>
       </div>
 
-      <Modal isOpen={composeOpen} onClose={() => setComposeOpen(false)} title="New message" maxWidth="max-w-xl">
+      <Modal isOpen={composeOpen} onClose={closeCompose} title="New message" maxWidth="max-w-xl">
         <form onSubmit={handleCompose} className="space-y-3">
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-sti-gray" htmlFor="compose-to">To</label>
-            <select
-              id="compose-to"
-              value={composeTo}
-              onChange={(event) => setComposeTo(event.target.value)}
-              className="input-field text-sm"
-              required
-            >
-              <option value="">Select a recipient...</option>
-              {contacts.map((contact) => (
-                <option key={contact.id} value={contact.id}>
-                  {contact.displayName || contact.email} - {contact.email}
-                </option>
-              ))}
-            </select>
+
+            {composeSelected && (
+              <div className="mb-2 flex items-center gap-2 rounded-lg border border-sti-blue/20 bg-sti-blue-50/60 px-2.5 py-1.5 dark:border-sti-blue/30 dark:bg-sti-blue/10">
+                <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${colorFor(composeSelected.email)}`}>
+                  {initialsFor(composeSelected.displayName, composeSelected.email)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-semibold text-sti-gray-dark dark:text-white">
+                    {composeSelected.displayName || composeSelected.email}
+                  </span>
+                  <span className="block truncate text-[11px] text-sti-gray">{composeSelected.email}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={clearComposeRecipient}
+                  className="shrink-0 rounded-full p-1 text-sti-gray hover:bg-white hover:text-red-600 dark:hover:bg-white/10"
+                  aria-label="Remove recipient"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sti-gray" />
+              <input
+                id="compose-to"
+                type="text"
+                role="combobox"
+                aria-expanded={composeListOpen}
+                aria-controls="compose-recipients"
+                aria-autocomplete="list"
+                autoComplete="off"
+                autoFocus
+                value={composeQuery}
+                onChange={(event) => {
+                  setComposeQuery(event.target.value);
+                  setComposeHighlight(0);
+                  // Typing starts a new search, so the old pick is released.
+                  if (composeTo) setComposeTo('');
+                  setComposeFocused(true);
+                }}
+                onFocus={() => setComposeFocused(true)}
+                onBlur={() => setTimeout(() => setComposeFocused(false), 150)}
+                onKeyDown={handleComposeKeyDown}
+                placeholder={composeSelected ? 'Type to change recipient...' : 'Start typing a name or email...'}
+                className="input-field py-2 pl-8 text-sm"
+              />
+
+              {composeListOpen && (
+                <ul
+                  id="compose-recipients"
+                  role="listbox"
+                  className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-black/10 bg-white py-1 shadow-xl dark:border-white/10 dark:bg-slate-800"
+                >
+                  {composeMatches.length === 0 && (
+                    <li className="px-3 py-2 text-xs text-sti-gray">No one matches “{composeQuery}”</li>
+                  )}
+                  {composeMatches.map((contact, index) => (
+                    <li key={contact.id} role="option" aria-selected={index === composeHighlight}>
+                      <button
+                        type="button"
+                        onMouseDown={(event) => {
+                          // mousedown fires before blur, so the pick still lands
+                          event.preventDefault();
+                          chooseComposeRecipient(contact);
+                        }}
+                        onMouseEnter={() => setComposeHighlight(index)}
+                        className={`flex w-full items-center gap-2 px-3 py-2 text-left transition-colors ${
+                          index === composeHighlight ? 'bg-sti-blue-50 dark:bg-white/10' : ''
+                        }`}
+                      >
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${colorFor(contact.email)}`}>
+                          {initialsFor(contact.displayName, contact.email)}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-xs font-semibold text-sti-gray-dark dark:text-white">
+                            {contact.displayName || contact.email}
+                          </span>
+                          <span className="block truncate text-[11px] text-sti-gray">{contact.email}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] text-sti-gray">Type a name or email, then choose a match with ↑ ↓ and Enter.</p>
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-sti-gray" htmlFor="compose-body">Message</label>
@@ -773,14 +930,14 @@ const Messages = () => {
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
-              onClick={() => setComposeOpen(false)}
+              onClick={closeCompose}
               className="rounded-lg border border-black/10 px-4 py-2 text-sm font-medium text-sti-gray-dark hover:bg-sti-gray-light dark:border-white/10 dark:text-white dark:hover:bg-white/10"
             >
               Discard
             </button>
             <button
               type="submit"
-              disabled={composing || !composeTo || !composeBody.trim()}
+              disabled={composing || (!composeTo && !composeQuery.trim()) || !composeBody.trim()}
               className="flex items-center gap-1.5 rounded-lg bg-sti-blue px-4 py-2 text-sm font-semibold text-white hover:bg-sti-blue-dark disabled:opacity-50"
             >
               <Send className="h-4 w-4" /> Send

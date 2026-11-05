@@ -83,6 +83,16 @@ check('sent message is painted immediately', page.includes('showSentMessage'));
 check('painted message is de-duplicated by id', page.includes('current.some((m) => m.id === created.id)'));
 check('failed send restores the draft', page.includes('setText(body)'));
 
+console.log('\n== compose recipient search ==');
+
+check('recipient picker is a combobox, not a scroll dropdown', page.includes('role="combobox"') && !page.includes('<select'));
+check('matches are filtered by name and email', page.includes("`${contact.displayName || ''} ${contact.email || ''}`.toLowerCase().includes(term)"));
+check('the picker is focused when the modal opens', page.includes('autoFocus'));
+check('picking a recipient shows a removable chip', page.includes('Remove recipient') && page.includes('clearComposeRecipient'));
+check('picking a recipient closes the suggestion list', page.includes('composeOpen && composeFocused && !composeTo'));
+check('keyboard navigation works', page.includes("event.key === 'ArrowDown'") && page.includes("event.key === 'ArrowUp'") && page.includes("event.key === 'Enter'"));
+check('typing releases an old pick', page.includes('if (composeTo) setComposeTo'));
+
 console.log('\n== requests cannot hang forever ==');
 
 check('axios has a global timeout', apiClient.includes('timeout: 60000'));
