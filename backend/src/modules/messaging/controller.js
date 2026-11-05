@@ -11,8 +11,11 @@ export const fetchContacts = asyncHandler(async (req, res) => {
 // GET /messaging/:userId - fetch the conversation with a user and mark it read
 export const fetchConversation = asyncHandler(async (req, res) => {
   const { userId } = req.params;
-  const msgs = await svc.getConversation(req.user.userId, userId);
+  // Mark first so the payload the reader receives already shows "Read" on the
+  // sender's side - the old order returned stale isRead:false flags and only
+  // corrected them on the next poll.
   await svc.markAsRead(req.user.userId, userId);
+  const msgs = await svc.getConversation(req.user.userId, userId);
   res.json({ success: true, data: msgs });
 });
 

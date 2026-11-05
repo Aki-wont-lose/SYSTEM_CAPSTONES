@@ -14,106 +14,103 @@ const BLOCKED_EMAILS = [
 export const canStartChat = async () => ({ allowed: true });
 
 export const getContactUsers = async (currentUserId) => {
-  const users = await prisma.user.findMany({
-    where: {
-      isActive: true,
-      isArchived: false,
-      id: { not: currentUserId },
-      email: { notIn: BLOCKED_EMAILS }
-    },
-    select: {
-      id: true,
-      email: true,
-      firstName: true,
-      lastName: true,
-      isActive: true,
-      student: { select: { firstName: true, lastName: true, studentId: true } }
-    },
-    orderBy: [{ email: 'asc' }]
-  });
+  // Two round trips, run in parallel:
+  //   1. the people directory
+  //   2. one aggregate row per conversation
+  //
+  // The old version pulled every message body for the signed-in user just to
+  // build previews. Photos are stored as base64, so a handful of image messages
+  // turned this endpoint into a multi-second query and the inbox appeared to
+  // hang. The aggregate below never leaves the database with more than 80
+  // characters per conversation.
+  const [users, conversationRows] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        isActive: true,
+        isArchived: false,
+        id: { not: currentUserId }
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isActive: true,
+        student: { select: { firstName: true, lastName: true, studentId: true } }
+      },
+      orderBy: [{ email: 'asc' }]
+    }),
+    prisma.$queryRaw`
+      SELECT
+        CASE WHEN m."senderId" = ${currentUserId} THEN m."receiverId" ELSE m."senderId" END AS "otherId",
+        bool_or(m."senderId" = ${currentUserId}) AS "hasSent",
+        bool_or(m."senderId" <> ${currentUserId}) AS "hasReceived",
+        count(*) FILTER (WHERE m."senderId" <> ${currentUserId} AND m."isRead" = false)::int AS "unreadCount",
+        max(m."createdAt") AS "lastMessageAt",
+        (array_agg(substring(m.content, 1, 80) ORDER BY m."createdAt" DESC))[1] AS "lastMessagePreview",
+        ((array_agg(m."senderId" ORDER BY m."createdAt" DESC))[1] = ${currentUserId}) AS "lastMessageIsMine"
+      FROM "Message" m
+      WHERE m."senderId" = ${currentUserId} OR m."receiverId" = ${currentUserId}
+      GROUP BY 1
+    `
+  ]);
 
-  const messages = await prisma.message.findMany({
-    where: {
-      OR: [
-        { senderId: currentUserId },
-        { receiverId: currentUserId }
-      ]
-    },
-    select: {
-      senderId: true,
-      receiverId: true,
-      content: true,
-      isRead: true,
-      createdAt: true
-    },
-    orderBy: { createdAt: 'desc' }
-  });
+  const conversationByUser = new Map(conversationRows.map((row) => [row.otherId, row]));
+  const blocked = new Set(BLOCKED_EMAILS.map((email) => email.toLowerCase()));
 
-  const conversationByUser = new Map();
-  for (const message of messages) {
-    const otherUserId = message.senderId === currentUserId ? message.receiverId : message.senderId;
-    const current = conversationByUser.get(otherUserId) || {
-      unreadCount: 0,
-      lastMessageAt: null,
-      lastMessagePreview: null,
-      // Folder bucketing for the mail-style inbox needs to know which direction
-      // the traffic went, not just that a conversation exists.
-      lastMessageIsMine: false,
-      hasSent: false,
-      hasReceived: false
-    };
-    const isMine = message.senderId === currentUserId;
-    if (isMine) current.hasSent = true;
-    else current.hasReceived = true;
-    if (!isMine && !message.isRead) current.unreadCount += 1;
-    if (!current.lastMessageAt || message.createdAt > current.lastMessageAt) {
-      current.lastMessageAt = message.createdAt;
-      current.lastMessagePreview = message.content.startsWith('data:image') ? 'Photo' : message.content.slice(0, 80);
-      current.lastMessageIsMine = isMine;
-    }
-    conversationByUser.set(otherUserId, current);
-  }
-
-  return users.map(u => {
-    const conversation = conversationByUser.get(u.id);
-    const name = u.student
-      ? `${u.student.firstName} ${u.student.lastName}`
-      : [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email.split('@')[0].replace('.', ' ');
-    // Explicit allow-list: the API never returns role (or any other account
-    // attribute) to the messaging UI, so it cannot be displayed or spoofed there.
-    return {
-      id: u.id,
-      email: u.email,
-      firstName: u.firstName,
-      lastName: u.lastName,
-      displayName: name,
-      studentId: u.student?.studentId || null,
-      hasConversation: !!conversation,
-      hasSent: conversation?.hasSent || false,
-      hasReceived: conversation?.hasReceived || false,
-      lastMessageIsMine: conversation?.lastMessageIsMine || false,
-      unreadCount: conversation?.unreadCount || 0,
-      lastMessageAt: conversation?.lastMessageAt || null,
-      lastMessagePreview: conversation?.lastMessagePreview || null
-    };
-  });
+  return users
+    // Case-insensitive on purpose: the duplicate test accounts differ only by
+    // capitalisation, which the old `notIn` filter (case-sensitive) missed.
+    .filter((u) => !blocked.has(String(u.email || '').toLowerCase()))
+    .map(u => {
+      const conversation = conversationByUser.get(u.id);
+      const name = u.student
+        ? `${u.student.firstName} ${u.student.lastName}`
+        : [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email.split('@')[0].replace('.', ' ');
+      // Explicit allow-list: the API never returns role (or any other account
+      // attribute) to the messaging UI, so it cannot be displayed or spoofed there.
+      return {
+        id: u.id,
+        email: u.email,
+        firstName: u.firstName,
+        lastName: u.lastName,
+        displayName: name,
+        studentId: u.student?.studentId || null,
+        hasConversation: Boolean(conversation),
+        hasSent: conversation?.hasSent || false,
+        hasReceived: conversation?.hasReceived || false,
+        lastMessageIsMine: conversation?.lastMessageIsMine || false,
+        unreadCount: conversation?.unreadCount || 0,
+        lastMessageAt: conversation?.lastMessageAt || null,
+        lastMessagePreview: conversation?.lastMessagePreview || null
+      };
+    });
 };
 
 export const getConversation = async (currentUserId, otherUserId) => {
-  return prisma.message.findMany({
+  // Newest 200, then flipped back into reading order. The previous version
+  // ordered ascending and took 200, which silently dropped every message after
+  // the 200th - so a long thread stopped showing new replies altogether.
+  const rows = await prisma.message.findMany({
     where: {
       OR: [
         { senderId: currentUserId, receiverId: otherUserId },
         { senderId: otherUserId, receiverId: currentUserId }
       ]
     },
-    orderBy: { createdAt: 'asc' },
+    orderBy: { createdAt: 'desc' },
     take: 200,
-    include: {
-      sender: { select: { email: true } },
-      receiver: { select: { email: true } }
+    select: {
+      id: true,
+      senderId: true,
+      receiverId: true,
+      content: true,
+      isRead: true,
+      createdAt: true
     }
   });
+
+  return rows.reverse();
 };
 
 export const sendMessage = async (senderId, senderRole, receiverId, content) => {

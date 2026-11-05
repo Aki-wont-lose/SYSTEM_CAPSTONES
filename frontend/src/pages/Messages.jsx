@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Inbox, Send, Search, Trash2, Pencil, Paperclip, ArrowLeft, Mail, Users, CheckCheck, X, Reply,
+  AlertCircle, RefreshCw,
 } from 'lucide-react';
 import Modal from '../components/Modal';
 import { getContacts, getConversation, sendMessage, deleteMessage, deleteConversation } from '../services/messageService';
@@ -78,6 +79,8 @@ const Messages = () => {
   const [sending, setSending] = useState(false);
   const [toast, setToast] = useState('');
   const [mobilePane, setMobilePane] = useState('list');
+  const [contactsError, setContactsError] = useState('');
+  const [threadError, setThreadError] = useState('');
 
   const [composeOpen, setComposeOpen] = useState(false);
   const [composeTo, setComposeTo] = useState('');
@@ -88,6 +91,15 @@ const Messages = () => {
   const loadedThreadRef = useRef(null);
   const messageCountRef = useRef(0);
   const fileRef = useRef(null);
+  // Guards against the two bugs that made mail look broken:
+  //  * a slow response for thread A arriving after the reader opened thread B
+  //    (which painted A's messages under B's name), and
+  //  * overlapping polls stacking up until the pane never stopped loading.
+  const selectedIdRef = useRef(null);
+  const threadSeqRef = useRef(0);
+  const threadAbortRef = useRef(null);
+  const contactsInFlightRef = useRef(false);
+  const sendingRef = useRef(false);
 
   // Follow the newest message only when the reader is already at the bottom,
   // so the 3s poll cannot yank the pane while someone reads older mail.
@@ -107,30 +119,58 @@ const Messages = () => {
     setTimeout(() => setToast(''), 3000);
   };
 
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
+    // Skip instead of queueing: the inbox is polled, and a slow request must not
+    // be joined by a second and third copy of itself.
+    if (contactsInFlightRef.current) return;
+    contactsInFlightRef.current = true;
     try {
       const res = await getContacts();
       setContacts(res.data || []);
+      setContactsError('');
     } catch (error) {
-      console.error(error);
+      // A cancelled request is expected when the page unmounts - keep it quiet.
+      if (error.code === 'ERR_CANCELED') return;
+      setContactsError(
+        error.code === 'ECONNABORTED'
+          ? 'The mail server took too long to respond.'
+          : error.response?.data?.message || 'Could not load your contacts.'
+      );
     } finally {
+      contactsInFlightRef.current = false;
       setLoading(false);
     }
-  };
+  }, []);
 
-  const loadConversation = async (contactId) => {
+  const loadConversation = useCallback(async (contactId, { silent = false } = {}) => {
     if (!contactId) return;
-    setReadingLoading(true);
+    // Only one request per thread at a time; a newer call supersedes the old one.
+    threadAbortRef.current?.abort();
+    const controller = new AbortController();
+    threadAbortRef.current = controller;
+    const seq = ++threadSeqRef.current;
+
+    if (!silent) setReadingLoading(true);
     try {
-      const res = await getConversation(contactId);
+      const res = await getConversation(contactId, { signal: controller.signal });
+      // Drop a response that belongs to a thread the user already left.
+      if (seq !== threadSeqRef.current || selectedIdRef.current !== contactId) return;
+
       const incoming = res.data || [];
       const isNewThread = loadedThreadRef.current !== contactId;
       const grew = incoming.length > messageCountRef.current;
       const newestIsMine = incoming[incoming.length - 1]?.senderId === currentUserId;
       const shouldFollow = isNewThread || (grew && isNearBottom());
 
-      setMessages(incoming);
+      setMessages((current) => {
+        const lastSame = current[current.length - 1]?.id === incoming[incoming.length - 1]?.id;
+        // Same thread, same newest message: keep the existing array so the pane
+        // does not re-render (and flicker) on every poll.
+        if (current.length === incoming.length && lastSame) return current;
+        return incoming;
+      });
       setContacts((current) => current.map((c) => (c.id === contactId ? { ...c, unreadCount: 0 } : c)));
+      setThreadError('');
 
       loadedThreadRef.current = contactId;
       messageCountRef.current = incoming.length;
@@ -139,27 +179,54 @@ const Messages = () => {
         setTimeout(() => scrollToBottom(isNewThread ? 'auto' : 'smooth'), 60);
       }
     } catch (error) {
-      console.error(error);
+      if (error.code === 'ERR_CANCELED' || seq !== threadSeqRef.current) return;
+      setThreadError(
+        error.code === 'ECONNABORTED'
+          ? 'This conversation took too long to load.'
+          : error.response?.data?.message || 'Could not load this conversation.'
+      );
     } finally {
-      setReadingLoading(false);
+      if (seq === threadSeqRef.current) setReadingLoading(false);
     }
-  };
+  }, [currentUserId]);
+
+  // Contacts poll: the next request is scheduled only after the current one
+  // finishes, so a slow API can never build a backlog.
+  useEffect(() => {
+    let cancelled = false;
+    let timer = null;
+    const tick = async () => {
+      await loadContacts();
+      if (!cancelled) timer = setTimeout(tick, 7000);
+    };
+    tick();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [loadContacts]);
 
   useEffect(() => {
-    loadContacts();
-    const interval = setInterval(loadContacts, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    setMessages([]);
-    loadedThreadRef.current = null;
-    messageCountRef.current = 0;
-    if (!selectedId) return undefined;
-    loadConversation(selectedId);
-    const interval = setInterval(() => loadConversation(selectedId), 3000);
-    return () => clearInterval(interval);
+    selectedIdRef.current = selectedId;
   }, [selectedId]);
+
+  // Thread poll: same self-scheduling pattern, and the previous thread's request
+  // is aborted as soon as the reader picks a different one.
+  useEffect(() => {
+    if (!selectedId) return undefined;
+    let cancelled = false;
+    let timer = null;
+    const tick = async (first) => {
+      await loadConversation(selectedId, { silent: !first });
+      if (!cancelled) timer = setTimeout(() => tick(false), 5000);
+    };
+    tick(true);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      threadAbortRef.current?.abort();
+    };
+  }, [selectedId, loadConversation]);
 
   const selected = contacts.find((c) => c.id === selectedId) || null;
 
@@ -189,6 +256,15 @@ const Messages = () => {
   );
 
   const openThread = (contact) => {
+    // Reset synchronously. Without this the previous thread stayed on screen
+    // (under the new contact's header) until the next fetch resolved.
+    selectedIdRef.current = contact.id;
+    loadedThreadRef.current = null;
+    messageCountRef.current = 0;
+    threadSeqRef.current += 1;
+    threadAbortRef.current?.abort();
+    setMessages([]);
+    setThreadError('');
     setSelectedId(contact.id);
     setMobilePane('pane');
     setText('');
@@ -197,38 +273,73 @@ const Messages = () => {
   };
 
   const refreshAfterSend = async (contactId) => {
-    await Promise.all([loadContacts(), loadConversation(contactId)]);
+    await Promise.all([loadContacts(), loadConversation(contactId, { silent: true })]);
+  };
+
+  // Paint a sent message immediately so a slow API cannot make it look lost.
+  const showSentMessage = (contactId, created) => {
+    const content = String(created?.content || '');
+    const preview = content.startsWith('data:image') ? 'Photo' : content.slice(0, 80);
+    setMessages((current) => {
+      if (!created?.id || current.some((m) => m.id === created.id)) return current;
+      return [...current, created];
+    });
+    messageCountRef.current += 1;
+    setContacts((current) => current.map((c) => (
+      c.id === contactId
+        ? {
+            ...c,
+            hasConversation: true,
+            hasSent: true,
+            lastMessageIsMine: true,
+            lastMessageAt: created?.createdAt || new Date().toISOString(),
+            lastMessagePreview: preview,
+          }
+        : c
+    )));
+    setTimeout(() => scrollToBottom('smooth'), 60);
   };
 
   const handleReply = async (event) => {
-    event.preventDefault();
-    if ((!text.trim() && !attachment) || !selectedId) return;
+    event?.preventDefault?.();
+    // `sendingRef` is checked synchronously so a double Enter (or a double click
+    // before React re-renders) cannot send the same message twice.
+    if ((!text.trim() && !attachment) || !selectedId || sendingRef.current) return;
+    sendingRef.current = true;
     setSending(true);
+    const body = attachment || text.trim();
+    const wasImage = Boolean(attachment);
+    setText('');
+    setAttachment(null);
     try {
-      await sendMessage(selectedId, attachment || text.trim());
-      setText('');
-      setAttachment(null);
-      await refreshAfterSend(selectedId);
-      setTimeout(() => scrollToBottom('smooth'), 60);
+      const res = await sendMessage(selectedId, body);
+      showSentMessage(selectedId, res.data);
+      loadContacts();
+      loadConversation(selectedId, { silent: true });
     } catch (error) {
+      // Put the draft back so nothing is lost when the send fails.
+      if (wasImage) setAttachment(body);
+      else setText(body);
       showToast(error.response?.data?.message || 'Failed to send message');
     } finally {
+      sendingRef.current = false;
       setSending(false);
     }
   };
 
   const handleCompose = async (event) => {
     event.preventDefault();
-    if (!composeTo || !composeBody.trim()) return;
+    if (!composeTo || !composeBody.trim() || composing) return;
+    const contact = contacts.find((c) => c.id === composeTo);
     setComposing(true);
     try {
-      await sendMessage(composeTo, composeBody.trim());
-      const contact = contacts.find((c) => c.id === composeTo);
+      const res = await sendMessage(composeTo, composeBody.trim());
       setComposeOpen(false);
       setComposeBody('');
       setComposeTo('');
       await loadContacts();
       if (contact) openThread(contact);
+      showSentMessage(composeTo, res.data);
       showToast('Message sent');
     } catch (error) {
       showToast(error.response?.data?.message || 'Failed to send message');
@@ -304,6 +415,20 @@ const Messages = () => {
           </span>
         )}
       </div>
+
+      {contactsError && (
+        <div className="mb-3 flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 flex-1">{contactsError} Showing the last known mail.</span>
+          <button
+            type="button"
+            onClick={() => loadContacts()}
+            className="flex shrink-0 items-center gap-1 font-semibold underline"
+          >
+            <RefreshCw className="h-3 w-3" /> Retry
+          </button>
+        </div>
+      )}
 
       <div className="flex h-[calc(100dvh-190px)] min-h-[540px] overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm dark:border-white/10 dark:bg-slate-800">
         {/* ── Folder rail ─────────────────────────────────────────────── */}
@@ -499,12 +624,25 @@ const Messages = () => {
               </div>
 
               <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-sti-gray-light/30 p-3 dark:bg-slate-900/40 sm:p-4">
-                {readingLoading && messages.length === 0 && (
+                {readingLoading && messages.length === 0 && !threadError && (
                   <div className="flex justify-center py-10">
                     <div className="h-6 w-6 animate-spin rounded-full border-2 border-sti-blue border-t-transparent" />
                   </div>
                 )}
-                {!readingLoading && messages.length === 0 && (
+                {!readingLoading && threadError && messages.length === 0 && (
+                  <div className="flex flex-col items-center gap-2 py-10 text-center">
+                    <AlertCircle className="h-5 w-5 text-amber-500" />
+                    <p className="text-sm text-sti-gray">{threadError}</p>
+                    <button
+                      type="button"
+                      onClick={() => loadConversation(selectedId)}
+                      className="flex items-center gap-1 rounded-lg border border-black/10 px-3 py-1.5 text-xs font-semibold text-sti-gray-dark hover:bg-white dark:border-white/10 dark:text-white dark:hover:bg-white/10"
+                    >
+                      <RefreshCw className="h-3 w-3" /> Retry
+                    </button>
+                  </div>
+                )}
+                {!readingLoading && !threadError && messages.length === 0 && (
                   <p className="py-10 text-center text-sm text-sti-gray">No messages yet. Say hello below.</p>
                 )}
                 {messages.map((message) => {

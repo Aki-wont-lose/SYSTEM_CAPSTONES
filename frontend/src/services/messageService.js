@@ -1,13 +1,17 @@
 import api from './api';
 
+// Polling calls use a shorter timeout than the global one so a stalled request
+// surfaces as a retryable error instead of an endless spinner.
+const POLL_TIMEOUT = 15000;
+
 // Fetch the user's message contacts
-export const getContacts = async () => {
-  const res = await api.get('/messages/contacts');
+export const getContacts = async (config = {}) => {
+  const res = await api.get('/messages/contacts', { timeout: POLL_TIMEOUT, ...config });
   return res.data;
 };
 // Fetch the message thread with another user
-export const getConversation = async (userId) => {
-  const res = await api.get(`/messages/${userId}`);
+export const getConversation = async (userId, config = {}) => {
+  const res = await api.get(`/messages/${userId}`, { timeout: POLL_TIMEOUT, ...config });
   return res.data;
 };
 // Send a message to another user
