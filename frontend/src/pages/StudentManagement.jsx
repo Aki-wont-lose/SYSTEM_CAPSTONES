@@ -14,7 +14,7 @@ import {
 } from '../services/studentService';
 import { getCompanies } from '../services/companyService';
 import { getStudentAttendanceForStaff, getStudentSummaryForStaff } from '../services/attendanceService';
-import { PROGRAM_OPTIONS } from '../constants/programs';
+import { PROGRAM_OPTIONS, normalizeCourseCode } from '../constants/programs';
 import {
   ojtSectionsForProgram,
   sectionLabel,
@@ -105,17 +105,19 @@ const StudentManagement = () => {
   const openAddModal = (role = 'STUDENT') => {
     // A coordinator only ever creates students in their own program, so the
     // course is pre-filled and shown read-only instead of offering a choice.
-    const lockedCourse = user?.role === 'COORDINATOR' ? (user?.coordinatorCourse || '') : '';
+    const lockedCourse = user?.role === 'COORDINATOR' ? normalizeCourseCode(user?.coordinatorCourse || '') : '';
     setForm({ ...emptyForm, role, course: lockedCourse });
     setError('');
     setModalMode('add');
   };
 
   const openEditModal = (student) => {
-    const normalizedSec = canonicalSection(student.section, student.course) || student.section || '';
+    const normCourse = normalizeCourseCode(student.course) || student.course || '';
+    const normalizedSec = canonicalSection(student.section, normCourse) || student.section || '';
     setForm({
       ...emptyForm,
       ...student,
+      course: normCourse,
       section: normalizedSec,
       contactNumber: student.contactNumber === 'Not set' ? '' : (student.contactNumber || ''),
       companyId: student.companyId || '',
@@ -167,6 +169,10 @@ const StudentManagement = () => {
         lastName: form.lastName
       });
       if (emailErr) { setError(emailErr); return; }
+    }
+    if (!form.course) {
+      setError('Please select a valid academic course.');
+      return;
     }
     if (!isValidSection(form.section, form.course)) {
       setError('Please select a valid section (e.g., BSIT 4-101).');
@@ -336,7 +342,7 @@ const StudentManagement = () => {
             studentId: normalizeExcelStudentId(obj['studentid'] || obj['id'] || obj['studentno'] || ''),
             firstName: obj['firstname'] || '',
             lastName: obj['lastname'] || '',
-            course: (obj['course'] || obj['program'] || '').toUpperCase(),
+            course: normalizeCourseCode(obj['course'] || obj['program'] || ''),
             section: obj['section'] || '',
             email: obj['email'] || '',
             contactNumber: normalizeExcelPhone(obj['contactnumber'] || obj['contact'] || obj['contactno'] || obj['phone'] || obj['mobile'] || ''),
@@ -360,7 +366,7 @@ const StudentManagement = () => {
             studentId: normalizeExcelStudentId(obj['studentid'] || obj['id'] || obj['studentno'] || ''),
             firstName: obj['firstname'] || '',
             lastName: obj['lastname'] || '',
-            course: (obj['course'] || obj['program'] || '').toUpperCase(),
+            course: normalizeCourseCode(obj['course'] || obj['program'] || ''),
             section: obj['section'] || '',
             email: obj['email'] || '',
             contactNumber: normalizeExcelPhone(obj['contactnumber'] || obj['contact'] || obj['contactno'] || obj['phone'] || obj['mobile'] || ''),

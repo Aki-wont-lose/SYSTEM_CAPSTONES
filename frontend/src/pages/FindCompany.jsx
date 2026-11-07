@@ -1,28 +1,31 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, MapPin, Phone, Mail, Users, Search, Filter, GraduationCap } from 'lucide-react';
+import { Building2, MapPin, Phone, Mail, Users, Search, Filter, GraduationCap, HelpCircle, UserCheck } from 'lucide-react';
 import Card from '../components/Card';
 import { getCompanies } from '../services/companyService';
+import { normalizeCourseCode } from '../constants/programs';
 import { useAuth } from '../hooks/useAuth';
 import { getStudentSummary } from '../services/attendanceService';
 
-const PROGRAM_LABELS = { BSIT: 'BSIT', BSCS: 'BSCS', BSCPE: 'BSCPE', BSACT: 'BSACT', BSHM: 'BSHM', BSTM: 'BSTM', BSAIS: 'BSAIS' };
+const DEFAULT_PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'ACT', 'BSHM', 'BSTM', 'BSAIS'];
+const PROGRAM_LABELS = { BSIT: 'BSIT', BSCS: 'BSCS', BSCPE: 'BSCPE', ACT: 'ACT', BSACT: 'ACT', BSAC: 'ACT', BSHM: 'BSHM', BSTM: 'BSTM', BSAIS: 'BSAIS' };
 
 // Let students browse partner companies that currently have open slots
 const FindCompany = () => {
   const { user } = useAuth();
   const [companies, setCompanies] = useState([]);
+  const [acceptedCourses, setAcceptedCourses] = useState(DEFAULT_PROGRAMS);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
   const [program, setProgram] = useState('');
   const [myProgram, setMyProgram] = useState('');
 
-  // Load active companies with open slots and select the first one
+  // Load active companies with open slots
   useEffect(() => {
     getCompanies({ status: 'ACTIVE', hasSlots: 'true' })
       .then((res) => {
-        setCompanies(res.data);
-        setSelected(res.data[0] || null);
+        setCompanies(res.data || []);
+        setSelected((res.data || [])[0] || null);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -32,12 +35,16 @@ const FindCompany = () => {
   useEffect(() => {
     if (user?.role !== 'STUDENT') return;
     getStudentSummary()
-      .then((res) => setMyProgram(res.data?.student?.course || ''))
+      .then((res) => setMyProgram(normalizeCourseCode(res.data?.student?.course || '')))
       .catch(() => setMyProgram(''));
   }, [user]);
 
   // A company counts as matching if it targets the program or is open to all
-  const matchesProgram = (c, target) => !target || (c.programs || []).length === 0 || (c.programs || []).includes(target);
+  const matchesProgram = (c, target) => {
+    if (!target) return true;
+    const normalizedPrograms = (c.programs || []).map((p) => normalizeCourseCode(p));
+    return normalizedPrograms.length === 0 || normalizedPrograms.includes(normalizeCourseCode(target));
+  };
 
   // Filter companies by the search term and selected program
   const filtered = useMemo(
@@ -90,9 +97,9 @@ const FindCompany = () => {
               <div className="relative flex-1">
                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
                 <select value={program} onChange={(e) => setProgram(e.target.value)} className="input-field pl-9 text-sm py-2.5">
-                  <option value="">All programs</option>
-                  {Object.entries(PROGRAM_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
+                  <option value="">All Accepted Courses</option>
+                  {acceptedCourses.map((course) => (
+                    <option key={course} value={course}>{course}</option>
                   ))}
                 </select>
               </div>
@@ -171,6 +178,11 @@ const FindCompany = () => {
                         <MapPin className="w-4 h-4 text-sti-blue shrink-0" /> {selected.address}
                       </p>
                     )}
+                    {selected.contactPerson && (
+                      <p className="flex items-center gap-2 text-sti-gray-dark dark:text-slate-300">
+                        <UserCheck className="w-4 h-4 text-sti-blue shrink-0" /> OJT Supervisor / Contact: {selected.contactPerson}
+                      </p>
+                    )}
                     {selected.contactNumber && (
                       <p className="flex items-center gap-2 text-sti-gray-dark dark:text-slate-300">
                         <Phone className="w-4 h-4 text-sti-blue shrink-0" /> {selected.contactNumber}
@@ -184,6 +196,34 @@ const FindCompany = () => {
                     <p className="flex items-center gap-2 text-sti-gray-dark dark:text-slate-300">
                       <Users className="w-4 h-4 text-sti-blue shrink-0" /> {selected.availableSlots} slot{selected.availableSlots !== 1 ? 's' : ''} open
                     </p>
+                  </div>
+
+                  {/* Company Details & Common Questions (FAQ) */}
+                  <div className="mt-5 pt-4 border-t border-black/5 dark:border-white/10 space-y-2.5">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-sti-gray flex items-center gap-1.5">
+                      <HelpCircle className="w-3.5 h-3.5 text-sti-blue" />
+                      Company Details &amp; Common Questions (FAQ)
+                    </h4>
+                    <div className="p-3 rounded-xl bg-sti-gray-light/60 dark:bg-slate-900/50 text-xs space-y-1">
+                      <p className="font-bold text-sti-gray-dark dark:text-white">Where is {selected.name} located?</p>
+                      <p className="text-sti-gray">
+                        {selected.name} is located at <strong>{selected.address || 'its registered office'}</strong>.
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-sti-gray-light/60 dark:bg-slate-900/50 text-xs space-y-1">
+                      <p className="font-bold text-sti-gray-dark dark:text-white">Which courses are accepted for OJT at {selected.name}?</p>
+                      <p className="text-sti-gray">
+                        {(selected.programs || []).length > 0
+                          ? `Accepts interns enrolled in ${(selected.programs || []).map((p) => PROGRAM_LABELS[p] || p).join(', ')}.`
+                          : `Open to all officially accepted internship courses (${acceptedCourses.join(', ')}).`}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-sti-gray-light/60 dark:bg-slate-900/50 text-xs space-y-1">
+                      <p className="font-bold text-sti-gray-dark dark:text-white">Who is the OJT contact person and how do I reach them?</p>
+                      <p className="text-sti-gray">
+                        Coordinate through your OJT Coordinator or reach out to <strong>{selected.contactPerson || 'the HR / OJT Supervisor'}</strong> at <strong>{selected.email || selected.contactNumber || 'the company office'}</strong>.
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}

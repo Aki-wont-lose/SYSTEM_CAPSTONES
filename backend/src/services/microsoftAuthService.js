@@ -10,12 +10,11 @@
 
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 import { generateToken, isSuperAdmin } from '../middleware/auth.js';
 import { recordAudit } from './auditLogService.js';
 import { assertMicrosoftLoginAllowed } from './microsoftAccountPolicy.js';
 
-const prisma = new PrismaClient();
 
 // A Client ID is a public identifier (it ships in the browser bundle), so the
 // fallback below keeps Microsoft sign-in working on hosts where no environment
@@ -143,7 +142,20 @@ export const loginWithMicrosoft = async (idToken) => {
   }
 
   if (!user.isActive) {
-    const error = new Error('Account is disabled. Contact the OJT coordinator.');
+    let disabledMessage = 'Account is disabled. Contact the OJT coordinator.';
+    if (user.role === 'SUPERVISOR') {
+      const approvalLog = await prisma.auditLog.findFirst({
+        where: { entity: 'SupervisorApprovalRequest', entityId: user.id },
+        orderBy: { createdAt: 'desc' }
+      });
+      const status = approvalLog?.metadata?.status;
+      if (status === 'PENDING') {
+        disabledMessage = 'Your OJT Supervisor account request is currently Pending Approval by an Administrator.';
+      } else if (status === 'REJECTED') {
+        disabledMessage = 'Your OJT Supervisor account request was rejected by an Administrator and remains inactive.';
+      }
+    }
+    const error = new Error(disabledMessage);
     error.status = 403;
     throw error;
   }

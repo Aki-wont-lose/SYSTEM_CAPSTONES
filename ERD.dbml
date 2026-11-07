@@ -119,7 +119,7 @@ Table Student {
   studentId         varchar   [unique]
   firstName         varchar
   lastName          varchar
-  course            varchar   [note: 'BSIT, BSCS, BSCPE, BSACT, BSHM, BSTM, BSAIS']
+  course            varchar   [note: 'BSIT, BSCS, BSCPE, ACT, BSHM, BSTM, BSAIS']
   section           varchar
   email             varchar
   contactNumber     varchar

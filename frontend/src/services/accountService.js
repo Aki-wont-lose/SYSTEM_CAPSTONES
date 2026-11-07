@@ -42,3 +42,9 @@ export const deleteStaffAccount = async (id) => {
   const response = await api.delete(`/accounts/${id}`);
   return response.data;
 };
+
+// Approve or reject an OJT Supervisor account request (ADMIN only)
+export const reviewSupervisorAccount = async (id, payload) => {
+  const response = await api.post(`/accounts/${id}/review`, payload);
+  return response.data;
+};

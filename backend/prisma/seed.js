@@ -113,7 +113,7 @@ const defaultHours = [
   { course: 'BSIT', requiredHours: 486 },
   { course: 'BSCS', requiredHours: 300 },
   { course: 'BSCPE', requiredHours: 300 },
-  { course: 'BSACT', requiredHours: 320 },
+  { course: 'ACT', requiredHours: 320 },
   { course: 'BSHM', requiredHours: 600 },
   { course: 'BSTM', requiredHours: 600 },
   { course: 'BSAIS', requiredHours: 400 }

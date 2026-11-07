@@ -22,7 +22,7 @@ const PROGRAMS = [
   { value: 'BSIT', label: 'BSIT' },
   { value: 'BSCS', label: 'BSCS' },
   { value: 'BSCPE', label: 'BSCPE' },
-  { value: 'BSACT', label: 'BSACT' },
+  { value: 'ACT', label: 'ACT' },
   { value: 'BSHM', label: 'BSHM' },
   { value: 'BSTM', label: 'BSTM' },
   { value: 'BSAIS', label: 'BSAIS' },
@@ -400,7 +400,9 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
           return {
             title: obj['title']||'',
             description: obj['description']||'',
-            program: ['bsit','bscs','bscpe','bsact','bshm','bstm','bsais'].includes(String(obj['program']||'').toLowerCase()) ? String(obj['program']).toUpperCase() : null,
+            program: ['bsit','bscs','bscpe','act','bsact','bsac','bshm','bstm','bsais'].includes(String(obj['program']||'').toLowerCase())
+              ? (['bsact','bsac'].includes(String(obj['program']||'').toLowerCase()) ? 'ACT' : String(obj['program']).toUpperCase())
+              : null,
             category: obj['category']||'',
             cadence: String(obj['cadence']||'').toUpperCase() === 'WEEKLY' ? 'WEEKLY' : 'ONCE',
             dueInDays: (obj['dueindays'] || obj['duedays']) ? Number(obj['dueindays'] || obj['duedays']) : null,
@@ -425,7 +427,9 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
           return {
             title: obj['title']||'',
             description: obj['description']||'',
-            program: ['bsit','bscs','bscpe','bsact','bshm','bstm','bsais'].includes(String(obj['program']||'').toLowerCase()) ? String(obj['program']).toUpperCase() : null,
+            program: ['bsit','bscs','bscpe','act','bsact','bsac','bshm','bstm','bsais'].includes(String(obj['program']||'').toLowerCase())
+              ? (['bsact','bsac'].includes(String(obj['program']||'').toLowerCase()) ? 'ACT' : String(obj['program']).toUpperCase())
+              : null,
             category: obj['category']||'',
             cadence: String(obj['cadence']||'').toUpperCase() === 'WEEKLY' ? 'WEEKLY' : 'ONCE',
             dueInDays: (obj['dueindays'] || obj['duedays']) ? Number(obj['dueindays'] || obj['duedays']) : null,
@@ -694,7 +698,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                 <option value="BSIT">BSIT</option>
                 <option value="BSCS">BSCS</option>
                 <option value="BSCPE">BSCPE</option>
-                <option value="BSACT">BSACT</option>
+                <option value="ACT">ACT</option>
                 <option value="BSHM">BSHM</option>
                 <option value="BSTM">BSTM</option>
                 <option value="BSAIS">BSAIS</option>
@@ -819,7 +823,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                 <option value="BSIT">BSIT</option>
                 <option value="BSCS">BSCS</option>
                 <option value="BSCPE">BSCPE</option>
-                <option value="BSACT">BSACT</option>
+                <option value="ACT">ACT</option>
                 <option value="BSHM">BSHM</option>
                 <option value="BSTM">BSTM</option>
                 <option value="BSAIS">BSAIS</option>

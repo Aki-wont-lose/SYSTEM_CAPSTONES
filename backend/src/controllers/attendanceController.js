@@ -1,5 +1,5 @@
 // src/controllers/attendanceController.js
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 import {
   getAttendanceHistory,
   recordTimeInForStudent,
@@ -15,7 +15,6 @@ import { getStudentByUserId, getStudentById } from '../services/studentService.j
 import { assertStudentAccess } from '../services/accessScope.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
-const prisma = new PrismaClient();
 
 // GET /attendance/history - fetch the signed-in student's attendance history
 export const fetchAttendanceHistory = asyncHandler(async (req, res) => {

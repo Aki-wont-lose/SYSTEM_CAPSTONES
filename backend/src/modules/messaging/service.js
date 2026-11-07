@@ -1,6 +1,5 @@
 // modules/messaging/service.js - open messaging: any user can chat with anyone
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma from '../../utils/prisma.js';
 
 // Duplicate gmail accounts left over from testing, hidden from the people directory
 const BLOCKED_EMAILS = [

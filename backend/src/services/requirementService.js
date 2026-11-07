@@ -1,8 +1,7 @@
 // src/services/requirementService.js
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 import { recordAudit } from './auditLogService.js';
 import { scopeWhere, assertStudentAccess } from './accessScope.js';
-const prisma = new PrismaClient();
 
 const startOfDay = (d) => new Date(new Date(d).setHours(0, 0, 0, 0));
 const addDays = (d, days) => new Date(new Date(d).getTime() + days * 86400000);

@@ -1,9 +1,8 @@
 // modules/archive/service.js - list, restore and permanently delete soft-archived records
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma.js';
 import { canAccessStudent } from '../../services/accessScope.js';
 import { recordAudit } from '../../services/auditLogService.js';
 
-const prisma = new PrismaClient();
 
 const notFound = (message) => {
   const error = new Error(message);

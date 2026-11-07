@@ -1,11 +1,10 @@
 // src/services/authService.js
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 import { generateToken, isSuperAdmin } from '../middleware/auth.js';
 import { recordAudit } from './auditLogService.js';
 
-const prisma = new PrismaClient();
 const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS) || 10;
 const RESET_TTL_MINUTES = 30;
 
@@ -59,8 +58,21 @@ export const loginUser = async (email, password) => {
   }
 
   if (!user.isActive) {
-    await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN_FAILED', entity: 'Account', description: `Sign-in blocked for a disabled account (${user.email})` });
-    const error = new Error('Account is disabled. Contact the OJT coordinator.');
+    let disabledMessage = 'Account is disabled. Contact the OJT coordinator.';
+    if (user.role === 'SUPERVISOR') {
+      const approvalLog = await prisma.auditLog.findFirst({
+        where: { entity: 'SupervisorApprovalRequest', entityId: user.id },
+        orderBy: { createdAt: 'desc' }
+      });
+      const status = approvalLog?.metadata?.status;
+      if (status === 'PENDING') {
+        disabledMessage = 'Your OJT Supervisor account request is currently Pending Approval by an Administrator.';
+      } else if (status === 'REJECTED') {
+        disabledMessage = 'Your OJT Supervisor account request was rejected by an Administrator and remains inactive.';
+      }
+    }
+    await recordAudit({ userId: user.id, userEmail: user.email, userRole: user.role, action: 'LOGIN_FAILED', entity: 'Account', description: `Sign-in blocked for an inactive/pending account (${user.email})` });
+    const error = new Error(disabledMessage);
     error.status = 403;
     throw error;
   }

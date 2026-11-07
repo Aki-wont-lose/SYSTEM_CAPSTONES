@@ -1,7 +1,7 @@
 // src/middleware/auth.js
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 import { assertUsableSecret } from './secretGuard.js';
 
 // Load .env explicitly BEFORE reading the secret. Previously the value was only
@@ -10,7 +10,6 @@ import { assertUsableSecret } from './secretGuard.js';
 // dotenv never overrides variables that are already set, so Render/Vercel win.
 dotenv.config();
 
-const prisma = new PrismaClient();
 
 // SECURITY: fail fast rather than fall back to a hardcoded secret. The previous
 // `process.env.JWT_SECRET || 'your-secret-key'` meant a deployment missing the
@@ -58,22 +57,46 @@ export const ROLE_PERMISSIONS = {
 // `supervisorCompanyId` all come from the database, never from the token, so a
 // demotion, deactivation or re-assignment takes effect on the next request rather
 // than whenever the old token happens to expire.
-const lookupUser = (userId) =>
-  prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      email: true,
-      firstName: true,
-      lastName: true,
-      role: true,
-      isActive: true,
-      isArchived: true,
-      mustChangePassword: true,
-      coordinatorCourse: true,
-      supervisorCompanyId: true
-    }
-  });
+// Short-lived per-userId cache (5s TTL) so a burst of parallel requests on page
+// load reuses the same authoritative DB lookup for that specific userId instead
+// of making 5 sequential round-trips to remote Supabase.
+const USER_AUTH_TTL_MS = 5000;
+const userAuthCache = new Map();
+
+export const invalidateUserAuthCache = (userId) => {
+  if (userId) userAuthCache.delete(userId);
+  else userAuthCache.clear();
+};
+
+const lookupUser = (userId) => {
+  const now = Date.now();
+  const cached = userAuthCache.get(userId);
+  if (cached && cached.expiresAt > now) {
+    return cached.promise;
+  }
+  const promise = prisma.user
+    .findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        role: true,
+        isActive: true,
+        isArchived: true,
+        mustChangePassword: true,
+        coordinatorCourse: true,
+        supervisorCompanyId: true
+      }
+    })
+    .catch((err) => {
+      userAuthCache.delete(userId);
+      throw err;
+    });
+  userAuthCache.set(userId, { promise, expiresAt: now + USER_AUTH_TTL_MS });
+  return promise;
+};
 
 export const verifyToken = (req, res, next) => {
   try {
@@ -114,7 +137,9 @@ export const verifyToken = (req, res, next) => {
           lastName: user.lastName,
           role: user.role,
           mustChangePassword: user.mustChangePassword,
-          coordinatorCourse: user.coordinatorCourse,
+          coordinatorCourse: ['BSACT', 'BSAC'].includes(String(user.coordinatorCourse || '').toUpperCase())
+            ? 'ACT'
+            : user.coordinatorCourse,
           supervisorCompanyId: user.supervisorCompanyId,
           isSuperAdmin: isSuperAdmin(user)
         };

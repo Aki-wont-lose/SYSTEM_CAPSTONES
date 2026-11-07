@@ -3,9 +3,9 @@ import { Clock, Save, AlertTriangle } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import { getOjtHours, updateOjtHours } from '../services/ojtHoursService';
-import { courseLabel } from '../constants/programs';
+import { courseLabel, normalizeCourseCode } from '../constants/programs';
 
-// Admin-only page for the required OJT hours applied to each course.
+// Admin-only page for the required OJT hours per program
 const OjtHours = () => {
   const [hours, setHours] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,9 +14,12 @@ const OjtHours = () => {
 
   useEffect(() => {
     getOjtHours()
-      .then((res) => setHours(res.data || []))
+      .then((res) => {
+        const rows = (res.data || []).map((r) => ({ ...r, course: normalizeCourseCode(r.course) }));
+        setHours(rows);
+      })
       .catch((err) =>
-        setToast({ tone: 'error', msg: err.response?.data?.message || 'Could not load OJT hours' })
+        setToast({ tone: 'error', msg: err.response?.data?.message || 'Could not load OJT configuration' })
       )
       .finally(() => setLoading(false));
   }, []);
@@ -48,9 +51,22 @@ const OjtHours = () => {
         <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white flex items-center gap-2">
           <Clock className="w-5 h-5 text-sti-blue" /> OJT Required Hours
         </h1>
+        <p className="text-sm text-sti-gray mt-0.5">
+          Manage the default required OJT hours per academic program.
+        </p>
       </div>
 
+      {/* OJT Required Hours Section */}
       <Card>
+        <div className="mb-4">
+          <h2 className="text-base font-bold text-sti-gray-dark dark:text-white flex items-center gap-2">
+            <Clock className="w-5 h-5 text-sti-blue" /> OJT Required Hours per Program
+          </h2>
+          <p className="text-xs text-sti-gray mt-0.5">
+            Default required internship hours automatically assigned to students in each course.
+          </p>
+        </div>
+
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
@@ -60,7 +76,9 @@ const OjtHours = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {hours.map((row) => (
                 <div key={row.course}>
-                  <label className="block text-xs font-medium text-sti-gray mb-1.5">{courseLabel(row.course)}</label>
+                  <label className="block text-xs font-medium text-sti-gray mb-1.5">
+                    {row.course} — {courseLabel(row.course)}
+                  </label>
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -68,7 +86,15 @@ const OjtHours = () => {
                       max="2000"
                       step="1"
                       value={row.requiredHours}
-                      onChange={(e) => setHours((list) => list.map((item) => item.course === row.course ? { ...item, requiredHours: e.target.value.replace(/[^\d]/g, '') } : item))}
+                      onChange={(e) =>
+                        setHours((list) =>
+                          list.map((item) =>
+                            item.course === row.course
+                              ? { ...item, requiredHours: e.target.value.replace(/[^\d]/g, '') }
+                              : item
+                          )
+                        )
+                      }
                       className="input-field"
                     />
                     <span className="text-xs text-sti-gray shrink-0">hours</span>

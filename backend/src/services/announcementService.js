@@ -1,7 +1,6 @@
 // src/services/announcementService.js
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 
-const prisma = new PrismaClient();
 
 // This endpoint is PUBLIC (no auth), so the limit is attacker-controlled. Cap it
 // and fall back to the default when it is missing, non-numeric or negative -

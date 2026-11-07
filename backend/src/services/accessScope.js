@@ -26,13 +26,24 @@ export const isStaff = (user) => Boolean(user) && STAFF_ROLES.includes(user.role
  * Prisma `where` fragment restricting a Student query to the caller's scope.
  * Spread into a Student `where`, or AND it with an existing filter.
  */
+const normalizeCourse = (value) => {
+  const upper = String(value || '').trim().toUpperCase();
+  if (upper === 'BSACT' || upper === 'BSAC') return 'ACT';
+  return upper;
+};
+
 export const studentScopeWhere = (user) => {
   if (!user) return NO_MATCH;
   if (user.role === 'ADMIN') return {};
 
   if (user.role === 'COORDINATOR') {
     // A coordinator owns exactly one course. If the token has none, they own nothing.
-    return user.coordinatorCourse ? { course: user.coordinatorCourse } : NO_MATCH;
+    if (!user.coordinatorCourse) return NO_MATCH;
+    const normalized = normalizeCourse(user.coordinatorCourse);
+    if (normalized === 'ACT') {
+      return { course: { in: ['ACT', 'BSACT', 'BSAC'] } };
+    }
+    return { course: user.coordinatorCourse };
   }
 
   if (user.role === 'SUPERVISOR') {
@@ -59,7 +70,10 @@ export const canAccessStudent = (user, student) => {
   if (user.role === 'ADMIN') return true;
 
   if (user.role === 'COORDINATOR') {
-    return Boolean(user.coordinatorCourse) && student.course === user.coordinatorCourse;
+    return (
+      Boolean(user.coordinatorCourse) &&
+      normalizeCourse(student.course) === normalizeCourse(user.coordinatorCourse)
+    );
   }
 
   if (user.role === 'SUPERVISOR') {

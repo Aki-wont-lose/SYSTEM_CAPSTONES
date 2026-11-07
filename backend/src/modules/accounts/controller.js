@@ -8,7 +8,8 @@ import {
   resetAccountPassword,
   deleteStaffAccount,
   getAccountById,
-  batchCreateStaffAccounts
+  batchCreateStaffAccounts,
+  reviewSupervisorAccountRequest
 } from './service.js';
 
 // GET /accounts/counts - fetch staff account counts by role
@@ -39,12 +40,35 @@ export const fetchAccount = asyncHandler(async (req, res) => {
 const roleLabel = (role) =>
   role === 'COORDINATOR' ? 'Coordinator' : role === 'ADMIN' ? 'Admin' : 'Supervisor';
 
-// POST /accounts - create a staff account
+// POST /accounts - create a staff account (or Coordinator OJT Supervisor request)
 export const addStaffAccount = asyncHandler(async (req, res) => {
-  const result = await createStaffAccount({ ...req.body, requesterIsSuperAdmin: !!req.user.isSuperAdmin });
+  const result = await createStaffAccount({
+    ...req.body,
+    requesterIsSuperAdmin: !!req.user.isSuperAdmin,
+    requesterRole: req.user.role,
+    requesterId: req.user.userId,
+    requesterEmail: req.user.email,
+    requesterCourse: req.user.coordinatorCourse
+  });
+  const isPending = result.user.approvalStatus === 'PENDING';
   res.status(201).json({
     success: true,
-    message: `${roleLabel(result.user.role)} account created`,
+    message: isPending
+      ? 'OJT Supervisor account request submitted for Admin approval'
+      : `${roleLabel(result.user.role)} account created`,
+    data: result
+  });
+});
+
+// POST /accounts/:id/review - approve or reject a pending OJT Supervisor account request
+export const reviewSupervisorAccount = asyncHandler(async (req, res) => {
+  const result = await reviewSupervisorAccountRequest(req.params.id, req.body, req.user);
+  res.status(200).json({
+    success: true,
+    message:
+      result.approvalStatus === 'APPROVED'
+        ? 'OJT Supervisor account approved and activated'
+        : 'OJT Supervisor account request rejected',
     data: result
   });
 });
@@ -86,6 +110,12 @@ export const batchAddStaffAccounts = asyncHandler(async (req, res) => {
     res.status(400).json({ success: false, message: 'No accounts provided' });
     return;
   }
-  const results = await batchCreateStaffAccounts(accounts);
+  const results = await batchCreateStaffAccounts(accounts, {
+    requesterIsSuperAdmin: !!req.user.isSuperAdmin,
+    requesterRole: req.user.role,
+    requesterId: req.user.userId,
+    requesterEmail: req.user.email,
+    requesterCourse: req.user.coordinatorCourse
+  });
   res.status(200).json({ success: true, message: 'Batch upload finished', data: results });
 });

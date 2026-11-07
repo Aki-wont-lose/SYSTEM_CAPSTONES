@@ -1,8 +1,7 @@
 // src/services/logEntryService.js
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 import { recordAudit } from './auditLogService.js';
 import { studentScopeWhere, canAccessStudent } from './accessScope.js';
-const prisma = new PrismaClient();
 
 export const getStudentLogs = async (studentId) => {
   return prisma.logEntry.findMany({

@@ -4,8 +4,7 @@ import { getMicrosoftIdentity } from '../../services/microsoftAuthService.js';
 import { assertMicrosoftLoginAllowed } from '../../services/microsoftAccountPolicy.js';
 import { verifySchoolAccountForCreation } from '../../services/graphDirectoryService.js';
 import { isValidStaffEmail, getStaffEmailError } from '../../utils/staffValidation.js';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma from '../../utils/prisma.js';
 
 const NAME_PATTERN = /^[A-Za-zÀ-ÖØ-öø-ÿ\s.'-]+$/;
 const CONTACT_PATTERN = /^09\d{9}$/;

@@ -2,13 +2,14 @@
 //
 // Frontend mirror of backend/src/utils/studentValidation.js. Keep the two in
 // sync. The backend re-validates everything, so this only improves the UX.
-import { PROGRAM_VALUES } from './programs';
+import { PROGRAM_VALUES, normalizeCourseCode } from './programs.js';
 
 // Official institutional domains (both accepted).
 export const INSTITUTIONAL_DOMAINS = ['stamaria.edu.ph', 'stamaria.sti.edu.ph'];
 
 // Reuse the one program list the rest of the app already reads from.
 export const SUPPORTED_PROGRAMS = PROGRAM_VALUES;
+export { normalizeCourseCode };
 
 const STUDENT_ID_RE = /^\d{6}$/;
 
@@ -81,14 +82,18 @@ export const isValidContactNumber = (value) => {
 const SECTION_RE = /^([A-Z]+)\s+([1-4])-(10[1-3])$/;
 const LEGACY_SECTION_RE = /^(?:([A-Z]+)[\s\-]+)?([1-4])-(10[1-3])$/;
 const normalizeSection = (section) =>
-  String(section || '').trim().replace(/\s+/g, ' ').toUpperCase();
+  String(section || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toUpperCase()
+    .replace(/^(?:BSACT|BSAC)\b/, 'ACT');
 
 export const canonicalSection = (section, program) => {
   const norm = normalizeSection(section);
   if (!norm) return '';
   if (SECTION_RE.test(norm)) return norm;
   const legacyMatch = norm.match(LEGACY_SECTION_RE);
-  const prog = String(program || legacyMatch?.[1] || '').trim().toUpperCase();
+  const prog = normalizeCourseCode(program || legacyMatch?.[1] || '');
   if (legacyMatch && SUPPORTED_PROGRAMS.includes(prog)) {
     return `${prog} ${legacyMatch[2]}-${legacyMatch[3]}`;
   }
@@ -98,8 +103,9 @@ export const canonicalSection = (section, program) => {
 export const isValidSection = (section, program) => {
   const candidate = canonicalSection(section, program);
   const match = normalizeSection(candidate).match(SECTION_RE);
+  const normProg = normalizeCourseCode(program);
   if (!match || !SUPPORTED_PROGRAMS.includes(match[1])) return false;
-  if (program && String(program).trim().toUpperCase() !== match[1]) return false;
+  if (normProg && normProg !== match[1]) return false;
   return true;
 };
 
@@ -131,18 +137,18 @@ export const OJT_SECTIONS_BY_PROGRAM = SUPPORTED_PROGRAMS.reduce((acc, program) 
 }, {});
 
 export const ojtSectionsForProgram = (program) =>
-  OJT_SECTIONS_BY_PROGRAM[String(program || '').trim().toUpperCase()] || [];
+  OJT_SECTIONS_BY_PROGRAM[normalizeCourseCode(program)] || [];
 
 export const sectionsForProgram = (program) =>
-  SECTIONS_BY_PROGRAM[String(program || '').trim().toUpperCase()] || [];
+  SECTIONS_BY_PROGRAM[normalizeCourseCode(program)] || [];
 
 // Sections are stored in the official "<PROGRAM> <year>-<block>" form - that is
 // what the backend validates and derives the year level from, and what the CSV
 // template ships. When the course is already on screen next to the section,
 // render only "<year>-<block>" so the program is not printed twice.
 export const sectionLabel = (section, program) => {
-  const value = String(section || '').trim();
-  const prefix = String(program || '').trim().toUpperCase();
+  const value = String(section || '').trim().replace(/^(?:BSACT|BSAC)\s+/i, 'ACT ');
+  const prefix = normalizeCourseCode(program);
   if (prefix && value.toUpperCase().startsWith(`${prefix} `)) return value.slice(prefix.length).trim();
   return value;
 };

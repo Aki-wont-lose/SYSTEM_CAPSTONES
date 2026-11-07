@@ -1,7 +1,6 @@
 // modules/dashboard/service.js — dashboard stats aggregated from student data
 import { getStudentStats } from '../../services/studentService.js';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma from '../../utils/prisma.js';
 
 export const getDashboardStats = getStudentStats;
 

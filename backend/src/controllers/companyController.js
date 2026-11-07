@@ -19,7 +19,8 @@ export const fetchCompanies = asyncHandler(async (req, res) => {
 
 // GET /companies/programs - fetch the list of program options
 export const fetchProgramOptions = asyncHandler(async (req, res) => {
-  res.status(200).json({ success: true, data: getCompanyPrograms() });
+  const programs = await getCompanyPrograms();
+  res.status(200).json({ success: true, data: programs });
 });
 
 // GET /companies/:id - fetch one company by id

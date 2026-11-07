@@ -1,5 +1,5 @@
 // src/modules/accounts/service.js
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../utils/prisma.js';
 import { hashPassword, generateTemporaryPassword } from '../../services/authService.js';
 import {
   isValidStaffEmail,
@@ -10,17 +10,40 @@ import {
   CONTACT_NUMBER_ERROR,
   STAFF_EMAIL_ERROR
 } from '../../utils/staffValidation.js';
-import { isSuperAdmin } from '../../middleware/auth.js';
+import { isSuperAdmin, invalidateUserAuthCache } from '../../middleware/auth.js';
 import { studentScopeWhere } from '../../services/accessScope.js';
-import { SUPPORTED_PROGRAMS } from '../../utils/studentValidation.js';
+import { SUPPORTED_PROGRAMS, normalizeCourseCode } from '../../utils/studentValidation.js';
 import { verifySchoolAccountForCreation } from '../../services/graphDirectoryService.js';
 import { isSchoolAccountRole, roleEmailError } from '../../services/microsoftAccountPolicy.js';
+import { recordAudit } from '../../services/auditLogService.js';
 
-const prisma = new PrismaClient();
 
 const STAFF_ROLES = ['COORDINATOR', 'SUPERVISOR'];
 const EDITABLE_ROLES = ['ADMIN', 'COORDINATOR', 'SUPERVISOR'];
 const MANAGER_ROLES = ['ADMIN', 'COORDINATOR'];
+const SUPERVISOR_APPROVAL_ENTITY = 'SupervisorApprovalRequest';
+
+const getSupervisorApprovalMap = async (supervisorIds = []) => {
+  const map = new Map();
+  if (!Array.isArray(supervisorIds) || supervisorIds.length === 0) return map;
+  try {
+    const logs = await prisma.auditLog.findMany({
+      where: {
+        entity: SUPERVISOR_APPROVAL_ENTITY,
+        entityId: { in: supervisorIds }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    for (const log of logs) {
+      if (log.entityId && !map.has(log.entityId) && log.metadata && typeof log.metadata === 'object') {
+        map.set(log.entityId, log.metadata);
+      }
+    }
+  } catch (err) {
+    console.warn('[accounts] Failed to load supervisor approval logs:', err.message);
+  }
+  return map;
+};
 
 const staffSelect = {
   id: true,
@@ -50,24 +73,53 @@ export const getAccountCounts = async (user) => {
   const scope = user ? studentScopeWhere(user) : {};
   const students = await prisma.student.count({ where: { isArchived: false, ...scope } });
 
-  // Staff head-counts are only meaningful to an ADMIN; everyone else gets the
-  // student total (the only figure their Account Management screen shows).
-  if (!user || user.role !== 'ADMIN') {
-    return { students, supervisors: 0, coordinators: 0, admins: 0 };
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'COORDINATOR')) {
+    return { students, supervisors: 0, pendingSupervisors: 0, coordinators: 0, admins: 0 };
   }
 
-  const [supervisors, coordinators, admins] = await Promise.all([
-    prisma.user.count({ where: { role: 'SUPERVISOR', isArchived: false } }),
+  const allSupervisors = await prisma.user.findMany({
+    where: { role: 'SUPERVISOR', isArchived: false },
+    select: { id: true, isActive: true }
+  });
+  const approvalMap = await getSupervisorApprovalMap(allSupervisors.map((s) => s.id));
+  const pendingSupervisors = allSupervisors.filter((s) => {
+    const meta = approvalMap.get(s.id);
+    return meta?.status === 'PENDING' || (!s.isActive && meta?.status !== 'REJECTED');
+  }).length;
+
+  if (user.role === 'COORDINATOR') {
+    return {
+      students,
+      supervisors: allSupervisors.length,
+      pendingSupervisors,
+      coordinators: 0,
+      admins: 0
+    };
+  }
+
+  const [coordinators, admins] = await Promise.all([
     prisma.user.count({ where: { role: 'COORDINATOR', isArchived: false } }),
     prisma.user.count({ where: { role: 'ADMIN', isArchived: false } })
   ]);
 
-  return { students, supervisors, coordinators, admins };
+  return {
+    students,
+    supervisors: allSupervisors.length,
+    pendingSupervisors,
+    coordinators,
+    admins
+  };
 };
 
 export const listStaff = async ({ role, search, includeInactive = true, requesterRole, requesterIsSuperAdmin = false } = {}) => {
-  // Only ADMIN may browse coordinator/supervisor/admin accounts.
-  if (requesterRole && requesterRole !== 'ADMIN') return [];
+  // ADMIN can browse staff accounts; COORDINATOR can browse SUPERVISOR accounts to submit & monitor requests.
+  if (requesterRole && requesterRole !== 'ADMIN') {
+    if (requesterRole === 'COORDINATOR' && role === 'SUPERVISOR') {
+      // Allowed: Coordinator viewing OJT Supervisor accounts and request statuses
+    } else {
+      return [];
+    }
+  }
 
   const where = {};
   // Archived accounts are hidden from account management by default
@@ -97,13 +149,21 @@ export const listStaff = async ({ role, search, includeInactive = true, requeste
     orderBy: [{ role: 'asc' }, { createdAt: 'desc' }]
   });
 
-  const activeStudents = await prisma.student.findMany({
-    where: { isArchived: false },
-    select: { id: true, companyId: true, supervisorEmail: true }
-  });
+  const supervisorIds = staff.filter((m) => m.role === 'SUPERVISOR').map((m) => m.id);
+  const [activeStudents, approvalMap] = supervisorIds.length > 0
+    ? await Promise.all([
+        prisma.student.findMany({
+          where: { isArchived: false },
+          select: { id: true, companyId: true, supervisorEmail: true }
+        }),
+        getSupervisorApprovalMap(supervisorIds)
+      ])
+    : [[], new Map()];
 
   return staff.map((member) => {
     let assignedStudents = null;
+    let approvalStatus = null;
+    let approvalMetadata = null;
     if (member.role === 'SUPERVISOR') {
       const memberEmail = String(member.email || '').toLowerCase();
       assignedStudents = activeStudents.filter((s) => {
@@ -111,27 +171,71 @@ export const listStaff = async ({ role, search, includeInactive = true, requeste
         const byEmail = Boolean(memberEmail && s.supervisorEmail && s.supervisorEmail.toLowerCase() === memberEmail);
         return byCompany || byEmail;
       }).length;
+      const meta = approvalMap.get(member.id) || null;
+      approvalMetadata = meta;
+      if (meta?.status) {
+        approvalStatus = meta.status;
+      } else {
+        approvalStatus = member.isActive ? 'APPROVED' : 'PENDING';
+      }
     }
     const { linkedAccounts = [], ...rest } = member;
     return {
       ...rest,
+      coordinatorCourse: rest.coordinatorCourse ? normalizeCourseCode(rest.coordinatorCourse) : null,
       isSuperAdmin: isSuperAdmin(member),
-      assignedStudents
+      assignedStudents,
+      approvalStatus,
+      approvalMetadata
     };
   });
 };
 
-export const createStaffAccount = async ({ email, firstName, lastName, role, coordinatorCourse, companyId, contactNumber, requesterIsSuperAdmin = false }) => {
+export const createStaffAccount = async ({
+  email,
+  firstName,
+  lastName,
+  role,
+  coordinatorCourse,
+  companyId,
+  contactNumber,
+  requesterIsSuperAdmin = false,
+  requesterRole = 'ADMIN',
+  requesterId = null,
+  requesterEmail = null,
+  requesterCourse = null
+}) => {
   const normalizedRole = String(role || '').toUpperCase();
-  // Only the super-admin may create another ADMIN. Everyone else is confined to
-  // the coordinator/supervisor roles the Add form exposes to them.
+
+  // Requirement 1: Super Admin must not be able to directly create company / OJT Supervisor accounts.
+  if (normalizedRole === 'SUPERVISOR' && requesterIsSuperAdmin) {
+    const error = new Error(
+      'Super Admin is restricted from directly creating OJT Supervisor / company accounts. Supervisor account requests must be submitted by an OJT Coordinator.'
+    );
+    error.status = 403;
+    throw error;
+  }
+
+  // Requirement 5A: The OJT Coordinator is responsible for creating OJT Supervisor account requests.
+  if (requesterRole === 'COORDINATOR' && normalizedRole !== 'SUPERVISOR') {
+    const error = new Error('OJT Coordinators are only authorized to create OJT Supervisor account requests.');
+    error.status = 403;
+    throw error;
+  }
+  if (normalizedRole === 'SUPERVISOR' && requesterRole !== 'COORDINATOR') {
+    const error = new Error('OJT Supervisor account requests must be created by an OJT Coordinator and approved by an Administrator.');
+    error.status = 403;
+    throw error;
+  }
+
+  // Only the super-admin may create another ADMIN.
   if (normalizedRole === 'ADMIN' && !requesterIsSuperAdmin) {
     const error = new Error('Only the super-admin can create administrator accounts');
     error.status = 403;
     throw error;
   }
   if (!STAFF_ROLES.includes(normalizedRole) && !(requesterIsSuperAdmin && normalizedRole === 'ADMIN')) {
-    const error = new Error(requesterIsSuperAdmin ? 'Role must be ADMIN, COORDINATOR or SUPERVISOR' : 'Role must be COORDINATOR or SUPERVISOR');
+    const error = new Error(requesterIsSuperAdmin ? 'Role must be ADMIN or COORDINATOR' : 'Role must be COORDINATOR or SUPERVISOR');
     error.status = 400;
     throw error;
   }
@@ -143,8 +247,8 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     throw error;
   }
 
-  const normalizedFirstName = String(firstName || '').trim();
-  const normalizedLastName = String(lastName || '').trim();
+  const normalizedFirstName = String(firstName || '').trim().replace(/\s+/g, ' ');
+  const normalizedLastName = String(lastName || '').trim().replace(/\s+/g, ' ');
   if (!normalizedFirstName || !normalizedLastName) {
     const error = new Error('First name and last name are required');
     error.status = 400;
@@ -156,6 +260,11 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     throw error;
   }
   const normalizedContact = String(contactNumber || '').trim() || null;
+  if (normalizedRole === 'SUPERVISOR' && !normalizedContact) {
+    const error = new Error('Contact number is required when requesting an OJT Supervisor account');
+    error.status = 400;
+    throw error;
+  }
   if (normalizedContact && !isValidContactNumber(normalizedContact)) {
     const error = new Error(CONTACT_NUMBER_ERROR);
     error.status = 400;
@@ -163,7 +272,7 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
   }
 
   const normalizedCourse = normalizedRole === 'COORDINATOR'
-    ? String(coordinatorCourse || '').trim().toUpperCase()
+    ? normalizeCourseCode(coordinatorCourse)
     : null;
   if (normalizedRole === 'COORDINATOR' && !normalizedCourse) {
     const error = new Error('Assigned course is required for a coordinator');
@@ -175,10 +284,23 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     error.status = 400;
     throw error;
   }
-  if (normalizedRole === 'SUPERVISOR' && !companyId) {
-    const error = new Error('Assigned company is required for a supervisor');
-    error.status = 400;
-    throw error;
+
+  let targetCompany = null;
+  if (normalizedRole === 'SUPERVISOR') {
+    if (!companyId) {
+      const error = new Error('Assigned company is required for a supervisor');
+      error.status = 400;
+      throw error;
+    }
+    targetCompany = await prisma.company.findUnique({
+      where: { id: companyId },
+      select: { id: true, name: true, isArchived: true }
+    });
+    if (!targetCompany || targetCompany.isArchived) {
+      const error = new Error('Selected partner company was not found or is archived');
+      error.status = 400;
+      throw error;
+    }
   }
 
   const existing = await prisma.user.findUnique({
@@ -186,10 +308,17 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
     include: { student: true }
   });
   if (existing && !existing.isArchived) {
+    const existingApprovalMap = existing.role === 'SUPERVISOR' ? await getSupervisorApprovalMap([existing.id]) : new Map();
+    const existingMeta = existingApprovalMap.get(existing.id);
+    if (existingMeta?.status === 'PENDING') {
+      const error = new Error('A pending OJT Supervisor account request with this email address already exists.');
+      error.status = 400;
+      throw error;
+    }
     const error = new Error(
       existing.role === 'STUDENT'
         ? 'A student account with this email already exists'
-        : 'An account with this email already exists'
+        : 'An account or request with this email address already exists'
     );
     error.status = 400;
     throw error;
@@ -217,11 +346,15 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
   // exempt and is verified by its first successful Microsoft sign-in.
   const microsoftVerification = await verifySchoolAccountForCreation(normalizedEmail, normalizedRole);
 
+  // Requirement 5B & 5D: Supervisor accounts start as Pending Approval (isActive: false)
+  // and cannot log in until an Admin approves the request.
+  const startsActive = normalizedRole !== 'SUPERVISOR';
+
   const accountData = {
     email: normalizedEmail,
     password: null,
     role: normalizedRole,
-    isActive: true,
+    isActive: startsActive,
     isArchived: false,
     archivedAt: null,
     firstName: normalizedFirstName,
@@ -244,18 +377,219 @@ export const createStaffAccount = async ({ email, firstName, lastName, role, coo
       });
 
   const fullName = `${normalizedFirstName} ${normalizedLastName}`.trim();
-  if (normalizedRole === 'SUPERVISOR' && companyId) {
+
+  let approvalStatus = startsActive ? 'APPROVED' : 'PENDING';
+  let approvalMetadata = null;
+
+  if (normalizedRole === 'SUPERVISOR') {
+    const nowIso = new Date().toISOString();
+    approvalMetadata = {
+      status: 'PENDING',
+      supervisorId: user.id,
+      supervisorEmail: normalizedEmail,
+      supervisorName: fullName,
+      contactNumber: normalizedContact,
+      companyId: targetCompany?.id || companyId,
+      companyName: targetCompany?.name || '',
+      requestedById: requesterId || null,
+      requestedByEmail: requesterEmail || null,
+      coordinatorCourse: requesterCourse ? normalizeCourseCode(requesterCourse) : null,
+      requestedAt: nowIso,
+      reviewedById: null,
+      reviewedByEmail: null,
+      reviewedAt: null,
+      rejectionReason: null,
+      history: [
+        {
+          action: 'SUBMITTED',
+          status: 'PENDING',
+          actorId: requesterId || null,
+          actorEmail: requesterEmail || null,
+          actorRole: requesterRole || 'COORDINATOR',
+          timestamp: nowIso
+        }
+      ]
+    };
+
+    await recordAudit({
+      userId: requesterId || user.id,
+      userEmail: requesterEmail || normalizedEmail,
+      userRole: requesterRole || 'COORDINATOR',
+      action: 'CREATE',
+      entity: SUPERVISOR_APPROVAL_ENTITY,
+      entityId: user.id,
+      description: `OJT Supervisor account request submitted for ${fullName} (${targetCompany?.name || 'Partner Company'}) — Pending Approval`,
+      metadata: approvalMetadata
+    });
+
+    // Notify all active ADMIN accounts about the pending supervisor account request
+    try {
+      const admins = await prisma.user.findMany({
+        where: { role: 'ADMIN', isActive: true, isArchived: false },
+        select: { id: true }
+      });
+      if (admins.length > 0) {
+        await prisma.notification.createMany({
+          data: admins.map((admin) => ({
+            userId: admin.id,
+            title: 'Pending OJT Supervisor Account Request',
+            message: `OJT Coordinator (${requesterEmail || 'Coordinator'}) requested a Supervisor account for ${fullName} at ${targetCompany?.name || 'Partner Company'}. Please review and approve or reject.`,
+            type: 'SUPERVISOR_APPROVAL_PENDING'
+          }))
+        });
+      }
+    } catch (notifErr) {
+      console.warn('[accounts] Failed to notify admins of supervisor request:', notifErr.message);
+    }
+  }
+
+  return {
+    user: {
+      ...user,
+      approvalStatus,
+      approvalMetadata
+    },
+    fullName,
+    contactNumber: normalizedContact,
+    microsoftVerification
+  };
+};
+
+export const reviewSupervisorAccountRequest = async (
+  userId,
+  { action, rejectionReason } = {},
+  reviewer = {}
+) => {
+  if (!reviewer || reviewer.role !== 'ADMIN') {
+    const error = new Error('Only authorized Administrator accounts can approve or reject OJT Supervisor requests.');
+    error.status = 403;
+    throw error;
+  }
+
+  const decision = String(action || '').trim().toUpperCase();
+  if (decision !== 'APPROVE' && decision !== 'REJECT') {
+    const error = new Error('Review action must be APPROVE or REJECT.');
+    error.status = 400;
+    throw error;
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { supervisorCompany: { select: { id: true, name: true } } }
+  });
+  if (!existing || existing.isArchived) {
+    const error = new Error('Supervisor account request not found.');
+    error.status = 404;
+    throw error;
+  }
+  if (existing.role !== 'SUPERVISOR') {
+    const error = new Error('Only OJT Supervisor account requests can be reviewed here.');
+    error.status = 400;
+    throw error;
+  }
+
+  const approvalMap = await getSupervisorApprovalMap([userId]);
+  const prevMeta = approvalMap.get(userId) || {};
+  const nowIso = new Date().toISOString();
+  const isApproved = decision === 'APPROVE';
+  const nextStatus = isApproved ? 'APPROVED' : 'REJECTED';
+  const cleanReason = isApproved ? null : (String(rejectionReason || '').trim() || 'Request rejected by Administrator');
+  const fullName = [existing.firstName, existing.lastName].filter(Boolean).join(' ').trim() || existing.email;
+  const companyName = existing.supervisorCompany?.name || prevMeta.companyName || 'Partner Company';
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { isActive: isApproved },
+    select: staffSelect
+  });
+  invalidateUserAuthCache(userId);
+
+  if (isApproved && existing.supervisorCompanyId) {
     await prisma.student.updateMany({
-      where: { companyId },
+      where: { companyId: existing.supervisorCompanyId },
       data: {
-        supervisorEmail: normalizedEmail,
+        supervisorEmail: existing.email,
         supervisorName: fullName,
-        ...(normalizedContact ? { supervisorContact: normalizedContact } : {})
+        ...(existing.contactNumber ? { supervisorContact: existing.contactNumber } : {})
       }
     });
   }
 
-  return { user, fullName, contactNumber: normalizedContact, microsoftVerification };
+  const prevHistory = Array.isArray(prevMeta.history) ? prevMeta.history : [];
+  const nextMeta = {
+    ...prevMeta,
+    status: nextStatus,
+    supervisorId: existing.id,
+    supervisorEmail: existing.email,
+    supervisorName: fullName,
+    contactNumber: existing.contactNumber || prevMeta.contactNumber || null,
+    companyId: existing.supervisorCompanyId || prevMeta.companyId || null,
+    companyName,
+    reviewedById: reviewer.userId || null,
+    reviewedByEmail: reviewer.email || null,
+    reviewedAt: nowIso,
+    rejectionReason: cleanReason,
+    history: [
+      ...prevHistory,
+      {
+        action: isApproved ? 'APPROVED' : 'REJECTED',
+        status: nextStatus,
+        actorId: reviewer.userId || null,
+        actorEmail: reviewer.email || null,
+        actorRole: 'ADMIN',
+        rejectionReason: cleanReason,
+        timestamp: nowIso
+      }
+    ]
+  };
+
+  await recordAudit({
+    userId: reviewer.userId || null,
+    userEmail: reviewer.email || null,
+    userRole: 'ADMIN',
+    action: isApproved ? 'APPROVE' : 'REJECT',
+    entity: SUPERVISOR_APPROVAL_ENTITY,
+    entityId: existing.id,
+    description: isApproved
+      ? `Approved OJT Supervisor account for ${fullName} (${companyName})`
+      : `Rejected OJT Supervisor account for ${fullName} (${companyName}): ${cleanReason}`,
+    metadata: nextMeta
+  });
+
+  // Notify the requesting OJT Coordinator (or active coordinators if requestedById is unavailable)
+  try {
+    const recipientIds = [];
+    if (prevMeta.requestedById) {
+      recipientIds.push(prevMeta.requestedById);
+    } else {
+      const coordinators = await prisma.user.findMany({
+        where: { role: 'COORDINATOR', isActive: true, isArchived: false },
+        select: { id: true }
+      });
+      recipientIds.push(...coordinators.map((c) => c.id));
+    }
+
+    if (recipientIds.length > 0) {
+      await prisma.notification.createMany({
+        data: [...new Set(recipientIds)].map((coordId) => ({
+          userId: coordId,
+          title: isApproved ? 'OJT Supervisor Account Approved' : 'OJT Supervisor Account Rejected',
+          message: isApproved
+            ? `Your OJT Supervisor account request for ${fullName} (${companyName}) was APPROVED by Admin (${reviewer.email || 'Administrator'}). The supervisor can now sign in.`
+            : `Your OJT Supervisor account request for ${fullName} (${companyName}) was REJECTED by Admin (${reviewer.email || 'Administrator'}). Reason: ${cleanReason}`,
+          type: isApproved ? 'SUPERVISOR_APPROVED' : 'SUPERVISOR_REJECTED'
+        }))
+      });
+    }
+  } catch (notifErr) {
+    console.warn('[accounts] Failed to notify coordinator of supervisor review:', notifErr.message);
+  }
+
+  return {
+    ...updatedUser,
+    approvalStatus: nextStatus,
+    approvalMetadata: nextMeta
+  };
 };
 
 export const updateStaffAccount = async (userId, updateData, { requesterIsSuperAdmin = false, requesterId = null, requesterEmail = null } = {}) => {
@@ -406,7 +740,7 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
     data.lastName = cleanLast;
   }
   if (updateData.coordinatorCourse !== undefined) {
-    data.coordinatorCourse = String(updateData.coordinatorCourse || '').trim().toUpperCase() || null;
+    data.coordinatorCourse = normalizeCourseCode(updateData.coordinatorCourse) || null;
     if (data.coordinatorCourse && !SUPPORTED_PROGRAMS.includes(data.coordinatorCourse)) {
       const error = new Error(`Course must be one of: ${SUPPORTED_PROGRAMS.join(', ')}`);
       error.status = 400;
@@ -432,6 +766,7 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
   if (nextRole !== 'SUPERVISOR') data.supervisorCompanyId = null;
 
   const user = await prisma.user.update({ where: { id: userId }, data, select: staffSelect });
+  invalidateUserAuthCache(userId);
 
   const nextEmail = data.email || existing.email;
   if (nextEmail !== existing.email) {
@@ -460,7 +795,7 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
   return user;
 };
 
-export const batchCreateStaffAccounts = async (accounts) => {
+export const batchCreateStaffAccounts = async (accounts, requesterContext = {}) => {
   const results = { created: 0, failed: 0, errors: [] };
 
   for (const account of accounts) {
@@ -492,7 +827,8 @@ export const batchCreateStaffAccounts = async (accounts) => {
         role: account.role,
         coordinatorCourse: account.coordinatorCourse,
         companyId,
-        contactNumber: account.contactNumber
+        contactNumber: account.contactNumber,
+        ...requesterContext
       });
 
       results.created += 1;
@@ -592,6 +928,7 @@ export const deleteStaffAccount = async (userId, { requesterIsSuperAdmin = false
     where: { id: userId },
     data: { isArchived: true, isActive: false, archivedAt: new Date() }
   });
+  invalidateUserAuthCache(userId);
   return { success: true, archived: true };
 };
 

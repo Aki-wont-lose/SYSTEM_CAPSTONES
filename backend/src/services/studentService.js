@@ -1,5 +1,5 @@
 // src/services/studentService.js
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 import {
   isValidStudentEmail,
   isValidStudentId,
@@ -8,6 +8,7 @@ import {
   isValidContactNumber,
   isValidSection,
   canonicalSection,
+  normalizeCourseCode,
   deriveYearLevel,
   OJT_YEAR_LEVEL,
   ELMS_EMAIL_ERROR,
@@ -18,8 +19,8 @@ import {
 } from '../utils/studentValidation.js';
 import { studentScopeWhere } from './accessScope.js';
 import { verifySchoolAccountForCreation } from './graphDirectoryService.js';
+import { assertCourseAcceptedForInternship } from '../modules/ojtHours/service.js';
 
-const prisma = new PrismaClient();
 
 const badRequest = (message) => {
   const err = new Error(message);
@@ -42,7 +43,7 @@ export const coordinatorCourseFor = (actor) => {
   if (!actor.coordinatorCourse) {
     throw forbidden('Your account has no assigned academic program. Ask the administrator to assign one before creating students.');
   }
-  return actor.coordinatorCourse;
+  return normalizeCourseCode(actor.coordinatorCourse);
 };
 
 // Server-side duplicate gate. The database still has the final say (unique email
@@ -92,12 +93,16 @@ const DEFAULT_WORKING_HOURS = '8:00 AM - 5:00 PM';
 
 const hydrateStudentPlacement = (student) => {
   if (!student) return student;
-  const normalizedSection = canonicalSection(student.section, student.course) || student.section;
+  const normalizedCourse = normalizeCourseCode(student.course) || student.course;
+  const normalizedSection = canonicalSection(student.section, normalizedCourse) || student.section;
   if (!student.company) {
-    return normalizedSection !== student.section ? { ...student, section: normalizedSection } : student;
+    return normalizedSection !== student.section || normalizedCourse !== student.course
+      ? { ...student, course: normalizedCourse, section: normalizedSection }
+      : student;
   }
   return {
     ...student,
+    course: normalizedCourse,
     section: normalizedSection,
     supervisorName: student.supervisorName || student.company.contactPerson || null,
     supervisorContact: student.supervisorContact || student.company.contactNumber || null,
@@ -115,15 +120,15 @@ const validateCompanyForStudent = async (companyId, studentCourse, isNewAssignme
   if (!company || company.isArchived || company.status === 'INACTIVE') {
     throw badRequest('Selected partner company is inactive or unavailable.');
   }
-  const normalizedCourse = String(studentCourse || '').trim().toUpperCase();
+  const normalizedCourse = normalizeCourseCode(studentCourse);
+  const companyPrograms = Array.isArray(company.programs) ? company.programs.map(normalizeCourseCode) : [];
   if (
     normalizedCourse &&
-    Array.isArray(company.programs) &&
-    company.programs.length > 0 &&
-    !company.programs.includes(normalizedCourse)
+    companyPrograms.length > 0 &&
+    !companyPrograms.includes(normalizedCourse)
   ) {
     throw badRequest(
-      `${company.name} only accepts ${company.programs.join(', ')} interns (student is in ${normalizedCourse}).`
+      `${company.name} only accepts ${companyPrograms.join(', ')} interns (student is in ${normalizedCourse}).`
     );
   }
   if (isNewAssignment && company.availableSlots != null && company.availableSlots <= 0) {
@@ -135,7 +140,7 @@ const validateCompanyForStudent = async (companyId, studentCourse, isNewAssignme
 const resolveCompanyPlacementDefaults = async (companyId, existing = {}) => {
   const [companySupervisor, companyRow] = await Promise.all([
     prisma.user.findFirst({
-      where: { role: 'SUPERVISOR', supervisorCompanyId: companyId, isArchived: false },
+      where: { role: 'SUPERVISOR', supervisorCompanyId: companyId, isArchived: false, isActive: true },
       select: { email: true, firstName: true, lastName: true, contactNumber: true }
     }),
     prisma.company.findUnique({
@@ -178,7 +183,8 @@ export const getAllStudents = async (filters = {}) => {
     where.ojt_status = clean.ojt_status;
   }
   if (clean.course) {
-    where.course = clean.course;
+    const normalizedFilterCourse = normalizeCourseCode(clean.course);
+    where.course = normalizedFilterCourse === 'ACT' ? { in: ['ACT', 'BSACT', 'BSAC'] } : normalizedFilterCourse;
   }
   if (clean.companyId) {
     where.companyId = clean.companyId;
@@ -344,13 +350,15 @@ export const createStudent = async (studentData, userData, actor = null) => {
   // A coordinator may only create students in their own program. A forged course
   // in the request body is rejected outright, never silently honoured.
   const lockedCourse = coordinatorCourseFor(actor);
-  if (lockedCourse && studentData.course && String(studentData.course).toUpperCase() !== lockedCourse) {
+  const requestedCourse = normalizeCourseCode(studentData.course);
+  if (lockedCourse && requestedCourse && requestedCourse !== lockedCourse) {
     throw forbidden(`You can only create students for your assigned program (${lockedCourse}).`);
   }
-  const course = lockedCourse || studentData.course;
+  const course = lockedCourse || requestedCourse;
   if (!course) {
     throw badRequest('Academic program is required.');
   }
+  await assertCourseAcceptedForInternship(course);
 
   const normalizedSection = canonicalSection(studentData.section, course);
   if (!isValidSection(normalizedSection, course)) {
@@ -506,15 +514,23 @@ export const updateStudent = async (studentId, updateData, actor = null) => {
     }
     if (sanitized.email !== undefined) sanitized.email = normalizeEmail(sanitized.email);
 
+    if (sanitized.course !== undefined) {
+      sanitized.course = normalizeCourseCode(sanitized.course);
+    }
+
     // Coordinators cannot move a student out of their program, and cannot edit
     // the institution-wide hour requirement.
     const lockedCourse = coordinatorCourseFor(actor);
     if (lockedCourse) {
-      if (sanitized.course !== undefined && String(sanitized.course).toUpperCase() !== lockedCourse) {
+      if (sanitized.course !== undefined && sanitized.course !== lockedCourse) {
         throw forbidden(`You can only manage students in your assigned program (${lockedCourse}).`);
       }
       sanitized.course = lockedCourse;
       delete sanitized.requiredHours;
+    }
+
+    if (sanitized.course !== undefined) {
+      await assertCourseAcceptedForInternship(sanitized.course);
     }
 
     // Validate email/section only when they actually change, so legacy records
@@ -756,7 +772,8 @@ export const getStudentStats = async (user = null) => {
 
   const courses = {};
   for (const row of byCourse) {
-    courses[row.course || 'Unassigned'] = row._count._all;
+    const key = normalizeCourseCode(row.course) || 'Unassigned';
+    courses[key] = (courses[key] || 0) + row._count._all;
   }
 
   return {

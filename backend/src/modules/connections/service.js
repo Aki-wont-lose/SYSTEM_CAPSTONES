@@ -1,6 +1,5 @@
 // modules/connections/service.js — friend requests that gate who can start a chat
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma from '../../utils/prisma.js';
 
 const BLOCKED_EMAILS = [
   'Cabatu.334507@gmail.com',

@@ -13,7 +13,13 @@
 export const INSTITUTIONAL_DOMAINS = ['stamaria.edu.ph', 'stamaria.sti.edu.ph'];
 
 // Supported academic programs. Official sections are generated from these.
-export const SUPPORTED_PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'BSACT', 'BSHM', 'BSTM', 'BSAIS'];
+export const SUPPORTED_PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'ACT', 'BSHM', 'BSTM', 'BSAIS'];
+
+export const normalizeCourseCode = (value) => {
+  const upper = String(value || '').trim().toUpperCase();
+  if (upper === 'BSACT' || upper === 'BSAC') return 'ACT';
+  return upper;
+};
 
 // Official 6-digit STI student ID (e.g., 352467)
 const STUDENT_ID_RE = /^\d{6}$/;
@@ -95,14 +101,18 @@ const SECTION_RE = /^([A-Z]+)\s+([1-4])-(10[1-3])$/;
 const LEGACY_SECTION_RE = /^(?:([A-Z]+)[\s\-]+)?([1-4])-(10[1-3])$/;
 
 const normalizeSection = (section) =>
-  String(section || '').trim().replace(/\s+/g, ' ').toUpperCase();
+  String(section || '')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toUpperCase()
+    .replace(/^(?:BSACT|BSAC)\b/, 'ACT');
 
 export const canonicalSection = (section, program) => {
   const norm = normalizeSection(section);
   if (!norm) return '';
   if (SECTION_RE.test(norm)) return norm;
   const legacyMatch = norm.match(LEGACY_SECTION_RE);
-  const prog = String(program || legacyMatch?.[1] || '').trim().toUpperCase();
+  const prog = normalizeCourseCode(program || legacyMatch?.[1] || '');
   if (legacyMatch && SUPPORTED_PROGRAMS.includes(prog)) {
     return `${prog} ${legacyMatch[2]}-${legacyMatch[3]}`;
   }
@@ -112,8 +122,9 @@ export const canonicalSection = (section, program) => {
 export const isValidSection = (section, program) => {
   const candidate = canonicalSection(section, program);
   const match = normalizeSection(candidate).match(SECTION_RE);
+  const normProg = normalizeCourseCode(program);
   if (!match || !SUPPORTED_PROGRAMS.includes(match[1])) return false;
-  if (program && String(program).trim().toUpperCase() !== match[1]) return false;
+  if (normProg && normProg !== match[1]) return false;
   return true;
 };
 

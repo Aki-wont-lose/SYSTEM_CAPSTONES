@@ -1,6 +1,5 @@
 // modules/auditLogs/service.js - append-only audit trail
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma.js';
 
 const AUDIT_ACTIONS = [
   'CREATE',

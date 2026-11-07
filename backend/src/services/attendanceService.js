@@ -1,9 +1,8 @@
 // src/services/attendanceService.js
-import { PrismaClient } from '@prisma/client';
+import prisma from '../utils/prisma.js';
 import { recordAudit } from './auditLogService.js';
 import { scopeWhere } from './accessScope.js';
 
-const prisma = new PrismaClient();
 
 // Returns a Date representing midnight UTC of the given date's LOCAL
 // calendar day (Y/M/D from the server's local timezone). Passing a plain
