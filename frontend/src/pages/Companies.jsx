@@ -502,22 +502,17 @@ const Companies = () => {
             )}
 
             <form onSubmit={handleSubmit} noValidate className="space-y-4">
-              {/* Section 3A: Company Name */}
+              {/* Company Name */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label htmlFor="company-name-input" className="block text-xs font-bold text-sti-gray-dark dark:text-slate-200">
-                    Company Name <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-[11px] text-sti-gray">
-                    {String(form.name || '').trim().length}/100 chars (min 3)
-                  </span>
-                </div>
+                <label htmlFor="company-name-input" className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
+                  Company Name <span className="text-red-500">*</span>
+                </label>
                 <input
                   id="company-name-input"
                   required
                   minLength={3}
                   maxLength={100}
-                  placeholder="Enter official registered company name (3–100 characters)"
+                  placeholder="e.g., Sample Tech Solutions Inc."
                   value={form.name}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -526,9 +521,9 @@ const Companies = () => {
                     if (!trimmed) {
                       setFormErrors((prev) => ({ ...prev, name: 'Company name is required.' }));
                     } else if (trimmed.length < 3) {
-                      setFormErrors((prev) => ({ ...prev, name: 'Company name must be at least 3 characters long.' }));
+                      setFormErrors((prev) => ({ ...prev, name: 'Minimum of 3 characters required.' }));
                     } else if (trimmed.length > 100) {
-                      setFormErrors((prev) => ({ ...prev, name: 'Company name cannot exceed 100 characters.' }));
+                      setFormErrors((prev) => ({ ...prev, name: 'Maximum of 100 characters allowed.' }));
                     } else {
                       setFormErrors((prev) => ({ ...prev, name: undefined }));
                     }
@@ -536,56 +531,35 @@ const Companies = () => {
                   onBlur={() => setForm((prev) => ({ ...prev, name: String(prev.name || '').trim().replace(/\s+/g, ' ') }))}
                   className={`input-field text-sm py-2.5 ${formErrors.name ? 'border-red-400 focus:ring-red-400' : ''}`}
                 />
-                {formErrors.name && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">{formErrors.name}</p>
+                {formErrors.name ? (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">{formErrors.name}</p>
+                ) : (
+                  <p className="text-[11px] text-sti-gray mt-1">Must be 3 to 100 characters.</p>
                 )}
               </div>
 
-              {/* Section 3B: Industrial Type */}
+              {/* Industrial Type */}
               <div>
-                <label htmlFor="company-industry-input" className="block text-xs font-bold text-sti-gray-dark dark:text-slate-200 mb-1.5">
+                <label htmlFor="company-industry-input" className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
                   Industrial Type <span className="text-red-500">*</span>
                 </label>
-                <div className="mb-2 p-2.5 rounded-xl bg-sti-blue-50/70 dark:bg-slate-700/60 border border-sti-blue/15 text-[11px] text-sti-gray-dark dark:text-slate-300 space-y-1.5">
-                  <div className="flex items-start gap-1.5">
-                    <Info className="w-3.5 h-3.5 text-sti-blue shrink-0 mt-0.5" />
-                    <span>
-                      <strong>Input Guide:</strong> Enter the company&apos;s primary industry or sector using <strong>letters and spaces only</strong> (numbers and special symbols are not allowed).
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1 pt-0.5">
-                    <span className="text-[10px] font-semibold text-sti-gray mr-1">Quick examples:</span>
-                    {INDUSTRY_GUIDE_EXAMPLES.map((example) => (
-                      <button
-                        type="button"
-                        key={example}
-                        onClick={() => {
-                          setForm((prev) => ({ ...prev, industryType: example }));
-                          setFormErrors((prev) => ({ ...prev, industryType: undefined }));
-                        }}
-                        className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white dark:bg-slate-800 text-sti-blue border border-sti-blue/20 hover:bg-sti-blue hover:text-white transition-colors"
-                      >
-                        {example}
-                      </button>
-                    ))}
-                  </div>
-                </div>
                 <input
                   id="company-industry-input"
+                  list="industry-type-suggestions"
                   required
-                  placeholder="e.g., Information Technology, Hospitality and Tourism"
+                  placeholder="e.g., Information Technology"
                   value={form.industryType}
                   onChange={(e) => {
                     const rawVal = e.target.value;
                     if (/\d/.test(rawVal)) {
                       setFormErrors((prev) => ({
                         ...prev,
-                        industryType: 'Numerical characters (0–9) are not allowed in Industrial Type.'
+                        industryType: 'Numbers are not allowed. Use letters and spaces only.'
                       }));
                     } else if (rawVal.trim() && !/^[A-Za-z\s]+$/.test(rawVal)) {
                       setFormErrors((prev) => ({
                         ...prev,
-                        industryType: 'Industrial Type may only contain letters and spaces.'
+                        industryType: 'Use letters and spaces only.'
                       }));
                     } else {
                       setFormErrors((prev) => ({ ...prev, industryType: undefined }));
@@ -595,30 +569,35 @@ const Companies = () => {
                   onBlur={() => setForm((prev) => ({ ...prev, industryType: String(prev.industryType || '').trim().replace(/\s+/g, ' ') }))}
                   className={`input-field text-sm py-2.5 ${formErrors.industryType ? 'border-red-400 focus:ring-red-400' : ''}`}
                 />
-                {formErrors.industryType && (
-                  <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">{formErrors.industryType}</p>
+                <datalist id="industry-type-suggestions">
+                  {INDUSTRY_GUIDE_EXAMPLES.map((example) => (
+                    <option key={example} value={example} />
+                  ))}
+                </datalist>
+                {formErrors.industryType ? (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">{formErrors.industryType}</p>
+                ) : (
+                  <p className="text-[11px] text-sti-gray mt-1">
+                    Letters and spaces only (e.g., Information Technology, Hospitality and Tourism).
+                  </p>
                 )}
               </div>
 
-              {/* Section 4: Cascading Philippine Address Dropdowns */}
-              <div className="p-3.5 rounded-xl bg-sti-gray-light/60 dark:bg-slate-900/50 border border-black/5 dark:border-white/10 space-y-3">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-sti-gray-dark dark:text-slate-200">
-                    Company Address (Philippine Administrative Selection) <span className="text-red-500">*</span>
-                  </label>
-                </div>
+              {/* Address (Cascading Dropdowns) */}
+              <div className="space-y-2.5">
+                <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200">
+                  Address <span className="text-red-500">*</span>
+                </label>
                 {editing && editing.address && !form.region && (
                   <p className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800">
-                    Current saved address: <strong>{editing.address}</strong> — Please select the Region, Province, City/Municipality, and Barangay below.
+                    Saved address: <strong>{editing.address}</strong> — Select Region, Province, City/Municipality, and Barangay below to update.
                   </p>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div>
-                    <label className="block text-[11px] font-semibold text-sti-gray-dark dark:text-slate-300 mb-1">
-                      1. Region <span className="text-red-500">*</span>
-                    </label>
                     <select
                       required
+                      aria-label="Region"
                       value={form.region}
                       onChange={(e) => {
                         setForm({
@@ -630,22 +609,20 @@ const Companies = () => {
                         });
                         setFormErrors((prev) => ({ ...prev, region: undefined, province: undefined, city: undefined, barangay: undefined, address: undefined }));
                       }}
-                      className={`input-field text-xs py-2.5 ${formErrors.region ? 'border-red-400' : ''}`}
+                      className={`input-field text-sm py-2.5 ${formErrors.region ? 'border-red-400' : ''}`}
                     >
                       <option value="">Select Region</option>
                       {regionsList.map((reg) => (
                         <option key={reg} value={reg}>{reg}</option>
                       ))}
                     </select>
-                    {formErrors.region && <p className="text-[11px] text-red-600 mt-1">{formErrors.region}</p>}
+                    {formErrors.region && <p className="text-[11px] text-red-600 mt-0.5">{formErrors.region}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-sti-gray-dark dark:text-slate-300 mb-1">
-                      2. Province <span className="text-red-500">*</span>
-                    </label>
                     <select
                       required
+                      aria-label="Province"
                       disabled={!form.region}
                       value={form.province}
                       onChange={(e) => {
@@ -657,22 +634,20 @@ const Companies = () => {
                         });
                         setFormErrors((prev) => ({ ...prev, province: undefined, city: undefined, barangay: undefined, address: undefined }));
                       }}
-                      className={`input-field text-xs py-2.5 disabled:opacity-50 ${formErrors.province ? 'border-red-400' : ''}`}
+                      className={`input-field text-sm py-2.5 disabled:opacity-50 ${formErrors.province ? 'border-red-400' : ''}`}
                     >
                       <option value="">Select Province</option>
                       {provincesList.map((prov) => (
                         <option key={prov} value={prov}>{prov}</option>
                       ))}
                     </select>
-                    {formErrors.province && <p className="text-[11px] text-red-600 mt-1">{formErrors.province}</p>}
+                    {formErrors.province && <p className="text-[11px] text-red-600 mt-0.5">{formErrors.province}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-sti-gray-dark dark:text-slate-300 mb-1">
-                      3. City/Municipality <span className="text-red-500">*</span>
-                    </label>
                     <select
                       required
+                      aria-label="City/Municipality"
                       disabled={!form.province}
                       value={form.city}
                       onChange={(e) => {
@@ -683,22 +658,20 @@ const Companies = () => {
                         });
                         setFormErrors((prev) => ({ ...prev, city: undefined, barangay: undefined, address: undefined }));
                       }}
-                      className={`input-field text-xs py-2.5 disabled:opacity-50 ${formErrors.city ? 'border-red-400' : ''}`}
+                      className={`input-field text-sm py-2.5 disabled:opacity-50 ${formErrors.city ? 'border-red-400' : ''}`}
                     >
                       <option value="">Select City/Municipality</option>
                       {citiesList.map((ct) => (
                         <option key={ct} value={ct}>{ct}</option>
                       ))}
                     </select>
-                    {formErrors.city && <p className="text-[11px] text-red-600 mt-1">{formErrors.city}</p>}
+                    {formErrors.city && <p className="text-[11px] text-red-600 mt-0.5">{formErrors.city}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-sti-gray-dark dark:text-slate-300 mb-1">
-                      4. Barangay <span className="text-red-500">*</span>
-                    </label>
                     <select
                       required
+                      aria-label="Barangay"
                       disabled={!form.city}
                       value={form.barangay}
                       onChange={(e) => {
@@ -708,47 +681,47 @@ const Companies = () => {
                         });
                         setFormErrors((prev) => ({ ...prev, barangay: undefined, address: undefined }));
                       }}
-                      className={`input-field text-xs py-2.5 disabled:opacity-50 ${formErrors.barangay ? 'border-red-400' : ''}`}
+                      className={`input-field text-sm py-2.5 disabled:opacity-50 ${formErrors.barangay ? 'border-red-400' : ''}`}
                     >
                       <option value="">Select Barangay</option>
                       {barangaysList.map((brgy) => (
                         <option key={brgy} value={brgy}>{brgy}</option>
                       ))}
                     </select>
-                    {formErrors.barangay && <p className="text-[11px] text-red-600 mt-1">{formErrors.barangay}</p>}
+                    {formErrors.barangay && <p className="text-[11px] text-red-600 mt-0.5">{formErrors.barangay}</p>}
                   </div>
                 </div>
                 {previewAddress && (
-                  <div className="pt-1 flex items-start gap-1.5 text-xs text-sti-blue dark:text-sky-300 font-medium">
-                    <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                    <span>Complete Address: <strong>{previewAddress}</strong></span>
-                  </div>
+                  <p className="text-xs text-sti-gray flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-sti-blue shrink-0" />
+                    <span>{previewAddress}</span>
+                  </p>
                 )}
                 {formErrors.address && <p className="text-xs text-red-600">{formErrors.address}</p>}
               </div>
 
               {/* Contact Person, Phone, Email, Slots */}
-              <div>
-                <label className="block text-xs font-bold text-sti-gray-dark dark:text-slate-200 mb-1.5">
-                  Contact Person (OJT Supervisor Name) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  required
-                  placeholder="e.g., Juan Dela Cruz"
-                  value={form.contactPerson}
-                  onChange={(e) => {
-                    setForm({ ...form, contactPerson: e.target.value.replace(/\d+/g, '') });
-                    setFormErrors((prev) => ({ ...prev, contactPerson: undefined }));
-                  }}
-                  onBlur={() => setForm((prev) => ({ ...prev, contactPerson: String(prev.contactPerson || '').trim().replace(/\s+/g, ' ') }))}
-                  className={`input-field text-sm py-2.5 ${formErrors.contactPerson ? 'border-red-400' : ''}`}
-                />
-                {formErrors.contactPerson && <p className="text-xs text-red-600 mt-1">{formErrors.contactPerson}</p>}
-              </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-sti-gray-dark dark:text-slate-200 mb-1.5">
+                  <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
+                    Contact Person <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    required
+                    placeholder="e.g., Juan Dela Cruz"
+                    value={form.contactPerson}
+                    onChange={(e) => {
+                      setForm({ ...form, contactPerson: e.target.value.replace(/\d+/g, '') });
+                      setFormErrors((prev) => ({ ...prev, contactPerson: undefined }));
+                    }}
+                    onBlur={() => setForm((prev) => ({ ...prev, contactPerson: String(prev.contactPerson || '').trim().replace(/\s+/g, ' ') }))}
+                    className={`input-field text-sm py-2.5 ${formErrors.contactPerson ? 'border-red-400' : ''}`}
+                  />
+                  {formErrors.contactPerson && <p className="text-xs text-red-600 mt-1">{formErrors.contactPerson}</p>}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
                     Contact Number <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -766,9 +739,11 @@ const Companies = () => {
                   />
                   {formErrors.contactNumber && <p className="text-xs text-red-600 mt-1">{formErrors.contactNumber}</p>}
                 </div>
+              </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-sti-gray-dark dark:text-slate-200 mb-1.5">
+                  <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
                     Company Email <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -784,20 +759,20 @@ const Companies = () => {
                   />
                   {formErrors.email && <p className="text-xs text-red-600 mt-1">{formErrors.email}</p>}
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-sti-gray-dark dark:text-slate-200 mb-1.5">
-                  Available Internship Slots
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  placeholder="Available slots"
-                  value={form.availableSlots}
-                  onChange={(e) => setForm({ ...form, availableSlots: e.target.value })}
-                  className="input-field text-sm py-2.5"
-                />
+                <div>
+                  <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
+                    Available Slots
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={form.availableSlots}
+                    onChange={(e) => setForm({ ...form, availableSlots: e.target.value })}
+                    className="input-field text-sm py-2.5"
+                  />
+                </div>
               </div>
 
               {/* Section 2: Courses Accepted for Internship */}
