@@ -143,12 +143,12 @@ const Sidebar = ({ role, isOpen, onClose }) => {
         {/* Logo Header */}
         <div className="flex items-center justify-between px-5 h-20 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 bg-[#fced0b] ring-2 ring-white/20 shadow-sm flex items-center justify-center">
-              <img src="/simes-logo.png" alt="SIMES" className="block w-full h-full object-contain scale-105" onError={(e) => { e.target.style.display = 'none'; }} />
+            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-white ring-1 ring-white/20 shadow-sm flex items-center justify-center p-0.5">
+              <img src="/simes-logo.png" alt="SIMES" className="block w-full h-full object-contain" onError={(e) => { e.target.style.display = 'none'; }} />
             </div>
             <div>
               <p className="text-white font-bold text-base leading-tight">SIMES</p>
-              <p className="text-white/40 text-[11px] leading-tight">STI Sta. Maria</p>
+              <p className="text-white/60 text-[11px] leading-tight">STI Sta. Maria</p>
             </div>
           </div>
           <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors">

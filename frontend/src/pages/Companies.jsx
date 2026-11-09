@@ -18,14 +18,35 @@ import {
 } from '../constants/phAddresses';
 
 const ALL_PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'ACT', 'BSHM', 'BSTM', 'BSAIS'];
-const INDUSTRY_GUIDE_EXAMPLES = [
+// Preset choices for the Industrial Type dropdown. Anything not listed here is
+// captured through the "Other" option, which reveals a free-text field.
+const OTHER_INDUSTRY_OPTION = 'Other';
+const INDUSTRY_OPTIONS = [
   'Information Technology',
   'Software Development',
   'Hospitality and Tourism',
   'Banking and Finance',
   'Business Process Outsourcing',
-  'Telecommunications'
+  'Telecommunications',
+  'Healthcare',
+  'Education',
+  'Retail and Trade',
+  'Manufacturing',
+  'Logistics and Transportation',
+  'Construction and Engineering',
+  'Government'
 ];
+
+// Industry values that are not one of the presets (legacy free-text rows) are
+// shown through "Other" with their saved text pre-filled.
+const splitIndustryValue = (savedValue) => {
+  const saved = String(savedValue || '').trim();
+  if (!saved) return { industryType: '', industryOther: '' };
+  const isPreset = INDUSTRY_OPTIONS.some((option) => option.toLowerCase() === saved.toLowerCase());
+  return isPreset
+    ? { industryType: saved, industryOther: '' }
+    : { industryType: OTHER_INDUSTRY_OPTION, industryOther: saved };
+};
 
 const emptyForm = {
   name: '',
@@ -40,6 +61,7 @@ const emptyForm = {
   contactNumber: '',
   email: '',
   industryType: '',
+  industryOther: '',
   programs: [],
   availableSlots: 0,
   status: 'ACTIVE'
@@ -196,7 +218,7 @@ const Companies = () => {
       contactPerson: company.contactPerson || '',
       contactNumber: company.contactNumber || '',
       email: company.email || '',
-      industryType: company.industryType || '',
+      ...splitIndustryValue(company.industryType),
       availableSlots: company.availableSlots || 0,
       programs: (company.programs || []).map((p) => normalizeCourseCode(p)),
       status: company.status || 'ACTIVE'
@@ -216,13 +238,20 @@ const Companies = () => {
       errors.name = 'Company name cannot exceed 100 characters.';
     }
 
-    const cleanIndustry = String(form.industryType || '').trim().replace(/\s+/g, ' ');
-    if (!cleanIndustry) {
+    const isOtherIndustry = form.industryType === OTHER_INDUSTRY_OPTION;
+    const cleanIndustry = String((isOtherIndustry ? form.industryOther : form.industryType) || '')
+      .trim()
+      .replace(/\s+/g, ' ');
+    if (!form.industryType) {
       errors.industryType = 'Industrial Type is required.';
-    } else if (/\d/.test(cleanIndustry)) {
-      errors.industryType = 'Numerical characters are not allowed in Industrial Type. Use letters and spaces only.';
-    } else if (!/^[A-Za-z]+(?:\s+[A-Za-z]+)*$/.test(cleanIndustry)) {
-      errors.industryType = 'Industrial Type may only contain letters and spaces (e.g., Information Technology).';
+    } else if (isOtherIndustry) {
+      if (!cleanIndustry) {
+        errors.industryOther = 'Please specify the industrial type.';
+      } else if (/\d/.test(cleanIndustry)) {
+        errors.industryOther = 'Numerical characters are not allowed in Industrial Type. Use letters and spaces only.';
+      } else if (!/^[A-Za-z]+(?:\s+[A-Za-z]+)*$/.test(cleanIndustry)) {
+        errors.industryOther = 'Industrial Type may only contain letters and spaces (e.g., Information Technology).';
+      }
     }
 
     if (!form.region) {
@@ -284,7 +313,9 @@ const Companies = () => {
     if (!validateForm()) return;
 
     const cleanName = String(form.name || '').trim().replace(/\s+/g, ' ');
-    const cleanIndustry = String(form.industryType || '').trim().replace(/\s+/g, ' ');
+    const cleanIndustry = String((form.industryType === OTHER_INDUSTRY_OPTION ? form.industryOther : form.industryType) || '')
+      .trim()
+      .replace(/\s+/g, ' ');
     const cleanContactPerson = String(form.contactPerson || '').trim().replace(/\s+/g, ' ');
     const cleanContact = String(form.contactNumber || '').trim().replace(/[\s\-()]/g, '');
     const cleanEmail = String(form.email || '').trim().toLowerCase();
@@ -543,42 +574,68 @@ const Companies = () => {
                 <label htmlFor="company-industry-input" className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
                   Industrial Type <span className="text-red-500">*</span>
                 </label>
-                <input
+                <select
                   id="company-industry-input"
-                  list="industry-type-suggestions"
                   required
-                  placeholder="e.g., Information Technology"
                   value={form.industryType}
                   onChange={(e) => {
-                    const rawVal = e.target.value;
-                    if (/\d/.test(rawVal)) {
-                      setFormErrors((prev) => ({
-                        ...prev,
-                        industryType: 'Numbers are not allowed. Use letters and spaces only.'
-                      }));
-                    } else if (rawVal.trim() && !/^[A-Za-z\s]+$/.test(rawVal)) {
-                      setFormErrors((prev) => ({
-                        ...prev,
-                        industryType: 'Use letters and spaces only.'
-                      }));
-                    } else {
-                      setFormErrors((prev) => ({ ...prev, industryType: undefined }));
-                    }
-                    setForm({ ...form, industryType: rawVal.replace(/\d+/g, '') });
+                    const value = e.target.value;
+                    setForm((prev) => ({
+                      ...prev,
+                      industryType: value,
+                      industryOther: value === OTHER_INDUSTRY_OPTION ? prev.industryOther : ''
+                    }));
+                    setFormErrors((prev) => ({ ...prev, industryType: undefined, industryOther: undefined }));
                   }}
-                  onBlur={() => setForm((prev) => ({ ...prev, industryType: String(prev.industryType || '').trim().replace(/\s+/g, ' ') }))}
                   className={`input-field text-sm py-2.5 ${formErrors.industryType ? 'border-red-400 focus:ring-red-400' : ''}`}
-                />
-                <datalist id="industry-type-suggestions">
-                  {INDUSTRY_GUIDE_EXAMPLES.map((example) => (
-                    <option key={example} value={example} />
+                >
+                  <option value="" disabled>Select industrial type</option>
+                  {INDUSTRY_OPTIONS.map((option) => (
+                    <option key={option} value={option}>{option}</option>
                   ))}
-                </datalist>
+                  <option value={OTHER_INDUSTRY_OPTION}>{OTHER_INDUSTRY_OPTION}</option>
+                </select>
+                {form.industryType === OTHER_INDUSTRY_OPTION && (
+                  <div className="mt-2">
+                    <label htmlFor="company-industry-other" className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
+                      Specify industrial type <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="company-industry-other"
+                      required
+                      autoFocus
+                      placeholder="e.g., Agriculture"
+                      value={form.industryOther}
+                      onChange={(e) => {
+                        const rawVal = e.target.value;
+                        if (/\d/.test(rawVal)) {
+                          setFormErrors((prev) => ({
+                            ...prev,
+                            industryOther: 'Numbers are not allowed. Use letters and spaces only.'
+                          }));
+                        } else if (rawVal.trim() && !/^[A-Za-z\s]+$/.test(rawVal)) {
+                          setFormErrors((prev) => ({
+                            ...prev,
+                            industryOther: 'Use letters and spaces only.'
+                          }));
+                        } else {
+                          setFormErrors((prev) => ({ ...prev, industryOther: undefined }));
+                        }
+                        setForm((prev) => ({ ...prev, industryOther: rawVal.replace(/\d+/g, '') }));
+                      }}
+                      onBlur={() => setForm((prev) => ({ ...prev, industryOther: String(prev.industryOther || '').trim().replace(/\s+/g, ' ') }))}
+                      className={`input-field text-sm py-2.5 ${formErrors.industryOther ? 'border-red-400 focus:ring-red-400' : ''}`}
+                    />
+                    {formErrors.industryOther && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-1">{formErrors.industryOther}</p>
+                    )}
+                  </div>
+                )}
                 {formErrors.industryType ? (
                   <p className="text-xs text-red-600 dark:text-red-400 mt-1">{formErrors.industryType}</p>
                 ) : (
                   <p className="text-[11px] text-sti-gray mt-1">
-                    Letters and spaces only (e.g., Information Technology, Hospitality and Tourism).
+                    Choose the closest match, or select Other to type your own.
                   </p>
                 )}
               </div>

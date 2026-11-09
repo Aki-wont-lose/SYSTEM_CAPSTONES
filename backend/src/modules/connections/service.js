@@ -3,9 +3,7 @@ import prisma from '../../utils/prisma.js';
 
 const BLOCKED_EMAILS = [
   'Cabatu.334507@gmail.com',
-  'mccruz1230@gmail.com',
-  'CABATU.334507@GMAIL.COM',
-  'MCCRUZ1230@GMAIL.COM'
+  'CABATU.334507@GMAIL.COM'
 ];
 
 const USER_SELECT = {

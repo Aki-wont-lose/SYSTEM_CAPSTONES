@@ -385,15 +385,15 @@ const Login = () => {
       <header className="sticky top-0 z-40 bg-white dark:bg-slate-950 px-4 sm:px-6 lg:px-8">
         <div className="w-full flex items-center justify-between py-3 gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            <div className="h-9 w-9 sm:h-11 sm:w-11 rounded-full bg-[#fced0b] ring-1 ring-black/10 dark:ring-white/15 shadow-sm flex items-center justify-center shrink-0 overflow-hidden">
-              <img src="/simes-logo.png" alt="SIMES - STI College Sta. Maria" className="block w-full h-full object-contain scale-105" />
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white dark:bg-slate-900 ring-1 ring-black/10 dark:ring-white/15 shadow-sm flex items-center justify-center shrink-0 overflow-hidden p-0.5">
+              <img src="/simes-logo.png" alt="SIMES - STI College Sta. Maria" className="block w-full h-full object-contain" />
             </div>
             <div className="min-w-0 leading-tight">
               <p className="font-extrabold text-black dark:text-white text-sm sm:text-base lg:text-lg truncate">
                 STI College Sta. Maria
               </p>
-              <p className="font-bold text-black dark:text-white text-[11px] sm:text-xs lg:text-sm truncate">
-                STI Education Services Group
+              <p className="text-sti-gray dark:text-slate-400 font-medium text-[11px] sm:text-xs truncate">
+                Student Internship Monitoring and Evaluation System
               </p>
             </div>
           </div>
@@ -471,15 +471,16 @@ const Login = () => {
               <div className="space-y-3">
                 <button
                   onClick={() => setView('student')}
-                  className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark leading-snug"
+                  className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark leading-snug flex items-center justify-center gap-2"
                 >
-                  Log in with Office 365
+                  <MicrosoftIcon size={18} />
+                  Log in with Microsoft
                 </button>
                 <button
                   onClick={() => setView('admin')}
                   className="w-full min-h-[48px] py-3 px-4 rounded-xl border border-black/10 dark:border-white/10 text-sm font-semibold hover:bg-sti-gray-light dark:hover:bg-white/10 dark:text-white leading-snug"
                 >
-                  Admin Log in
+                  Log in with Email & Password
                 </button>
                 <button
                   onClick={closeDialog}

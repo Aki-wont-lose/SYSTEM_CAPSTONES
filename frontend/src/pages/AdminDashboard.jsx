@@ -159,10 +159,10 @@ const AdminDashboard = () => {
 
       {/* Headline status counts */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total OJT Enrolled Students" value={stats?.totalStudents ?? stats?.total ?? 0} icon={Users} accent="blue" />
-        <StatCard label="Ongoing OJT Students" value={stats?.active ?? 0} icon={UserCheck} accent="green" />
-        <StatCard label="Pending" value={stats?.pending ?? 0} icon={Clock3} accent="red" />
-        <StatCard label="Completed" value={stats?.completed ?? 0} icon={CheckCircle2} accent="yellow" />
+        <StatCard label="Total Enrolled Interns" value={stats?.totalStudents ?? stats?.total ?? 0} icon={Users} accent="blue" />
+        <StatCard label="Ongoing Interns" value={stats?.active ?? 0} icon={UserCheck} accent="green" />
+        <StatCard label="Pending Placement" value={stats?.pending ?? 0} icon={Clock3} accent="red" />
+        <StatCard label="Completed OJT" value={stats?.completed ?? 0} icon={CheckCircle2} accent="yellow" />
       </div>
 
       {/* Requirement 5C: Pending Approval Section for OJT Supervisor Account Requests */}

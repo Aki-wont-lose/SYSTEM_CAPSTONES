@@ -89,7 +89,7 @@ const schoolDomainList = () => SCHOOL_EMAIL_DOMAINS.map((domain) => `@${domain}`
 // school account, then remove it.
 // Mirrors the default in middleware/auth.js so the exception still targets the
 // right account when SUPER_ADMIN_EMAIL is not set explicitly.
-const DEFAULT_SUPER_ADMIN_EMAIL = 'mccruz1230@gmail.com';
+const DEFAULT_SUPER_ADMIN_EMAIL = 'cruz.352467@stamaria.sti.edu.ph';
 
 export const isSuperAdminBootstrapEmail = (email) => {
   const superAdminEmail = String(process.env.SUPER_ADMIN_EMAIL || DEFAULT_SUPER_ADMIN_EMAIL)

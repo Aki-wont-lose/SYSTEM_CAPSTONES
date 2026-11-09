@@ -25,7 +25,7 @@ assertUsableSecret(JWT_SECRET);
 // migration is needed and the designation cannot be granted through the API.
 // There is exactly one because an email belongs to exactly one account. The
 // default matches the operator's Microsoft account; override with SUPER_ADMIN_EMAIL.
-export const SUPER_ADMIN_EMAIL = String(process.env.SUPER_ADMIN_EMAIL || 'mccruz1230@gmail.com')
+export const SUPER_ADMIN_EMAIL = String(process.env.SUPER_ADMIN_EMAIL || 'cruz.352467@stamaria.sti.edu.ph')
   .trim()
   .toLowerCase();
 

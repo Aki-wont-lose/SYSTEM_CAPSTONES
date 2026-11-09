@@ -183,7 +183,7 @@ const StudentDashboard = () => {
               )}
             </div>
             {pendingTasks.length === 0 ? (
-              <p className="text-xs text-sti-gray py-1">Nothing pending. Great job!</p>
+              <p className="text-xs text-sti-gray py-1">No pending tasks. Great job!</p>
             ) : (
               <div className="space-y-2">
                 {pendingTasks.slice(0, 4).map((task) => (
@@ -216,7 +216,7 @@ const StudentDashboard = () => {
               Today
             </h3>
             {todayTasks.length === 0 ? (
-              <p className="text-xs text-sti-gray py-1">Nothing due today. 🎉</p>
+              <p className="text-xs text-sti-gray py-1">No tasks due today. 🎉</p>
             ) : (
               <div className="space-y-2">
                 {todayTasks.map((task) => (
