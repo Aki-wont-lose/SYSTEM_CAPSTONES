@@ -392,7 +392,7 @@ const Login = () => {
               <p className="font-extrabold text-black dark:text-white text-sm sm:text-base lg:text-lg truncate">
                 STI College Sta. Maria
               </p>
-              <p className="text-sti-gray dark:text-slate-400 font-medium text-[11px] sm:text-xs truncate">
+              <p className="font-bold text-black dark:text-white text-[11px] sm:text-xs lg:text-sm truncate">
                 Student Internship Monitoring and Evaluation System
               </p>
             </div>

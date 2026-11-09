@@ -17,7 +17,7 @@ const WelcomeCarousel = () => {
                 About SIMES
               </h2>
               <p className="text-xs text-sti-gray">
-                Student Internship Monitoring and Evaluation System • STI College Sta. Maria
+                <strong className="font-bold text-sti-gray-dark dark:text-slate-200">Student Internship Monitoring and Evaluation System</strong> • STI College Sta. Maria
               </p>
             </div>
           </div>
