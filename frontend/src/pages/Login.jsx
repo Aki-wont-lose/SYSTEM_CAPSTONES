@@ -356,6 +356,13 @@ const Login = () => {
   const [showForgot, setShowForgot] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('admin') === 'true' || params.get('mode') === 'admin') {
+      setView('admin');
+    }
+  }, []);
+
+  useEffect(() => {
     if (!view && !showForgot) return undefined;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -457,7 +464,13 @@ const Login = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="bg-white dark:bg-slate-800 rounded-2xl w-full max-w-sm max-h-[90vh] flex flex-col animate-slide-up overflow-hidden">
             <div className="flex items-start justify-between gap-3 px-6 pt-5 shrink-0">
-              <h2 className="text-lg font-bold text-sti-gray-dark dark:text-white">Log in</h2>
+              <h2
+                onDoubleClick={() => setView('admin')}
+                className="text-lg font-bold text-sti-gray-dark dark:text-white select-none"
+                title="Log in"
+              >
+                Log in
+              </h2>
               <button
                 onClick={closeDialog}
                 className="p-2 -mr-2 -mt-1 rounded-lg text-sti-gray hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
@@ -467,31 +480,8 @@ const Login = () => {
               </button>
             </div>
             <div className="px-6 pb-6 pt-4 overflow-y-auto">
-            {view === 'choice' && (
-              <div className="space-y-3">
-                <button
-                  onClick={() => setView('student')}
-                  className="w-full min-h-[48px] py-3 px-4 rounded-xl bg-sti-blue text-white text-sm font-semibold hover:bg-sti-blue-dark leading-snug flex items-center justify-center gap-2"
-                >
-                  <MicrosoftIcon size={18} />
-                  Log in with Microsoft
-                </button>
-                <button
-                  onClick={() => setView('admin')}
-                  className="w-full min-h-[48px] py-3 px-4 rounded-xl border border-black/10 dark:border-white/10 text-sm font-semibold hover:bg-sti-gray-light dark:hover:bg-white/10 dark:text-white leading-snug"
-                >
-                  Log in with Email & Password
-                </button>
-                <button
-                  onClick={closeDialog}
-                  className="w-full flex items-center justify-center gap-1.5 text-xs text-sti-gray hover:text-sti-gray-dark pt-1"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" /> Back
-                </button>
-              </div>
-            )}
-            {view === 'student' && <StudentView onBack={() => setView('choice')} />}
-            {view === 'admin' && <AdminView onBack={() => setView('choice')} onForgot={() => setShowForgot(true)} />}
+            {(view === 'choice' || view === 'student') && <StudentView onBack={closeDialog} />}
+            {view === 'admin' && <AdminView onBack={closeDialog} onForgot={() => setShowForgot(true)} />}
             </div>
           </div>
         </div>
