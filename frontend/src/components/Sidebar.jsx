@@ -85,9 +85,14 @@ const linksByRole = {
   ],
 };
 
-// Modules the super admin is explicitly excluded from. Announcements are an
-// ADMIN responsibility; the super admin only shares the ADMIN role in the DB.
-const SUPER_ADMIN_HIDDEN_LINKS = new Set(['/admin/announcements']);
+// Modules the super admin is explicitly excluded from.
+// Templates, Submissions, and Student Logs are academic/grading workflows reserved for Coordinators/Admins/Supervisors.
+const SUPER_ADMIN_HIDDEN_LINKS = new Set([
+  '/admin/announcements',
+  '/admin/templates',
+  '/admin/submissions',
+  '/admin/logs',
+]);
 
 const Sidebar = ({ role, isOpen, onClose }) => {
   const { user } = useAuth();

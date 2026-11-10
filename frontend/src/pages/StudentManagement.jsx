@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { TableSkeleton } from '../components/Skeleton';
 import { Search, Plus, Pencil, Archive, Eye, X, Clock, CalendarDays, Upload, CheckCircle2, ArrowUpDown, ArrowUp, ArrowDown, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
@@ -96,7 +97,13 @@ const StudentManagement = () => {
     getCompanies().then((res) => setCompanies(res.data)).catch(console.error);
   }, []);
 
+  const isFirstRun = useRef(true);
   useEffect(() => {
+    if (isFirstRun.current || !search) {
+      isFirstRun.current = false;
+      loadStudents();
+      return;
+    }
     const timer = setTimeout(loadStudents, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -475,9 +482,7 @@ const StudentManagement = () => {
       {/* Table */}
       <Card className="p-0 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
-          </div>
+          <TableSkeleton rows={6} columns={6} />
         ) : students.length === 0 ? (
           <p className="text-sm text-sti-gray py-12 text-center">No students found.</p>
         ) : (

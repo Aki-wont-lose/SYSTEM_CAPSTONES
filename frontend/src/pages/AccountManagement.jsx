@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Plus, Pencil, Archive, CheckCircle2, UserCheck, UserX, ArrowUpDown, ArrowUp, ArrowDown, Upload, FileSpreadsheet, AlertTriangle, Clock3, XCircle, History } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
+import { TableSkeleton } from '../components/Skeleton';
 import { useAuth } from '../hooks/useAuth';
 import {
   getStaffAccounts,
@@ -151,7 +152,13 @@ const AccountManagement = () => {
 
   useEffect(() => { loadCounts(); }, []);
 
+  const isFirstLoad = useRef(true);
   useEffect(() => {
+    if (isFirstLoad.current || !search) {
+      isFirstLoad.current = false;
+      loadStaff();
+      return;
+    }
     const timer = setTimeout(loadStaff, 300);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -546,63 +553,33 @@ const AccountManagement = () => {
         <StudentManagement />
       ) : (
         <>
-          {activeTab === 'SUPERVISOR' && (
-            <div className="p-4 rounded-xl bg-sti-blue-50/70 dark:bg-sti-blue/10 border border-sti-blue/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <h3 className="text-xs sm:text-sm font-bold text-sti-gray-dark dark:text-white flex items-center gap-2">
-                  <Clock3 className="w-4 h-4 text-sti-blue shrink-0" />
-                  {isCoordinator
-                    ? 'OJT Supervisor Account Creation & Status Monitoring'
-                    : 'OJT Supervisor Account Approval Workflow'}
-                </h3>
-                <p className="text-xs text-sti-gray">
-                  {isCoordinator
-                    ? 'Submit OJT Supervisor account requests here. New requests are assigned a Pending Approval status until reviewed and approved by an Administrator.'
-                    : isSuperAdmin
-                      ? 'Direct company/supervisor account creation is disabled for Super Admin. Review and Approve or Reject OJT Supervisor requests submitted by OJT Coordinators below.'
-                      : 'Review OJT Supervisor account requests submitted by OJT Coordinators. Accounts remain inactive until approved.'}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                {['ALL', 'PENDING', 'APPROVED', 'REJECTED'].map((statusKey) => {
-                  const active = approvalFilter === statusKey;
-                  const label =
-                    statusKey === 'ALL'
-                      ? 'All'
-                      : statusKey === 'PENDING'
-                        ? `Pending Approval (${pendingCountInView})`
-                        : statusKey === 'APPROVED'
-                          ? 'Approved'
-                          : 'Rejected';
-                  return (
-                    <button
-                      key={statusKey}
-                      type="button"
-                      onClick={() => setApprovalFilter(statusKey)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                        active
-                          ? 'bg-sti-blue text-white border-sti-blue'
-                          : 'bg-white dark:bg-slate-800 border-black/10 dark:border-white/10 text-sti-gray hover:border-sti-blue/40'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           <Card className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
-              <input
-                type="text"
-                placeholder={`Search ${tabLabel.plural}...`}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="input-field pl-10"
-              />
+            <div className="flex flex-col sm:flex-row gap-2.5 flex-1 max-w-xl">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+                <input
+                  type="text"
+                  placeholder={`Search ${tabLabel.plural}...`}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="input-field pl-10"
+                />
+              </div>
+              {activeTab === 'SUPERVISOR' && (
+                <label className="flex items-center gap-1.5 text-xs text-sti-gray font-medium shrink-0">
+                  Account Status
+                  <select
+                    value={approvalFilter}
+                    onChange={(e) => setApprovalFilter(e.target.value)}
+                    className="rounded-lg border border-black/10 dark:border-white/15 bg-white dark:bg-slate-800 px-2.5 py-2 text-xs font-medium text-sti-gray-dark dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-sti-blue/40"
+                  >
+                    <option value="ALL">All</option>
+                    <option value="PENDING">Pending ({pendingCountInView})</option>
+                    <option value="APPROVED">Approved</option>
+                    <option value="REJECTED">Rejected</option>
+                  </select>
+                </label>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {canCreateOnActiveTab && (
@@ -662,9 +639,7 @@ const AccountManagement = () => {
 
           <Card className="p-0 overflow-hidden">
             {loading ? (
-              <div className="flex items-center justify-center h-48">
-                <div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
-              </div>
+              <TableSkeleton rows={6} columns={5} />
             ) : visibleStaff.length === 0 ? (
               <p className="text-sm text-sti-gray py-12 text-center">
                 No {tabLabel.plural} found.
@@ -681,7 +656,7 @@ const AccountManagement = () => {
                       ) : (
                         <SortHeader label="Company" sortKey="company" />
                       )}
-                      <SortHeader label="Approval / Account Status" sortKey="status" />
+                      <SortHeader label="Account Status" sortKey="status" />
                       <th className="px-6 py-3 font-semibold text-sti-gray text-xs uppercase tracking-wide text-right">Actions</th>
                     </tr>
                   </thead>
@@ -729,7 +704,7 @@ const AccountManagement = () => {
                                     : supStatus === 'REJECTED'
                                       ? 'Rejected (Inactive)'
                                       : supStatus === 'PENDING'
-                                        ? 'Pending Approval'
+                                        ? 'Pending'
                                         : 'Inactive'}
                                 </span>
                                 {meta.reviewedByEmail && (
@@ -756,7 +731,7 @@ const AccountManagement = () => {
                                 <button
                                   type="button"
                                   onClick={() => setHistoryTarget(member)}
-                                  title="View Request & Approval History"
+                                  title="View Account Status & History"
                                   className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors"
                                 >
                                   <History className="w-4 h-4" />
@@ -1037,7 +1012,7 @@ const AccountManagement = () => {
       <Modal
         isOpen={!!historyTarget}
         onClose={() => setHistoryTarget(null)}
-        title="OJT Supervisor Approval History & Details"
+        title="OJT Supervisor Account Details & History"
         maxWidth="max-w-md"
       >
         {historyTarget && (
@@ -1063,7 +1038,7 @@ const AccountManagement = () => {
             </div>
 
             <div className="space-y-2">
-              <h4 className="font-bold uppercase tracking-wider text-sti-gray">Approval Timeline</h4>
+              <h4 className="font-bold uppercase tracking-wider text-sti-gray">Status Timeline</h4>
               {Array.isArray(historyTarget.approvalMetadata?.history) && historyTarget.approvalMetadata.history.length > 0 ? (
                 <div className="space-y-2">
                   {historyTarget.approvalMetadata.history.map((item, idx) => (

@@ -20,7 +20,7 @@ const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
   useEffect(() => {
     if (!user?.id) return;
     let active = true;
-    api.get('/profile')
+    api.get('/profile', { cacheTTL: 60000 })
       .then((res) => {
         if (!active) return;
         const p = res.data?.data;
@@ -61,7 +61,13 @@ const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
       setNotifications(next);
     } catch {}
   };
-  useEffect(()=>{ fetchNotifs(); const id=setInterval(fetchNotifs, 5000); return ()=>clearInterval(id); }, []);
+  useEffect(() => {
+    fetchNotifs();
+    const id = setInterval(() => {
+      if (!document.hidden) fetchNotifs();
+    }, 25000);
+    return () => clearInterval(id);
+  }, []);
   const markAllRead = async () => { await api.put('/notifications/read-all'); fetchNotifs(); };
   const openNotif = async (n) => {
     setSelectedNotif(n);

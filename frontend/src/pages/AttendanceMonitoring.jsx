@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import { TableSkeleton } from '../components/Skeleton';
 import { useAuth } from '../hooks/useAuth';
 import { getAllStudents } from '../services/studentService';
 import {
@@ -319,7 +320,11 @@ const AttendanceMonitoring = () => {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" /></div>;
+  if (loading) return (
+    <div className="space-y-6 animate-fade-in">
+      <TableSkeleton rows={8} columns={4} />
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in">

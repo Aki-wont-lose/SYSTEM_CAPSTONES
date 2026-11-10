@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ScrollText, Search, Filter, ChevronLeft, LogIn, LogOut, Trash2, Pencil, Plus, CheckCircle2, Send, Link2, Unlink, FileDown, ShieldAlert } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import { TableSkeleton } from '../components/Skeleton';
 import { getAuditLogs } from '../services/auditLogService';
 
 const actionMeta = {
@@ -127,9 +128,7 @@ const AuditLogs = () => {
 
       <Card className="p-0 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-40">
-            <div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
-          </div>
+          <TableSkeleton rows={6} columns={4} />
         ) : logs.length === 0 ? (
           <p className="text-sm text-sti-gray p-8 text-center">No audit entries match these filters yet.</p>
         ) : (

@@ -21,15 +21,7 @@ const WelcomeCarousel = () => {
               </p>
             </div>
           </div>
-          <span className="self-start sm:self-auto px-2.5 py-1 rounded-full text-[11px] font-semibold bg-sti-blue-50 text-sti-blue dark:bg-sti-blue/20 dark:text-sky-300">
-            Official Internship Portal
-          </span>
         </div>
-
-        {/* Description */}
-        <p className="text-xs sm:text-sm text-sti-gray leading-relaxed">
-          SIMES is the centralized platform designed to manage and monitor on-the-job training (OJT) for students at STI College Sta. Maria. It provides accurate attendance logging, requirement tracking, weekly journal submissions, and real-time coordination between students, company supervisors, and OJT coordinators.
-        </p>
 
         {/* 3 Key highlights without images */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">

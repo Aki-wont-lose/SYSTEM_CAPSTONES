@@ -753,12 +753,13 @@ export const getStudentStats = async (user = null) => {
   const scope = user ? studentScopeWhere(user) : {};
   const where = { isArchived: false, ...scope };
 
-  const [total, active, completed, pending, onHold, byCourse, activeCompanies] = await Promise.all([
+  const [total, statusGroups, byCourse, activeCompanies] = await Promise.all([
     prisma.student.count({ where }),
-    prisma.student.count({ where: { ...where, ojt_status: 'ONGOING' } }),
-    prisma.student.count({ where: { ...where, ojt_status: 'COMPLETED' } }),
-    prisma.student.count({ where: { ...where, ojt_status: 'NOT_STARTED' } }),
-    prisma.student.count({ where: { ...where, ojt_status: 'ON_HOLD' } }),
+    prisma.student.groupBy({
+      by: ['ojt_status'],
+      where,
+      _count: { _all: true }
+    }),
     prisma.student.groupBy({
       by: ['course'],
       where,
@@ -769,6 +770,17 @@ export const getStudentStats = async (user = null) => {
       where: { status: 'ACTIVE', students: { some: {} } }
     })
   ]);
+
+  let active = 0;
+  let completed = 0;
+  let pending = 0;
+  let onHold = 0;
+  for (const group of statusGroups) {
+    if (group.ojt_status === 'ONGOING') active = group._count._all;
+    else if (group.ojt_status === 'COMPLETED') completed = group._count._all;
+    else if (group.ojt_status === 'NOT_STARTED') pending = group._count._all;
+    else if (group.ojt_status === 'ON_HOLD') onHold = group._count._all;
+  }
 
   const courses = {};
   for (const row of byCourse) {

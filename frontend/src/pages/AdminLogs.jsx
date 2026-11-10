@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ClipboardList, Check, RotateCcw, Plus, X, Filter, Trash2, Paperclip, Download } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
+import { TableSkeleton } from '../components/Skeleton';
 import { getAllLogs, reviewLogEntry, assignTaskToStudent, deleteLogEntryStaff } from '../services/logEntryService';
 import { getAllStudents } from '../services/studentService';
 
@@ -159,9 +160,7 @@ const AdminLogs = () => {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
-        </div>
+        <TableSkeleton rows={6} columns={5} />
       ) : logs.length === 0 ? (
         <Card className="text-center py-16">
           <ClipboardList className="w-10 h-10 text-sti-gray mx-auto mb-3" />

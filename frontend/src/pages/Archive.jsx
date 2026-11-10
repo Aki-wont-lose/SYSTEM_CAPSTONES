@@ -3,6 +3,7 @@ import { Archive, ArchiveRestore, Search, GraduationCap, Users, UserCog, Buildin
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
+import { TableSkeleton } from '../components/Skeleton';
 import { useAuth } from '../hooks/useAuth';
 import {
   getArchivedRecords,
@@ -284,9 +285,7 @@ const ArchivePage = () => {
 
       <Card className="p-0 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center h-48">
-            <div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
-          </div>
+          <TableSkeleton rows={6} columns={4} />
         ) : rows.length === 0 ? (
           <div className="py-14 text-center">
             <Archive className="w-8 h-8 text-sti-gray mx-auto mb-3 opacity-50" />

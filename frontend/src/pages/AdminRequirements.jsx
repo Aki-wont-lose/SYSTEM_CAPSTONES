@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
+import { TableSkeleton } from '../components/Skeleton';
 import {
   getRequirements,
   createRequirement,
@@ -593,9 +594,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
-        </div>
+        <TableSkeleton rows={6} columns={4} />
       ) : tab === 'requirements' ? (
         requirements.length === 0 ? (
           <Card className="text-center py-16">

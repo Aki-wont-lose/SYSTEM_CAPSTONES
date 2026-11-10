@@ -71,36 +71,32 @@ export const getAccountCounts = async (user) => {
   // Coordinator/supervisor counts must use the same course/company scope as
   // their student list, otherwise the tab badge disagrees with the table.
   const scope = user ? studentScopeWhere(user) : {};
-  const students = await prisma.student.count({ where: { isArchived: false, ...scope } });
+  const isElevated = user && (user.role === 'ADMIN' || user.role === 'COORDINATOR');
 
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'COORDINATOR')) {
+  if (!isElevated) {
+    const students = await prisma.student.count({ where: { isArchived: false, ...scope } });
     return { students, supervisors: 0, pendingSupervisors: 0, coordinators: 0, admins: 0 };
   }
 
-  const allSupervisors = await prisma.user.findMany({
-    where: { role: 'SUPERVISOR', isArchived: false },
-    select: { id: true, isActive: true }
-  });
+  const [students, allSupervisors, coordinators, admins] = await Promise.all([
+    prisma.student.count({ where: { isArchived: false, ...scope } }),
+    prisma.user.findMany({
+      where: { role: 'SUPERVISOR', isArchived: false },
+      select: { id: true, isActive: true }
+    }),
+    user.role === 'ADMIN'
+      ? prisma.user.count({ where: { role: 'COORDINATOR', isArchived: false } })
+      : Promise.resolve(0),
+    user.role === 'ADMIN'
+      ? prisma.user.count({ where: { role: 'ADMIN', isArchived: false } })
+      : Promise.resolve(0)
+  ]);
+
   const approvalMap = await getSupervisorApprovalMap(allSupervisors.map((s) => s.id));
   const pendingSupervisors = allSupervisors.filter((s) => {
     const meta = approvalMap.get(s.id);
     return meta?.status === 'PENDING' || (!s.isActive && meta?.status !== 'REJECTED');
   }).length;
-
-  if (user.role === 'COORDINATOR') {
-    return {
-      students,
-      supervisors: allSupervisors.length,
-      pendingSupervisors,
-      coordinators: 0,
-      admins: 0
-    };
-  }
-
-  const [coordinators, admins] = await Promise.all([
-    prisma.user.count({ where: { role: 'COORDINATOR', isArchived: false } }),
-    prisma.user.count({ where: { role: 'ADMIN', isArchived: false } })
-  ]);
 
   return {
     students,

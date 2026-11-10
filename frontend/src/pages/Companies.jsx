@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
+import { CardSkeleton } from '../components/Skeleton';
 import { getCompanies, createCompany, updateCompany, deleteCompany, batchCreateCompanies } from '../services/companyService';
 import { normalizeCourseCode, COURSE_LABELS } from '../constants/programs';
 import { isValidPersonName, PERSON_NAME_ERROR } from '../constants/studentRules';
@@ -436,9 +437,7 @@ const Companies = () => {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-8 h-8 border-4 border-sti-blue border-t-transparent rounded-full animate-spin" />
-        </div>
+        <CardSkeleton count={6} />
       ) : companies.length === 0 ? (
         <Card className="text-center py-16">
           <Building2 className="w-10 h-10 text-sti-gray mx-auto mb-3" />

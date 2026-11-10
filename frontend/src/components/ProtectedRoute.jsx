@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
-const ProtectedRoute = ({ children, allowedRoles }) => {
+const ProtectedRoute = ({ children, allowedRoles, disallowSuperAdmin = false }) => {
   const { isAuthenticated, user, loading, mustChangePassword } = useAuth();
   const location = useLocation();
 
@@ -23,6 +23,10 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
+    return <Navigate to="/unauthorized" replace />;
+  }
+
+  if (disallowSuperAdmin && user?.isSuperAdmin) {
     return <Navigate to="/unauthorized" replace />;
   }
 
