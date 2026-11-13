@@ -2,6 +2,8 @@
 import prisma from '../utils/prisma.js';
 import { recordAudit } from './auditLogService.js';
 import { scopeWhere, assertStudentAccess } from './accessScope.js';
+import { generateDocumentFromTemplate } from './documentGeneratorService.js';
+import { validateRequirementInput } from '../utils/simesValidation.js';
 
 const startOfDay = (d) => new Date(new Date(d).setHours(0, 0, 0, 0));
 const addDays = (d, days) => new Date(new Date(d).getTime() + days * 86400000);
@@ -13,7 +15,17 @@ const startOfWeek = (d) => {
 };
 
 const resolveDueDate = (data) => {
-  if (data.dueDate) return new Date(data.dueDate);
+  if (data.dueDate) {
+    const raw = String(data.dueDate).trim();
+    // If date-only YYYY-MM-DD and dueTime is provided (e.g. "17:00"), combine in Asia/Manila (+08:00)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const timeStr = /^\d{2}:\d{2}$/.test(String(data.dueTime || '').trim())
+        ? `${String(data.dueTime).trim()}:00`
+        : '23:59:59';
+      return new Date(`${raw}T${timeStr}+08:00`);
+    }
+    return new Date(raw);
+  }
   if (data.dueInDays) return addDays(new Date(), Number(data.dueInDays));
   return null;
 };
@@ -26,7 +38,9 @@ const REQUIREMENT_FIELDS = [
   'category',
   'cadence',
   'dueInDays',
+  'assignedDate',
   'dueDate',
+  'dueTime',
   'maxScore',
   'autoGradeOnSubmit',
   'sortOrder',
@@ -43,6 +57,8 @@ const normalizeRequirementInput = (data) => {
   if (payload.description !== undefined) payload.description = String(payload.description || '').trim();
   payload.program = payload.program ? String(payload.program).toUpperCase() : null;
   payload.category = payload.category ? String(payload.category).trim() : null;
+  if (payload.assignedDate) payload.assignedDate = new Date(payload.assignedDate);
+  payload.dueTime = payload.dueTime ? String(payload.dueTime).trim() : null;
   payload.dueDate = resolveDueDate(payload);
   if (payload.dueInDays != null) payload.dueInDays = Math.max(0, Number(payload.dueInDays) || 0) || null;
   if (payload.maxScore != null) payload.maxScore = Math.max(0, Number(payload.maxScore) || 0);
@@ -69,11 +85,7 @@ export const getAllRequirements = async (filters = {}) => {
 };
 
 export const createRequirement = async (data) => {
-  if (!String(data.title || '').trim()) {
-    const error = new Error('Requirement title is required');
-    error.status = 400;
-    throw error;
-  }
+  validateRequirementInput(data, { isCreate: true });
   return prisma.requirement.create({ data: normalizeRequirementInput(data) });
 };
 
@@ -87,6 +99,7 @@ export const updateRequirement = async (id, data) => {
     }
     const merged = { ...existing, ...data };
     if (data.dueDate === null) merged.dueDate = null;
+    validateRequirementInput(merged, { isCreate: false });
     return await prisma.requirement.update({ where: { id }, data: normalizeRequirementInput(merged) });
   } catch (error) {
     if (error.code === 'P2025') {
@@ -173,13 +186,19 @@ export const getStudentSubmissions = async (studentId) => {
 
   return all.map((r) => {
     const submission = r.submissions[0] || null;
+    const effectiveDue = getEffectiveDueDate(r);
+    const msUntilDue = effectiveDue ? effectiveDue.getTime() - now.getTime() : null;
+    const isUpcoming = Boolean(!submission && msUntilDue !== null && msUntilDue > 0 && msUntilDue <= 48 * 3600 * 1000);
     return {
       ...r,
+      assignedDate: r.assignedDate || r.createdAt,
+      dueTime: r.dueTime || (effectiveDue ? effectiveDue.toTimeString().slice(0, 5) : null),
+      isUpcoming,
       submission: submission
         ? { ...submission, derivedStatus: deriveSubmissionState(r, submission, now) }
         : null,
       derivedStatus: deriveSubmissionState(r, submission, now),
-      dueDate: getEffectiveDueDate(r),
+      dueDate: effectiveDue,
       submissions: undefined
     };
   });
@@ -200,8 +219,28 @@ export const getAllSubmissions = async (filters = {}, user = null) => {
   return prisma.submission.findMany({
     where,
     include: {
-      requirement: { select: { id: true, title: true, maxScore: true } },
-      student: { select: { firstName: true, lastName: true, studentId: true, course: true } }
+      requirement: {
+        select: {
+          id: true,
+          title: true,
+          category: true,
+          assignedDate: true,
+          dueDate: true,
+          dueTime: true,
+          maxScore: true
+        }
+      },
+      student: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          studentId: true,
+          course: true,
+          section: true,
+          company: { select: { id: true, name: true } }
+        }
+      }
     },
     orderBy: { submittedAt: 'desc' }
   });
@@ -282,7 +321,7 @@ export const reviewSubmission = async (submissionId, status, remarks, score, rev
     where: { id: submissionId },
     include: {
       requirement: { select: { maxScore: true, autoGradeOnSubmit: true } },
-      student: { select: { id: true, course: true, companyId: true, supervisorEmail: true } }
+      student: { select: { id: true, course: true, section: true, coordinatorId: true, companyId: true, supervisorEmail: true } }
     }
   });
   if (!submission) {
@@ -639,4 +678,90 @@ export const completeWeeklyTask = async (taskId, studentId) => {
     where: { id: taskId },
     data: { status: 'COMPLETED', completedAt: new Date() }
   });
+};
+
+// Part 3: View a single submission with strict role/scope enforcement
+export const getSubmissionById = async (submissionId, actor) => {
+  const submission = await prisma.submission.findUnique({
+    where: { id: submissionId },
+    include: {
+      requirement: {
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          category: true,
+          assignedDate: true,
+          dueDate: true,
+          dueTime: true,
+          maxScore: true
+        }
+      },
+      student: {
+        select: {
+          id: true,
+          userId: true,
+          firstName: true,
+          lastName: true,
+          studentId: true,
+          course: true,
+          section: true,
+          coordinatorId: true,
+          companyId: true,
+          supervisorEmail: true,
+          company: { select: { id: true, name: true } }
+        }
+      }
+    }
+  });
+
+  if (!submission) {
+    const err = new Error('Submission not found');
+    err.status = 404;
+    throw err;
+  }
+
+  if (actor?.role === 'STUDENT') {
+    if (submission.student?.userId !== actor.userId) {
+      const err = new Error('You do not have access to this submission.');
+      err.status = 403;
+      throw err;
+    }
+  } else {
+    assertStudentAccess(actor, submission.student, 'You do not have access to this submission.');
+  }
+
+  return submission;
+};
+
+// Part 4: Generate personalized document from an existing uploaded template
+export const generateRequirementDocument = async (requirementId, targetStudentId = null, actor) => {
+  const requirement = await prisma.requirement.findUnique({ where: { id: requirementId } });
+  if (!requirement) {
+    const err = new Error('Template not found');
+    err.status = 404;
+    throw err;
+  }
+
+  let student = null;
+  if (actor?.role === 'STUDENT') {
+    student = await prisma.student.findUnique({
+      where: { userId: actor.userId },
+      include: { company: true }
+    });
+  } else if (targetStudentId) {
+    student = await prisma.student.findUnique({
+      where: { id: targetStudentId },
+      include: { company: true }
+    });
+    if (student) assertStudentAccess(actor, student);
+  }
+
+  if (!student) {
+    const err = new Error('Student record is required to generate a personalized document.');
+    err.status = 404;
+    throw err;
+  }
+
+  return generateDocumentFromTemplate(requirement, student);
 };

@@ -87,6 +87,7 @@ const lookupUser = (userId) => {
         isArchived: true,
         mustChangePassword: true,
         coordinatorCourse: true,
+        coordinatorSections: true,
         supervisorCompanyId: true
       }
     })
@@ -140,6 +141,7 @@ export const verifyToken = (req, res, next) => {
           coordinatorCourse: ['BSACT', 'BSAC'].includes(String(user.coordinatorCourse || '').toUpperCase())
             ? 'ACT'
             : user.coordinatorCourse,
+          coordinatorSections: Array.isArray(user.coordinatorSections) ? user.coordinatorSections : [],
           supervisorCompanyId: user.supervisorCompanyId,
           isSuperAdmin: isSuperAdmin(user)
         };

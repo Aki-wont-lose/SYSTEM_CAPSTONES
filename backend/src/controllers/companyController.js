@@ -6,14 +6,17 @@ import {
   createCompany,
   updateCompany,
   deleteCompany,
-  assignStudentToCompany
+  assignStudentToCompany,
+  approveCompany,
+  rejectCompany
 } from '../services/companyService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 // GET /companies - fetch companies with optional search/filters
 export const fetchCompanies = asyncHandler(async (req, res) => {
-  const { search, program, status, hasSlots } = req.query;
-  const companies = await getAllCompanies({ search, program, status, hasSlots });
+  const { search, program, status, hasSlots, academicYear } = req.query;
+  const activeOnly = req.user?.role === 'STUDENT';
+  const companies = await getAllCompanies({ search, program, status, hasSlots, academicYear, activeOnly });
   res.status(200).json({ success: true, data: companies });
 });
 
@@ -32,7 +35,7 @@ export const fetchCompanyById = asyncHandler(async (req, res) => {
 
 // POST /companies - create a partner company
 export const addCompany = asyncHandler(async (req, res) => {
-  const company = await createCompany(req.body);
+  const company = await createCompany(req.body, req.user);
   res.status(201).json({ success: true, message: 'Company created', data: company });
 });
 
@@ -68,4 +71,14 @@ export const batchCreateCompaniesHandler = asyncHandler(async (req, res) => {
     } catch (e) { results.failed++; results.errors.push(`${c.name}: ${e.message}`); }
   }
   res.status(200).json({ success: true, data: results });
+});
+
+export const approveCompanyHandler = asyncHandler(async (req, res) => {
+  const company = await approveCompany(req.params.id, req.user);
+  res.status(200).json({ success: true, message: 'Partner company approved', data: company });
+});
+
+export const rejectCompanyHandler = asyncHandler(async (req, res) => {
+  const company = await rejectCompany(req.params.id, req.body?.reason, req.user);
+  res.status(200).json({ success: true, message: 'Partner company rejected', data: company });
 });

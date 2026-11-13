@@ -53,7 +53,7 @@ const roleText = (role) => TAB_LABELS[role]?.singular || 'OJT Supervisor';
 
 const PAGE_SIZES = [10, 50, 100, 'ALL'];
 
-const emptyStaffForm = { firstName: '', lastName: '', email: '', role: 'SUPERVISOR', coordinatorCourse: '', companyId: '', contactNumber: '' };
+const emptyStaffForm = { firstName: '', lastName: '', email: '', role: 'SUPERVISOR', coordinatorCourse: '', coordinatorSections: '', companyId: '', contactNumber: '' };
 
 const AccountManagement = () => {
   const { user } = useAuth();
@@ -75,6 +75,10 @@ const AccountManagement = () => {
       : TABS.filter((tab) => tab.key === 'STUDENT');
   const initialTab = allowedTabs.some((tab) => tab.key === requestedTab) ? requestedTab : allowedTabs[0].key;
   const [activeTab, setActiveTab] = useState(initialTab);
+  useEffect(() => {
+    if (requestedTab === 'students') setActiveTab('STUDENT');
+    else if (requestedTab && allowedTabs.some((t) => t.key === requestedTab)) setActiveTab(requestedTab);
+  }, [requestedTab]);
   const [counts, setCounts] = useState({ students: 0, supervisors: 0, pendingSupervisors: 0, coordinators: 0, admins: 0 });
   const [staff, setStaff] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -252,6 +256,7 @@ const AccountManagement = () => {
       contactNumber: account.contactNumber || '',
       role: account.role,
       coordinatorCourse: account.coordinatorCourse || '',
+      coordinatorSections: Array.isArray(account.coordinatorSections) ? account.coordinatorSections.join(', ') : '',
       companyId: account.supervisorCompanyId || '',
       isActive: account.isActive
     });
@@ -288,6 +293,7 @@ const AccountManagement = () => {
           email: form.email.trim(),
           role: form.role,
           coordinatorCourse: form.role === 'COORDINATOR' ? form.coordinatorCourse : null,
+          coordinatorSections: form.role === 'COORDINATOR' ? form.coordinatorSections : [],
           companyId: form.role === 'SUPERVISOR' ? form.companyId : null,
           contactNumber: form.contactNumber
         });
@@ -310,6 +316,7 @@ const AccountManagement = () => {
           lastName: form.lastName.trim(),
           contactNumber: form.contactNumber,
           coordinatorCourse: form.role === 'COORDINATOR' ? form.coordinatorCourse || null : null,
+          coordinatorSections: form.role === 'COORDINATOR' ? form.coordinatorSections : [],
           supervisorCompanyId: form.role === 'SUPERVISOR' ? form.companyId || null : null
         });
       }
@@ -685,7 +692,14 @@ const AccountManagement = () => {
                             </p>
                           </td>
                           <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
-                            {member.role === 'COORDINATOR' ? (member.coordinatorCourse || '—') : (member.supervisorCompany?.name || meta.companyName || '—')}
+                            {member.role === 'COORDINATOR' ? (
+                              <div>
+                                <p className="font-medium">{member.coordinatorCourse || '—'}</p>
+                                {Array.isArray(member.coordinatorSections) && member.coordinatorSections.length > 0 && (
+                                  <p className="text-xs text-sti-gray">Sections: {member.coordinatorSections.join(', ')}</p>
+                                )}
+                              </div>
+                            ) : (member.supervisorCompany?.name || meta.companyName || '—')}
                           </td>
                           <td className="px-6 py-3.5">
                             {member.role === 'SUPERVISOR' ? (
@@ -900,19 +914,33 @@ const AccountManagement = () => {
           </div>
 
           {form.role === 'COORDINATOR' && (
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Program *</label>
-              <select required value={form.coordinatorCourse} onChange={(e) => setForm({ ...form, coordinatorCourse: e.target.value })} className="input-field">
-                <option value="">Select program</option>
-                <option value="BSIT">BSIT</option>
-                <option value="BSCS">BSCS</option>
-                <option value="BSCPE">BSCPE</option>
-                <option value="ACT">ACT</option>
-                <option value="BSHM">BSHM</option>
-                <option value="BSTM">BSTM</option>
-                <option value="BSAIS">BSAIS</option>
-              </select>
-            </div>
+            <>
+              <div>
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Program *</label>
+                <select required value={form.coordinatorCourse} onChange={(e) => setForm({ ...form, coordinatorCourse: e.target.value })} className="input-field">
+                  <option value="">Select program</option>
+                  <option value="BSIT">BSIT</option>
+                  <option value="BSCS">BSCS</option>
+                  <option value="BSCPE">BSCPE</option>
+                  <option value="ACT">ACT</option>
+                  <option value="BSHM">BSHM</option>
+                  <option value="BSTM">BSTM</option>
+                  <option value="BSAIS">BSAIS</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Section(s) *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., 4-101 or 4-101, 4-102"
+                  value={form.coordinatorSections || ''}
+                  onChange={(e) => setForm({ ...form, coordinatorSections: e.target.value })}
+                  className="input-field"
+                />
+                <p className="text-[11px] text-sti-gray mt-1">Separate multiple sections with commas (e.g., 4-101, 4-102). Students matching this course and section will be automatically assigned.</p>
+              </div>
+            </>
           )}
 
           {form.role === 'SUPERVISOR' && (

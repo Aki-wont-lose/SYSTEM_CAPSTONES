@@ -13,7 +13,9 @@ import {
   deleteSubmissionById,
   getGradingSummary,
   getStudentWeeklyTasks,
-  completeWeeklyTask
+  completeWeeklyTask,
+  getSubmissionById,
+  generateRequirementDocument
 } from '../services/requirementService.js';
 import { getStudentByUserId } from '../services/studentService.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
@@ -129,4 +131,17 @@ export const removeMySubmission = asyncHandler(async (req, res) => {
 export const removeSubmission = asyncHandler(async (req, res) => {
   const data = await deleteSubmissionById(req.params.submissionId, req.user);
   res.status(200).json({ success: true, message: 'Submission removed', data });
+});
+
+// GET /requirements/submissions/:submissionId - view a single submission with scope check
+export const fetchSubmissionById = asyncHandler(async (req, res) => {
+  const data = await getSubmissionById(req.params.submissionId, req.user);
+  res.status(200).json({ success: true, data });
+});
+
+// GET|POST /requirements/:id/generate - generate a personalized document from a template
+export const generateDocument = asyncHandler(async (req, res) => {
+  const studentId = req.query.studentId || req.body?.studentId || null;
+  const data = await generateRequirementDocument(req.params.id, studentId, req.user);
+  res.status(200).json({ success: true, data });
 });

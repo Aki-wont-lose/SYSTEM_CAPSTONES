@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Pencil, Trash2, X, FileCheck2, Check, XCircle, Download, Filter, FileSpreadsheet, BarChart3, Award, AlertTriangle, FileText, FileType2, FileImage, File as FileIcon, Search, Clock } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, FileCheck2, Check, XCircle, Download, Filter, FileSpreadsheet, BarChart3, Award, AlertTriangle, FileText, FileType2, FileImage, File as FileIcon, Search, Clock, Eye } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
+import SubmissionViewModal from '../components/SubmissionViewModal';
 import { TableSkeleton } from '../components/Skeleton';
+import { useAuth } from '../hooks/useAuth';
 import {
   getRequirements,
   createRequirement,
   updateRequirement,
   deleteRequirement,
   getAllSubmissions,
+  getSubmissionById,
   getGradingSummary,
   reviewSubmission,
   setRequirementCompletion,
@@ -36,6 +39,9 @@ const emptyForm = {
   program: 'ALL',
   category: '',
   cadence: 'ONCE',
+  assignedDate: new Date().toISOString().slice(0, 10),
+  dueDate: '',
+  dueTime: '17:00',
   dueInDays: '',
   maxScore: 0,
   autoGradeOnSubmit: false,
@@ -68,7 +74,10 @@ const templateSizeLabel = (dataUrl) => {
 
 // Manage requirement templates, student submissions, and automated grading
 const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = false, hideSubmissions = false, hideBatchUpload = false, hideGrading = false, hideChecklist = false }) => {
+  const { user } = useAuth();
+  const canManageTemplates = !user?.isSuperAdmin;
   const [tab, setTab] = useState(defaultTab);
+  const [viewingSubmission, setViewingSubmission] = useState(null);
   const [requirements, setRequirements] = useState([]);
   const [submissions, setSubmissions] = useState([]);
   const [grading, setGrading] = useState(null);
@@ -177,6 +186,9 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
       program: req.program || 'ALL',
       category: req.category || '',
       cadence: req.cadence || 'ONCE',
+      assignedDate: req.assignedDate ? new Date(req.assignedDate).toISOString().slice(0, 10) : new Date(req.createdAt || Date.now()).toISOString().slice(0, 10),
+      dueDate: req.dueDate ? new Date(req.dueDate).toISOString().slice(0, 10) : '',
+      dueTime: req.dueTime || (req.dueDate ? new Date(req.dueDate).toTimeString().slice(0, 5) : '17:00'),
       dueInDays: req.dueInDays ?? '',
       maxScore: req.maxScore ?? 0,
       autoGradeOnSubmit: req.autoGradeOnSubmit ?? false,
@@ -283,6 +295,9 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
         description: String(form.description || '').trim(),
         category: String(form.category || '').trim(),
         program: form.program === 'ALL' ? null : form.program,
+        assignedDate: form.assignedDate || null,
+        dueDate: form.dueDate || null,
+        dueTime: form.dueTime || null,
         dueInDays: form.dueInDays === '' ? null : Number(form.dueInDays),
         maxScore: Number(form.maxScore) || 0,
         sortOrder: editing ? Number(form.sortOrder) || 0 : requirements.length
@@ -491,7 +506,7 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
             <p className="text-sm text-sti-gray">{tabSubtitle}</p>
           )}
         </div>
-        {tab === 'requirements' && (
+        {tab === 'requirements' && canManageTemplates && (
           <div className="flex gap-2 shrink-0 w-full sm:w-auto">
             <Button variant="primary" icon={Plus} onClick={openNew} className="flex-1 sm:flex-none justify-center">Add Template</Button>
             {!hideBatchUpload && (
@@ -640,14 +655,16 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                         )}
                       </div>
                     </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button onClick={() => openEdit(req)} title="Edit template" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(req.id)} title="Delete template" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {canManageTemplates && (
+                      <div className="flex gap-1 shrink-0">
+                        <button onClick={() => openEdit(req)} title="Edit template" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleDelete(req.id)} title="Delete template" className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {req.category && (
@@ -920,11 +937,30 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                         <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
                           {sub.student?.lastName}, {sub.student?.firstName} <span className="text-xs text-sti-gray">#{sub.student?.studentId}</span>
                         </td>
-                        <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{sub.requirement?.title}</td>
+                        <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">
+                          <p className="font-medium">{sub.requirement?.title}</p>
+                          {sub.requirement?.category && <p className="text-xs text-sti-gray">{sub.requirement.category}</p>}
+                        </td>
                         <td className="px-6 py-3.5">
-                          <button onClick={() => downloadFile(sub)} className="flex items-center gap-1 text-sti-blue hover:text-sti-blue-dark dark:hover:text-white text-xs font-medium">
-                            <Download className="w-3.5 h-3.5" /> {sub.fileName}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const res = await getSubmissionById(sub.id);
+                                  setViewingSubmission(res.data || sub);
+                                } catch {
+                                  setViewingSubmission(sub);
+                                }
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sti-blue-50 text-sti-blue hover:bg-sti-blue hover:text-white text-xs font-semibold transition-colors"
+                              title="View submitted file & details"
+                            >
+                              <Eye className="w-3.5 h-3.5" /> View
+                            </button>
+                            <button onClick={() => downloadFile(sub)} className="flex items-center gap-1 text-sti-blue hover:text-sti-blue-dark dark:hover:text-white text-xs font-medium" title="Download">
+                              <Download className="w-3.5 h-3.5" /> {sub.fileName}
+                            </button>
+                          </div>
                         </td>
                         <td className="px-6 py-3.5">
                           {sub.requirement?.maxScore > 0 ? (
@@ -1039,6 +1075,54 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                 </select>
               </div>
               <div>
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Submission Type / Category</label>
+                <input
+                  value={form.category}
+                  onChange={(e) => setForm({ ...form, category: e.target.value })}
+                  placeholder="e.g., Certificate of Completion, Weekly Journal, DTR"
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Description / Instructions</label>
+                <textarea
+                  rows={2}
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Instructions for students..."
+                  className="input-field resize-none"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Assigned Date</label>
+                  <input
+                    type="date"
+                    value={form.assignedDate || ''}
+                    onChange={(e) => setForm({ ...form, assignedDate: e.target.value })}
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Due Date</label>
+                  <input
+                    type="date"
+                    value={form.dueDate || ''}
+                    onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Exact Due Time</label>
+                  <input
+                    type="time"
+                    value={form.dueTime || '17:00'}
+                    onChange={(e) => setForm({ ...form, dueTime: e.target.value })}
+                    className="input-field"
+                  />
+                </div>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Recurrence</label>
                 <select value={form.cadence} onChange={(e) => setForm({ ...form, cadence: e.target.value })} className="input-field">
                   <option value="ONCE">One-time</option>
@@ -1046,8 +1130,11 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Template File</label>
-                <input ref={templateInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleTemplateChange} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white hover:file:bg-sti-blue-dark file:text-xs file:font-semibold" />
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Template File (.docx, .pdf, .html, .txt)</label>
+                <input ref={templateInputRef} type="file" accept=".pdf,.doc,.docx,.html,.txt,.rtf" onChange={handleTemplateChange} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white hover:file:bg-sti-blue-dark file:text-xs file:font-semibold" />
+                <p className="text-[11px] text-sti-gray mt-1">
+                  Supported placeholders: {'{student_name}'}, {'{student_id}'}, {'{course}'}, {'{section}'}, {'{company_name}'}, {'{supervisor_name}'}, {'{coordinator_name}'}, {'{required_hours}'}, {'{completed_hours}'}.
+                </p>
                 {form.templateFileName && (
                   <div className="mt-2 flex items-center gap-2 text-xs text-sti-blue">
                     <FileCheck2 className="w-4 h-4 shrink-0" />
@@ -1063,6 +1150,11 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
           </div>
         </div>
       )}
+
+      <SubmissionViewModal
+        submission={viewingSubmission}
+        onClose={() => setViewingSubmission(null)}
+      />
 
       <Modal isOpen={!!batchResult} onClose={() => setBatchResult(null)} title={batchResult?.failed ? 'Batch Upload Result' : 'Batch Complete'} maxWidth="max-w-md">
         {batchResult && (

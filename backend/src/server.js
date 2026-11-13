@@ -26,6 +26,7 @@ import ojtHoursRoutes from './modules/ojtHours/routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { verifyToken } from './middleware/auth.js';
 import { auditTrail } from './middleware/audit.js';
+import { archiveExpiredCompanies } from './services/companyService.js';
 
 dotenv.config();
 
@@ -120,6 +121,11 @@ if (!isServerless) {
     console.log(`✓ SIMES Backend Server running on port ${PORT}`);
     console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`✓ Database: ${process.env.DATABASE_URL?.split('@')[1] || 'Not configured'}`);
+    // Run automatic company expiration sweep on startup and every 15 minutes
+    archiveExpiredCompanies(true).catch((err) => console.warn('[company-expiry] Startup sweep error:', err.message));
+    setInterval(() => {
+      archiveExpiredCompanies(true).catch((err) => console.warn('[company-expiry] Scheduled sweep error:', err.message));
+    }, 15 * 60 * 1000);
   });
 }
 

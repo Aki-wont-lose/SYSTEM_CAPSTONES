@@ -1,111 +1,123 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ClipboardList, UserCircle, Users, Megaphone, X, FileCheck2, CalendarDays, Building2, Clock, MapPinned, MessageCircle, ScrollText, Archive, ChevronRight } from 'lucide-react';
+import {
+  LayoutDashboard,
+  ClipboardList,
+  UserCircle,
+  Users,
+  Megaphone,
+  X,
+  FileCheck2,
+  CalendarDays,
+  Building2,
+  Clock,
+  MapPinned,
+  MessageCircle,
+  ScrollText,
+  Archive,
+  ChevronRight
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
-// Single UI for all 4 roles — each role sees a limited subset (same components, filtered links)
 const linksByRole = {
+  SUPER_ADMIN: [
+    {
+      section: 'Main',
+      links: [
+        { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { to: '/admin/accounts', label: 'Account Management', icon: Users },
+        { to: '/admin/companies', label: 'View Partner Companies', icon: Building2 },
+        { to: '/admin/templates', label: 'Templates', icon: FileCheck2 },
+        { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
+        { to: '/admin/archive', label: 'Archive', icon: Archive },
+        { to: '/admin/messages', label: 'Messages', icon: MessageCircle },
+        { to: '/admin/profile', label: 'Profile', icon: UserCircle }
+      ]
+    }
+  ],
   ADMIN: [
-    { section: 'Main', links: [
-      { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    ]},
-    { section: 'Management', links: [
-      { to: '/admin/accounts', label: 'Account Management', icon: Users },
-      { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
-      { to: '/admin/announcements', label: 'Announcements', icon: Megaphone },
-    ]},
-    { section: 'Academic', links: [
-      { to: '/admin/templates', label: 'Templates', icon: FileCheck2 },
-      { to: '/admin/submissions', label: 'Submissions', icon: ClipboardList },
-      { to: '/admin/logs', label: 'Student Logs', icon: ClipboardList },
-    ]},
-    { section: 'System', links: [
-      { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
-      { to: '/admin/archive', label: 'Archive', icon: Archive },
-      { to: '/admin/ojt-hours', label: 'OJT Hours', icon: Clock },
-      { to: '/admin/messages', label: 'Messages', icon: MessageCircle },
-      { to: '/admin/profile', label: 'Profile', icon: UserCircle },
-    ]},
+    {
+      section: 'Main',
+      links: [
+        { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { to: '/admin/accounts', label: 'Account Management', icon: Users },
+        { to: '/admin/companies', label: 'Partner Companies Approval', icon: Building2 },
+        { to: '/admin/announcements', label: 'Announcements', icon: Megaphone },
+        { to: '/admin/templates', label: 'Templates', icon: FileCheck2 },
+        { to: '/admin/submissions', label: 'Submissions', icon: ClipboardList },
+        { to: '/admin/logs', label: 'Student Logs', icon: ClipboardList },
+        { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
+        { to: '/admin/archive', label: 'Archive', icon: Archive },
+        { to: '/admin/ojt-hours', label: 'OJT Hours', icon: Clock },
+        { to: '/admin/messages', label: 'Messages', icon: MessageCircle },
+        { to: '/admin/profile', label: 'Profile', icon: UserCircle }
+      ]
+    }
   ],
   COORDINATOR: [
-    { section: 'Main', links: [
-      { to: '/coordinator/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    ]},
-    { section: 'Management', links: [
-      { to: '/coordinator/accounts', label: 'Account Management', icon: Users },
-      { to: '/coordinator/attendance', label: 'Attendance', icon: Clock },
-      { to: '/coordinator/companies', label: 'Partner Companies', icon: Building2 },
-      { to: '/coordinator/announcements', label: 'Announcements', icon: Megaphone },
-    ]},
-    { section: 'Academic', links: [
-      { to: '/coordinator/templates', label: 'Templates', icon: FileCheck2 },
-      { to: '/coordinator/submissions', label: 'Submissions', icon: ClipboardList },
-      { to: '/coordinator/logs', label: 'Student Logs', icon: ClipboardList },
-    ]},
-    { section: 'System', links: [
-      { to: '/coordinator/archive', label: 'Archive', icon: Archive },
-      { to: '/coordinator/messages', label: 'Messages', icon: MessageCircle },
-      { to: '/coordinator/profile', label: 'Profile', icon: UserCircle },
-    ]},
+    {
+      section: 'Main',
+      links: [
+        { to: '/coordinator/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        {
+          to: '/coordinator/accounts',
+          label: 'Account Management',
+          icon: Users,
+          children: [
+            { to: '/coordinator/accounts?tab=students', label: 'Students' },
+            { to: '/coordinator/accounts?tab=SUPERVISOR', label: 'Supervisor Account Requests' }
+          ]
+        },
+        { to: '/coordinator/attendance', label: 'Attendance (Monitoring)', icon: Clock },
+        { to: '/coordinator/companies', label: 'Add Partner Companies', icon: Building2 },
+        { to: '/coordinator/announcements', label: 'Announcements', icon: Megaphone },
+        { to: '/coordinator/templates', label: 'Templates', icon: FileCheck2 },
+        { to: '/coordinator/submissions', label: 'Submissions', icon: ClipboardList },
+        { to: '/coordinator/logs', label: 'Student Logs', icon: ClipboardList },
+        { to: '/coordinator/archive', label: 'Archive', icon: Archive },
+        { to: '/coordinator/messages', label: 'Messages', icon: MessageCircle },
+        { to: '/coordinator/profile', label: 'Profile', icon: UserCircle }
+      ]
+    }
   ],
   SUPERVISOR: [
-    { section: 'Main', links: [
-      { to: '/supervisor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    ]},
-    { section: 'Management', links: [
-      { to: '/supervisor/students', label: 'Students', icon: Users },
-      { to: '/supervisor/attendance', label: 'Record Attendance', icon: Clock },
-    ]},
-    { section: 'Academic', links: [
-      { to: '/supervisor/submissions', label: 'Submissions', icon: ClipboardList },
-      { to: '/supervisor/logs', label: 'Student Logs', icon: ClipboardList },
-    ]},
-    { section: 'System', links: [
-      { to: '/supervisor/messages', label: 'Messages', icon: MessageCircle },
-      { to: '/supervisor/profile', label: 'Profile', icon: UserCircle },
-    ]},
+    {
+      section: 'Main',
+      links: [
+        { to: '/supervisor/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { to: '/supervisor/students', label: 'View Students', icon: Users },
+        { to: '/supervisor/attendance', label: 'Record Attendance', icon: Clock },
+        { to: '/supervisor/submissions', label: 'Submissions', icon: ClipboardList },
+        { to: '/supervisor/logs', label: 'Student Logs', icon: ClipboardList },
+        { to: '/supervisor/messages', label: 'Messages', icon: MessageCircle },
+        { to: '/supervisor/profile', label: 'Profile', icon: UserCircle }
+      ]
+    }
   ],
   STUDENT: [
-    { section: 'Main', links: [
-      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    ]},
-    { section: 'My OJT', links: [
-      { to: '/my-dtr', label: 'My Attendance', icon: Clock },
-      { to: '/my-logs', label: 'My Logs', icon: ClipboardList },
-      { to: '/schedule', label: 'Schedule', icon: CalendarDays },
-      { to: '/find-company', label: 'Find Company', icon: MapPinned },
-    ]},
-    { section: 'Requirements', links: [
-      { to: '/templates', label: 'Templates', icon: FileCheck2 },
-      { to: '/submissions', label: 'My Submissions', icon: ClipboardList },
-    ]},
-    { section: 'System', links: [
-      { to: '/messages', label: 'Messages', icon: MessageCircle },
-      { to: '/profile', label: 'Profile', icon: UserCircle },
-    ]},
-  ],
+    {
+      section: 'Main',
+      links: [
+        { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { to: '/my-dtr', label: 'My Attendance (DTR)', icon: Clock },
+        { to: '/my-logs', label: 'My Logs', icon: ClipboardList },
+        { to: '/schedule', label: 'Schedule', icon: CalendarDays },
+        { to: '/find-company', label: 'Find Company', icon: MapPinned },
+        { to: '/templates', label: 'Templates', icon: FileCheck2 },
+        { to: '/submissions', label: 'My Submissions', icon: ClipboardList },
+        { to: '/messages', label: 'Messages', icon: MessageCircle },
+        { to: '/profile', label: 'Profile', icon: UserCircle }
+      ]
+    }
+  ]
 };
-
-// Modules the super admin is explicitly excluded from.
-// Templates, Submissions, and Student Logs are academic/grading workflows reserved for Coordinators/Admins/Supervisors.
-const SUPER_ADMIN_HIDDEN_LINKS = new Set([
-  '/admin/announcements',
-  '/admin/templates',
-  '/admin/submissions',
-  '/admin/logs',
-]);
 
 const Sidebar = ({ role, isOpen, onClose }) => {
   const { user } = useAuth();
-  const baseSections = linksByRole[role] || linksByRole.STUDENT;
-  const sections = user?.isSuperAdmin
-    ? baseSections
-        .map(({ section, links }) => ({
-          section,
-          links: links.filter((link) => !SUPER_ADMIN_HIDDEN_LINKS.has(link.to)),
-        }))
-        .filter(({ links }) => links.length > 0)
-    : baseSections;
-  const roleLabel = user?.isSuperAdmin ? 'Super Admin' : (role ? role.charAt(0) + role.slice(1).toLowerCase() : '');
+  const effectiveKey = user?.isSuperAdmin ? 'SUPER_ADMIN' : role;
+  const sections = linksByRole[effectiveKey] || linksByRole.STUDENT;
+  const roleLabel = user?.isSuperAdmin
+    ? 'Super Admin'
+    : (role ? role.charAt(0) + role.slice(1).toLowerCase() : '');
 
   const staffFullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
   const displayName = user?.isSuperAdmin
@@ -161,46 +173,70 @@ const Sidebar = ({ role, isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto">
-          <div className="space-y-0.5">
-            {sections.flatMap(({ links }) => links).map(({ to, label, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
-                  ${isActive
-                    ? 'bg-sti-yellow text-sti-blue-dark font-semibold shadow-sm'
-                    : 'text-white/60 hover:bg-white/10 hover:text-white'}`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-sti-blue-dark' : 'text-white/50 group-hover:text-white'}`} strokeWidth={2} />
-                    <span className="flex-1">{label}</span>
-                    {isActive && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-60" />}
-                  </>
-                )}
-              </NavLink>
-            ))}
-          </div>
+        {/* Navigation Sections */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+          {sections.map(({ section, links }) => (
+            <div key={section}>
+              <div className="space-y-1">
+                {links.map((link) => {
+                  const { to, label, icon: Icon, children } = link;
+                  return (
+                    <div key={to}>
+                      <NavLink
+                        to={to}
+                        onClick={onClose}
+                        end={Boolean(children)}
+                        className={({ isActive }) =>
+                          `group flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-all duration-150 ${
+                            isActive
+                              ? 'bg-sti-yellow text-sti-blue-dark shadow-sm'
+                              : 'text-white/80 hover:text-white hover:bg-white/10'
+                          }`
+                        }
+                      >
+                        {({ isActive }) => (
+                          <>
+                            <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-sti-blue-dark' : 'text-white/65 group-hover:text-white'}`} />
+                            <span className="flex-1 truncate">{label}</span>
+                            {isActive && <ChevronRight className="w-3.5 h-3.5 text-sti-blue-dark/70 shrink-0" />}
+                          </>
+                        )}
+                      </NavLink>
+                      {Array.isArray(children) && children.length > 0 && (
+                        <div className="mt-1 ml-7 pl-2.5 border-l border-white/15 space-y-1">
+                          {children.map((child) => (
+                            <NavLink
+                              key={child.to}
+                              to={child.to}
+                              onClick={onClose}
+                              className="block px-2.5 py-1.5 rounded-md text-xs text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                              {child.label}
+                            </NavLink>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
-        {/* User Profile Card at bottom */}
-        <div className="shrink-0 p-3 border-t border-white/10">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-default">
+        {/* Bottom User Profile Pill */}
+        <div className="px-3 py-3 border-t border-white/10 shrink-0">
+          <div className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-white/5">
             {isImg ? (
-              <img src={rawPic} alt={displayName} className="w-8 h-8 rounded-full object-cover border border-white/30 shrink-0" />
+              <img src={rawPic} alt={displayName} className="w-8 h-8 rounded-full object-cover shrink-0 ring-2 ring-sti-yellow/50" />
             ) : (
-              <div className={`w-8 h-8 rounded-full ${avatarBg} flex items-center justify-center ${avatarTextClass} text-xs font-bold shrink-0`}>
+              <div className={`w-8 h-8 rounded-full ${avatarBg} flex items-center justify-center ${avatarTextClass} font-bold text-xs shrink-0`}>
                 {initials}
               </div>
             )}
             <div className="min-w-0 flex-1">
-              <p className="text-white text-sm font-semibold truncate">{displayName}</p>
-              <p className="text-white/40 text-[11px] truncate capitalize">{roleLabel}</p>
+              <p className="text-white text-xs font-semibold truncate">{displayName}</p>
+              <p className="text-sti-yellow text-[10px] font-medium truncate">{roleLabel}</p>
             </div>
           </div>
         </div>

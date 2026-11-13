@@ -13,6 +13,22 @@ export const updateMyProfile = async (data) => {
   return response.data;
 };
 
+// Student self-service schedule management & history
+export const updateMySchedule = async (data) => {
+  const response = await api.put('/students/schedule', data);
+  return response.data;
+};
+
+export const getMyScheduleLogs = async () => {
+  const response = await api.get('/students/schedule/logs');
+  return response.data;
+};
+
+export const getStudentScheduleLogs = async (studentId) => {
+  const response = await api.get(`/students/${studentId}/schedule-logs`);
+  return response.data;
+};
+
 // Admin: manage all students
 // Fetch all students with optional filters
 export const getAllStudents = async (params = {}) => {

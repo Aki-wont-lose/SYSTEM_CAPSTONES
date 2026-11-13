@@ -33,8 +33,12 @@ export const restoreArchivedSupervisor = asyncHandler(async (req, res) => {
 });
 
 export const restoreArchivedCompany = asyncHandler(async (req, res) => {
-  const result = await restoreCompany(req.params.id);
-  res.status(200).json({ success: true, message: 'Company restored', data: result });
+  const result = await restoreCompany(req.params.id, req.body, req.user);
+  res.status(200).json({
+    success: true,
+    message: result.renewed ? 'Company renewed for new academic year' : 'Company restored',
+    data: result
+  });
 });
 
 export const deleteArchivedStudentHandler = asyncHandler(async (req, res) => {

@@ -48,3 +48,14 @@ export const batchCreateCompanies = async (companies) => {
   const response = await api.post('/companies/batch', { companies });
   return response.data;
 };
+
+// Approve or reject a pending partner company (Admin only)
+export const approveCompany = async (id) => {
+  const response = await api.post(`/companies/${id}/approve`);
+  return response.data;
+};
+
+export const rejectCompany = async (id, reason = '') => {
+  const response = await api.post(`/companies/${id}/reject`, { reason });
+  return response.data;
+};

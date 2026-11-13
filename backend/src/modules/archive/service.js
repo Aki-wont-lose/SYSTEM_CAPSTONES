@@ -2,6 +2,7 @@
 import prisma from '../../utils/prisma.js';
 import { canAccessStudent } from '../../services/accessScope.js';
 import { recordAudit } from '../../services/auditLogService.js';
+import { archiveExpiredCompanies, normalizeAcademicYear } from '../../services/companyService.js';
 
 
 const notFound = (message) => {
@@ -34,6 +35,7 @@ const safeAudit = async (entry) => {
 
 // Archived records are still in the database; this never hard-deletes them.
 export const getArchivedRecords = async (user) => {
+  await archiveExpiredCompanies();
   const isAdmin = user?.role === 'ADMIN';
   const isCoordinator = user?.role === 'COORDINATOR';
 
@@ -172,21 +174,105 @@ export const restoreSupervisor = async (userId) => {
   return { success: true, restored: true };
 };
 
-export const restoreCompany = async (companyId) => {
+export const restoreCompany = async (companyId, payload = {}, requester = null) => {
   const company = await prisma.company.findUnique({
-    where: { id: companyId },
-    select: { id: true, isArchived: true }
+    where: { id: companyId }
   });
 
   if (!company) throw notFound('Company not found');
   if (!company.isArchived) return { success: true, restored: false };
 
-  await prisma.company.update({
+  const newAcademicYear = normalizeAcademicYear(payload.academicYear);
+  const newStartDate = payload.startDate ? new Date(payload.startDate) : null;
+  const newExpirationDate = payload.expirationDate ? new Date(payload.expirationDate) : null;
+
+  if (!newAcademicYear || !newStartDate || !newExpirationDate) {
+    throw badRequest('Academic Year, Start Date, and Expiration Date are required to restore or renew a partner company.');
+  }
+  if (Number.isNaN(newStartDate.getTime()) || Number.isNaN(newExpirationDate.getTime())) {
+    throw badRequest('Invalid Start Date or Expiration Date.');
+  }
+  if (newExpirationDate <= newStartDate) {
+    throw badRequest('Expiration date must be later than start date.');
+  }
+
+  // If renewing for a new academic year (or restoring an expired partnership),
+  // preserve the old academic-year record in Archive and create a fresh active record.
+  const isNewAcademicYear = company.academicYear && company.academicYear !== newAcademicYear;
+  if (isNewAcademicYear || company.status === 'EXPIRED') {
+    const duplicate = await prisma.company.findFirst({
+      where: {
+        isArchived: false,
+        name: { equals: company.name, mode: 'insensitive' },
+        academicYear: newAcademicYear
+      },
+      select: { id: true }
+    });
+    if (duplicate) {
+      throw badRequest(`${company.name} already has an active record for Academic Year ${newAcademicYear}.`);
+    }
+
+    const renewed = await prisma.company.create({
+      data: {
+        name: company.name,
+        address: company.address,
+        latitude: company.latitude,
+        longitude: company.longitude,
+        contactPerson: company.contactPerson,
+        contactNumber: company.contactNumber,
+        email: company.email,
+        industryType: company.industryType,
+        programs: company.programs,
+        availableSlots: company.availableSlots,
+        academicYear: newAcademicYear,
+        startDate: newStartDate,
+        expirationDate: newExpirationDate,
+        parentCompanyId: company.parentCompanyId || company.id,
+        status: 'ACTIVE',
+        isArchived: false
+      }
+    });
+
+    await safeAudit({
+      ...auditRequester(requester),
+      action: 'CREATE',
+      entity: 'Company',
+      entityId: renewed.id,
+      description: `Renewed partner company ${company.name} for AY ${newAcademicYear} (preserved AY ${company.academicYear || 'N/A'} history)`,
+      metadata: {
+        previousCompanyId: company.id,
+        previousAcademicYear: company.academicYear,
+        academicYear: newAcademicYear,
+        startDate: newStartDate,
+        expirationDate: newExpirationDate
+      }
+    });
+
+    return { success: true, restored: true, renewed: true, company: renewed };
+  }
+
+  const restored = await prisma.company.update({
     where: { id: companyId },
-    data: { isArchived: false, archivedAt: null, status: 'ACTIVE' }
+    data: {
+      isArchived: false,
+      archivedAt: null,
+      status: 'ACTIVE',
+      academicYear: newAcademicYear,
+      startDate: newStartDate,
+      expirationDate: newExpirationDate
+    }
   });
 
-  return { success: true, restored: true };
+  await safeAudit({
+    ...auditRequester(requester),
+    action: 'UPDATE',
+    entity: 'Company',
+    entityId: companyId,
+    description: `Restored partner company ${company.name} for AY ${newAcademicYear}`,
+    metadata: { academicYear: newAcademicYear, startDate: newStartDate, expirationDate: newExpirationDate }
+  });
+
+  return { success: true, restored: true, company: restored };
 };
 
 // ---------------------------------------------------------------------------

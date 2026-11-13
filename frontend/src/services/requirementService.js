@@ -83,3 +83,15 @@ export const deleteSubmission = async (submissionId) => {
   const response = await api.delete(`/requirements/submissions/${submissionId}`);
   return response.data;
 };
+
+// View a single submission record (Part 3)
+export const getSubmissionById = async (submissionId) => {
+  const response = await api.get(`/requirements/submissions/${submissionId}`);
+  return response.data;
+};
+
+// Generate a personalized document from an existing uploaded template (Part 4)
+export const generateTemplateDocument = async (requirementId, studentId = null) => {
+  const response = await api.post(`/requirements/${requirementId}/generate`, studentId ? { studentId } : {});
+  return response.data;
+};

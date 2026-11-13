@@ -32,18 +32,35 @@ const normalizeCourse = (value) => {
   return upper;
 };
 
+const normalizeSection = (value) => String(value || '').trim().toUpperCase();
+
 export const studentScopeWhere = (user) => {
   if (!user) return NO_MATCH;
   if (user.role === 'ADMIN') return {};
 
   if (user.role === 'COORDINATOR') {
-    // A coordinator owns exactly one course. If the token has none, they own nothing.
+    // A coordinator owns their assigned course (and assigned sections when configured).
     if (!user.coordinatorCourse) return NO_MATCH;
     const normalized = normalizeCourse(user.coordinatorCourse);
-    if (normalized === 'ACT') {
-      return { course: { in: ['ACT', 'BSACT', 'BSAC'] } };
+    const courseClause = normalized === 'ACT'
+      ? { course: { in: ['ACT', 'BSACT', 'BSAC'] } }
+      : { course: user.coordinatorCourse };
+
+    const sections = Array.isArray(user.coordinatorSections)
+      ? user.coordinatorSections.map((s) => String(s || '').trim()).filter(Boolean)
+      : [];
+
+    if (sections.length > 0) {
+      return {
+        ...courseClause,
+        OR: [
+          ...sections.map((sec) => ({ section: { equals: sec, mode: 'insensitive' } })),
+          ...(user.userId ? [{ coordinatorId: user.userId }] : [])
+        ]
+      };
     }
-    return { course: user.coordinatorCourse };
+
+    return courseClause;
   }
 
   if (user.role === 'SUPERVISOR') {
@@ -70,10 +87,17 @@ export const canAccessStudent = (user, student) => {
   if (user.role === 'ADMIN') return true;
 
   if (user.role === 'COORDINATOR') {
-    return (
-      Boolean(user.coordinatorCourse) &&
-      normalizeCourse(student.course) === normalizeCourse(user.coordinatorCourse)
-    );
+    if (!user.coordinatorCourse) return false;
+    if (normalizeCourse(student.course) !== normalizeCourse(user.coordinatorCourse)) return false;
+
+    const sections = Array.isArray(user.coordinatorSections)
+      ? user.coordinatorSections.map((s) => normalizeSection(s)).filter(Boolean)
+      : [];
+    if (sections.length > 0) {
+      if (user.userId && student.coordinatorId && student.coordinatorId === user.userId) return true;
+      return sections.includes(normalizeSection(student.section));
+    }
+    return true;
   }
 
   if (user.role === 'SUPERVISOR') {

@@ -21,6 +21,7 @@ model User {
   mustChangePassword Boolean @default(false)
   theme        Theme      @default(LIGHT)
   coordinatorCourse String? // BSHM / BSIT / BSTM - for COORDINATOR role
+  coordinatorSections String[] @default([]) // Assigned sections e.g. ["4-101", "4-102"]
   supervisorCompanyId String? // Company ID for SUPERVISOR to limit to assigned students
 
   // Password reset
@@ -119,15 +120,19 @@ model Student {
   requiredHours      Int          @default(486)
   completedHours     Int          @default(0)
 
-  // Company / supervisor assignment
+  // Coordinator & Company / supervisor assignment
+  coordinatorId      String?
   companyId          String?
   supervisorName     String?
   supervisorEmail    String?
   supervisorContact  String?
+  internshipStartDate DateTime?
+  internshipEndDate   DateTime?
 
   // OJT schedule
   workingDays        String?      // e.g. "Mon-Fri"
   workingHours       String?      // e.g. "8:00 AM - 5:00 PM"
+  scheduleUpdatedAt  DateTime?
 
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
@@ -143,11 +148,33 @@ model Student {
   submissions         Submission[]
   logEntries          LogEntry[]
   weeklyTasks         WeeklyTask[]
+  scheduleLogs        ScheduleLog[]
 
   @@index([studentId])
   @@index([userId])
   @@index([ojt_status])
   @@index([companyId])
+  @@index([coordinatorId])
+}
+
+// ScheduleLog - tracks student schedule creations and edits for accountability
+model ScheduleLog {
+  id             String   @id @default(cuid())
+  studentId      String
+  previousDays   String?
+  previousHours  String?
+  newDays        String
+  newHours       String
+  changedById    String
+  changedByRole  String
+  reason         String?  @db.Text
+  status         String   @default("APPROVED") // APPROVED | PENDING | REJECTED
+  createdAt      DateTime @default(now())
+
+  student        Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([createdAt])
 }
 
 // Attendance model - Daily Time Record (DTR)
@@ -214,6 +241,10 @@ model Company {
   industryType    String?
   programs        String[]  @default([]) // BSHM / BSIT / BSTM - empty = open to all programs
   availableSlots  Int       @default(0)
+  academicYear    String?   // e.g. "2026-2027"
+  startDate       DateTime?
+  expirationDate  DateTime?
+  parentCompanyId String?   // links renewed academic-year records to the original company profile
   status          CompanyStatus @default(ACTIVE)
   isArchived      Boolean   @default(false)
   archivedAt      DateTime?
@@ -226,6 +257,9 @@ model Company {
 
   @@index([status])
   @@index([isArchived])
+  @@index([academicYear])
+  @@index([expirationDate])
+  @@index([parentCompanyId])
 }
 
 // Requirement model - documents students must submit
@@ -239,7 +273,9 @@ model Requirement {
   category        String?   // e.g. "Weekly Report", "Narrative", "Internship Plan"
   cadence         String?   @default("ONCE") // ONCE | WEEKLY — WEEKLY rolls into the next to-do on submit
   dueInDays       Int?      // days after posting before it counts as missing
+  assignedDate    DateTime? @default(now())
   dueDate         DateTime? // absolute deadline; drives automated missing detection
+  dueTime         String?   // exact due time e.g. "17:00"
   maxScore        Int       @default(0) // 0 = not graded
   autoGradeOnSubmit Boolean @default(false) // a submitted file earns maxScore automatically
   sortOrder       Int       @default(0)
@@ -303,19 +339,20 @@ model Submission {
   @@index([status])
 }
 
-// LogEntry model - "My Logs" daily task journal (separate from DTR)
+// LogEntry model - "My Logs" daily task journal & Integration Paper (separate from DTR)
 model LogEntry {
   id              String    @id @default(cuid())
   studentId       String
   date            DateTime
+  logType         String    @default("DAILY_LOG") // DAILY_LOG | INTEGRATION_PAPER
   taskDescription String    @db.Text
-  assignedBy      String?   // admin/supervisor who assigned the task
+  assignedBy      String?   // legacy nullable field
   status          LogStatus @default(PENDING)
   comment         String?   @db.Text   // admin/supervisor feedback
-  // Staff attachment sent with an assigned task (staff file in)
+  // Staff attachment (legacy nullable)
   assignedFile     String?  @db.Text
   assignedFileName String?
-  // Student's deliverable uploaded when they submit the task (student file out)
+  // Student's deliverable uploaded (e.g. Integration Paper file)
   submissionFile     String? @db.Text
   submissionFileName String?
   createdAt       DateTime  @default(now())
@@ -327,6 +364,7 @@ model LogEntry {
   @@index([studentId])
   @@index([date])
   @@index([status])
+  @@index([logType])
 }
 
 // 4 user levels â€” adviser required: ADMIN, COORDINATOR, SUPERVISOR, STUDENT
@@ -378,8 +416,11 @@ enum Priority {
 }
 
 enum CompanyStatus {
+  PENDING
   ACTIVE
   INACTIVE
+  EXPIRED
+  REJECTED
 }
 
 enum SubmissionStatus {

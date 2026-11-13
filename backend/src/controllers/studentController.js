@@ -6,7 +6,9 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
-  getStudentStats
+  getStudentStats,
+  updateStudentScheduleSelf,
+  getStudentScheduleLogs
 } from '../services/studentService.js';
 import { createStaffAccount } from '../modules/accounts/service.js';
 import { assertStudentAccess, scopeWhere } from '../services/accessScope.js';
@@ -99,6 +101,39 @@ export const updateMyProfileSelf = asyncHandler(async (req, res) => {
     message: 'Profile updated successfully',
     data: updated
   });
+});
+
+// Part 6: Student self-service schedule creation/update
+export const updateMySchedule = asyncHandler(async (req, res) => {
+  if (req.user.role !== 'STUDENT') {
+    return res.status(403).json({ success: false, message: 'Only students can update their own schedule here.' });
+  }
+  const { workingDays, workingHours, reason } = req.body;
+  const updated = await updateStudentScheduleSelf(req.user.userId, { workingDays, workingHours, reason });
+  res.status(200).json({
+    success: true,
+    message: 'Schedule updated successfully',
+    data: updated
+  });
+});
+
+export const fetchMyScheduleLogs = asyncHandler(async (req, res) => {
+  const student = await getStudentByUserId(req.user.userId);
+  if (!student) {
+    return res.status(404).json({ success: false, message: 'Student profile not found' });
+  }
+  const logs = await getStudentScheduleLogs(student.id);
+  res.status(200).json({ success: true, data: logs });
+});
+
+export const fetchStudentScheduleLogs = asyncHandler(async (req, res) => {
+  const student = await getStudentById(req.params.id);
+  if (!student) {
+    return res.status(404).json({ success: false, message: 'Student not found' });
+  }
+  assertStudentAccess(req.user, student);
+  const logs = await getStudentScheduleLogs(student.id);
+  res.status(200).json({ success: true, data: logs });
 });
 
 export const addStudent = asyncHandler(async (req, res) => {

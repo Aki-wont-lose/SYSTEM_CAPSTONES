@@ -23,6 +23,45 @@ const EDITABLE_ROLES = ['ADMIN', 'COORDINATOR', 'SUPERVISOR'];
 const MANAGER_ROLES = ['ADMIN', 'COORDINATOR'];
 const SUPERVISOR_APPROVAL_ENTITY = 'SupervisorApprovalRequest';
 
+const normalizeCoordinatorSections = (value) => {
+  if (value == null) return [];
+  const rawList = Array.isArray(value) ? value : String(value).split(/[,;|]+/);
+  const seen = new Set();
+  const result = [];
+  for (const item of rawList) {
+    const clean = String(item || '').trim().toUpperCase();
+    if (clean && !seen.has(clean)) {
+      seen.add(clean);
+      result.push(clean);
+    }
+  }
+  return result;
+};
+
+const syncStudentsForCoordinator = async (coordinatorId, course, sections = []) => {
+  if (!coordinatorId || !course) return;
+  const normalizedCourse = normalizeCourseCode(course);
+  const courseVariants = normalizedCourse === 'ACT' ? ['ACT', 'BSACT', 'BSAC'] : [normalizedCourse];
+  const normalizedSections = normalizeCoordinatorSections(sections);
+
+  // Clear previous assignments pointing to this coordinator that no longer match
+  await prisma.student.updateMany({
+    where: { coordinatorId },
+    data: { coordinatorId: null }
+  });
+
+  if (normalizedSections.length > 0) {
+    await prisma.student.updateMany({
+      where: {
+        isArchived: false,
+        course: { in: courseVariants },
+        OR: normalizedSections.map((sec) => ({ section: { equals: sec, mode: 'insensitive' } }))
+      },
+      data: { coordinatorId }
+    });
+  }
+};
+
 const getSupervisorApprovalMap = async (supervisorIds = []) => {
   const map = new Map();
   if (!Array.isArray(supervisorIds) || supervisorIds.length === 0) return map;
@@ -55,6 +94,7 @@ const staffSelect = {
   isActive: true,
   mustChangePassword: true,
   coordinatorCourse: true,
+  coordinatorSections: true,
   supervisorCompanyId: true,
   createdAt: true,
   supervisorCompany: { select: { id: true, name: true } },
@@ -193,6 +233,7 @@ export const createStaffAccount = async ({
   lastName,
   role,
   coordinatorCourse,
+  coordinatorSections,
   companyId,
   contactNumber,
   requesterIsSuperAdmin = false,
@@ -270,6 +311,9 @@ export const createStaffAccount = async ({
   const normalizedCourse = normalizedRole === 'COORDINATOR'
     ? normalizeCourseCode(coordinatorCourse)
     : null;
+  const normalizedSections = normalizedRole === 'COORDINATOR'
+    ? normalizeCoordinatorSections(coordinatorSections)
+    : [];
   if (normalizedRole === 'COORDINATOR' && !normalizedCourse) {
     const error = new Error('Assigned course is required for a coordinator');
     error.status = 400;
@@ -358,6 +402,7 @@ export const createStaffAccount = async ({
     contactNumber: normalizedContact,
     mustChangePassword: false,
     coordinatorCourse: normalizedCourse,
+    coordinatorSections: normalizedSections,
     supervisorCompanyId: normalizedRole === 'SUPERVISOR' ? companyId : null
   };
 
@@ -371,6 +416,10 @@ export const createStaffAccount = async ({
         data: accountData,
         select: staffSelect
       });
+
+  if (normalizedRole === 'COORDINATOR') {
+    await syncStudentsForCoordinator(user.id, normalizedCourse, normalizedSections);
+  }
 
   const fullName = `${normalizedFirstName} ${normalizedLastName}`.trim();
 
@@ -743,6 +792,9 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
       throw error;
     }
   }
+  if (updateData.coordinatorSections !== undefined) {
+    data.coordinatorSections = normalizeCoordinatorSections(updateData.coordinatorSections);
+  }
   if (updateData.supervisorCompanyId !== undefined) {
     data.supervisorCompanyId = updateData.supervisorCompanyId || null;
   }
@@ -758,11 +810,22 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
     throw error;
   }
 
-  if (nextRole !== 'COORDINATOR') data.coordinatorCourse = null;
+  if (nextRole !== 'COORDINATOR') {
+    data.coordinatorCourse = null;
+    data.coordinatorSections = [];
+  }
   if (nextRole !== 'SUPERVISOR') data.supervisorCompanyId = null;
 
   const user = await prisma.user.update({ where: { id: userId }, data, select: staffSelect });
   invalidateUserAuthCache(userId);
+
+  if (nextRole === 'COORDINATOR') {
+    await syncStudentsForCoordinator(
+      user.id,
+      user.coordinatorCourse,
+      user.coordinatorSections || []
+    );
+  }
 
   const nextEmail = data.email || existing.email;
   if (nextEmail !== existing.email) {

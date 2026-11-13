@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Archive, ArchiveRestore, Search, GraduationCap, Users, UserCog, Building2, ArrowUpDown, ArrowUp, ArrowDown, Trash2, AlertTriangle } from 'lucide-react';
+import { Archive, ArchiveRestore, Search, GraduationCap, Users, UserCog, Building2, ArrowUpDown, ArrowUp, ArrowDown, Trash2, AlertTriangle, Eye } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -19,6 +19,7 @@ import {
 import { courseLabel } from '../constants/programs';
 
 const PAGE_SIZES = [10, 50, 100, 'ALL'];
+const ACADEMIC_YEAR_OPTIONS = ['2026-2027', '2027-2028', '2028-2029', '2029-2030'];
 
 const formatDate = (value) =>
   value
@@ -30,7 +31,10 @@ const coordinatorName = (member) => [member.firstName, member.lastName].filter(B
 
 const ArchivePage = () => {
   const { user } = useAuth();
+  const isSuperAdmin = Boolean(user?.isSuperAdmin);
   const isAdmin = user?.role === 'ADMIN';
+  const canManageArchive = !isSuperAdmin;
+  const canDelete = isAdmin && !isSuperAdmin;
   const [records, setRecords] = useState({ students: [], coordinators: [], supervisors: [], companies: [] });
   const [activeTab, setActiveTab] = useState('students');
   const [search, setSearch] = useState('');
@@ -43,6 +47,16 @@ const ArchivePage = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [viewCompany, setViewCompany] = useState(null);
+  const [renewTarget, setRenewTarget] = useState(null);
+  const [renewForm, setRenewForm] = useState({
+    academicYear: '2026-2027',
+    customAcademicYear: '',
+    startDate: '',
+    expirationDate: ''
+  });
+  const [renewError, setRenewError] = useState('');
+  const [renewSaving, setRenewSaving] = useState(false);
 
   const tabs = useMemo(
     () => [
@@ -103,8 +117,9 @@ const ArchivePage = () => {
     }
     if (activeTab === 'companies') {
       if (key === 'name') return (item.name || '').toLowerCase();
-      if (key === 'industry') return (item.industryType || '').toLowerCase();
-      if (key === 'address') return (item.address || '').toLowerCase();
+      if (key === 'academicYear') return (item.academicYear || '').toLowerCase();
+      if (key === 'expirationDate') return item.expirationDate ? new Date(item.expirationDate).getTime() : 0;
+      if (key === 'status') return (item.status || '').toLowerCase();
     }
     return String(item[key] ?? '').toLowerCase();
   };
@@ -130,7 +145,7 @@ const ArchivePage = () => {
               .filter(Boolean)
               .some((value) => String(value).toLowerCase().includes(term));
           }
-          return [item.name, item.industryType, item.address]
+          return [item.name, item.industryType, item.address, item.academicYear, item.status]
             .filter(Boolean)
             .some((value) => String(value).toLowerCase().includes(term));
         });
@@ -177,7 +192,57 @@ const ArchivePage = () => {
   const recordName = (type, item) =>
     type === 'students' ? studentName(item) : type === 'companies' ? item.name : coordinatorName(item);
 
+  const openRenewCompany = (company) => {
+    setRenewTarget(company);
+    setRenewError('');
+    setRenewForm({
+      academicYear: ACADEMIC_YEAR_OPTIONS.includes(company.academicYear) ? company.academicYear : '2026-2027',
+      customAcademicYear: '',
+      startDate: '',
+      expirationDate: ''
+    });
+  };
+
+  const handleRenewSubmit = async (e) => {
+    e.preventDefault();
+    if (!renewTarget) return;
+    const academicYear = renewForm.academicYear === 'CUSTOM'
+      ? renewForm.customAcademicYear.trim()
+      : renewForm.academicYear;
+    if (!academicYear) {
+      setRenewError('Academic year is required.');
+      return;
+    }
+    if (!renewForm.startDate || !renewForm.expirationDate) {
+      setRenewError('Start date and expiration date are required.');
+      return;
+    }
+    if (new Date(renewForm.expirationDate) <= new Date(renewForm.startDate)) {
+      setRenewError('Expiration date must be after start date.');
+      return;
+    }
+    setRenewSaving(true);
+    setRenewError('');
+    try {
+      await restoreCompany(renewTarget.id, {
+        academicYear,
+        startDate: renewForm.startDate,
+        expirationDate: renewForm.expirationDate
+      });
+      setRenewTarget(null);
+      await load();
+    } catch (err) {
+      setRenewError(err.response?.data?.message || 'Could not renew/restore this company.');
+    } finally {
+      setRenewSaving(false);
+    }
+  };
+
   const handleRestore = async (type, item) => {
+    if (type === 'companies') {
+      openRenewCompany(item);
+      return;
+    }
     const label = recordName(type, item);
     if (!window.confirm(`Restore ${label}? They will appear in the active lists again.`)) return;
 
@@ -187,7 +252,6 @@ const ArchivePage = () => {
       if (type === 'students') await restoreStudent(item.id);
       else if (type === 'coordinators') await restoreCoordinator(item.id);
       else if (type === 'supervisors') await restoreSupervisor(item.id);
-      else await restoreCompany(item.id);
       await load();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not restore this record.');
@@ -320,8 +384,9 @@ const ArchivePage = () => {
                   {activeTab === 'companies' && (
                     <>
                       <SortHeader label="Company" sortKey="name" />
-                      <SortHeader label="Industry" sortKey="industry" />
-                      <SortHeader label="Address" sortKey="address" />
+                      <SortHeader label="Academic Year" sortKey="academicYear" />
+                      <SortHeader label="Validity Period" sortKey="expirationDate" />
+                      <SortHeader label="Status" sortKey="status" />
                     </>
                   )}
                   <SortHeader label="Archived" sortKey="archived" />
@@ -372,25 +437,54 @@ const ArchivePage = () => {
                         <>
                           <td className="px-6 py-3.5">
                             <p className="font-medium text-sti-gray-dark dark:text-white">{item.name}</p>
-                            <p className="text-xs text-sti-gray">{item._count?.students ?? 0} linked {item._count?.students === 1 ? 'student' : 'students'}</p>
+                            <p className="text-xs text-sti-gray">
+                              {item.industryType || 'Partner'} • {item._count?.students ?? 0} linked {item._count?.students === 1 ? 'student' : 'students'}
+                            </p>
                           </td>
-                          <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{item.industryType || '—'}</td>
-                          <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{item.address || '—'}</td>
+                          <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200 whitespace-nowrap">
+                            {item.academicYear || '—'}
+                          </td>
+                          <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200 whitespace-nowrap text-xs">
+                            {item.startDate && item.expirationDate
+                              ? `${formatDate(item.startDate)} – ${formatDate(item.expirationDate)}`
+                              : '—'}
+                          </td>
+                          <td className="px-6 py-3.5 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                              item.status === 'EXPIRED'
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                            }`}>
+                              {item.status || 'INACTIVE'}
+                            </span>
+                          </td>
                         </>
                       )}
                       <td className="px-6 py-3.5 whitespace-nowrap text-sti-gray">{formatDate(item.archivedAt)}</td>
                       <td className="px-6 py-3.5">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="secondary"
-                            icon={ArchiveRestore}
-                            onClick={() => handleRestore(activeTab, item)}
-                            loading={restoring === key}
-                            className="text-xs px-3 py-2"
-                          >
-                            Restore
-                          </Button>
-                          {isAdmin && (
+                          {activeTab === 'companies' && (
+                            <Button
+                              variant="secondary"
+                              icon={Eye}
+                              onClick={() => setViewCompany(item)}
+                              className="text-xs px-3 py-2"
+                            >
+                              View
+                            </Button>
+                          )}
+                          {canManageArchive && (
+                            <Button
+                              variant="secondary"
+                              icon={ArchiveRestore}
+                              onClick={() => handleRestore(activeTab, item)}
+                              loading={restoring === key}
+                              className="text-xs px-3 py-2"
+                            >
+                              {activeTab === 'companies' ? 'Renew / Restore' : 'Restore'}
+                            </Button>
+                          )}
+                          {canDelete && (
                             <Button
                               variant="danger"
                               icon={Trash2}
@@ -465,6 +559,143 @@ const ArchivePage = () => {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(viewCompany)}
+        onClose={() => setViewCompany(null)}
+        title={viewCompany ? `Archived Company — ${viewCompany.name}` : 'Archived Company'}
+      >
+        {viewCompany && (
+          <div className="space-y-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-sti-gray-light/60 dark:bg-slate-800/60">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Company Name</p>
+                <p className="font-semibold text-sti-gray-dark dark:text-white">{viewCompany.name}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Industry</p>
+                <p className="font-medium text-sti-gray-dark dark:text-slate-200">{viewCompany.industryType || '—'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Academic Year</p>
+                <p className="font-medium text-sti-gray-dark dark:text-slate-200">{viewCompany.academicYear || '—'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Status</p>
+                <p className="font-semibold text-sti-gray-dark dark:text-slate-200">{viewCompany.status || 'INACTIVE'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Start Date</p>
+                <p className="font-medium text-sti-gray-dark dark:text-slate-200">{formatDate(viewCompany.startDate)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Expiration Date</p>
+                <p className="font-medium text-sti-gray-dark dark:text-slate-200">{formatDate(viewCompany.expirationDate)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Archived Date</p>
+                <p className="font-medium text-sti-gray-dark dark:text-slate-200">{formatDate(viewCompany.archivedAt)}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Linked Students</p>
+                <p className="font-medium text-sti-gray-dark dark:text-slate-200">{viewCompany._count?.students ?? 0}</p>
+              </div>
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-sti-gray">Address</p>
+              <p className="text-sti-gray-dark dark:text-slate-200">{viewCompany.address || '—'}</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Contact Person</p>
+                <p className="text-sti-gray-dark dark:text-slate-200">{viewCompany.contactPerson || '—'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Contact Number</p>
+                <p className="text-sti-gray-dark dark:text-slate-200">{viewCompany.contactNumber || '—'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-sti-gray">Email</p>
+                <p className="text-sti-gray-dark dark:text-slate-200 break-all">{viewCompany.email || '—'}</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              {canManageArchive && (
+                <Button variant="primary" icon={ArchiveRestore} onClick={() => { const c = viewCompany; setViewCompany(null); openRenewCompany(c); }}>
+                  Renew / Restore
+                </Button>
+              )}
+              <Button variant="secondary" onClick={() => setViewCompany(null)}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(renewTarget)}
+        onClose={() => { if (!renewSaving) setRenewTarget(null); }}
+        title={renewTarget ? `Renew Partner Company — ${renewTarget.name}` : 'Renew Partner Company'}
+      >
+        <form onSubmit={handleRenewSubmit} className="space-y-4">
+          <p className="text-xs text-sti-gray">
+            Renewing creates a new active partner company record for the selected academic year while preserving the archived history.
+          </p>
+          <div>
+            <label className="label">Academic Year</label>
+            <select
+              value={renewForm.academicYear}
+              onChange={(e) => setRenewForm({ ...renewForm, academicYear: e.target.value })}
+              className="input-field"
+            >
+              {ACADEMIC_YEAR_OPTIONS.map((ay) => (
+                <option key={ay} value={ay}>{ay}</option>
+              ))}
+              <option value="CUSTOM">Custom Academic Year</option>
+            </select>
+            {renewForm.academicYear === 'CUSTOM' && (
+              <input
+                type="text"
+                placeholder="e.g. 2030-2031"
+                value={renewForm.customAcademicYear}
+                onChange={(e) => setRenewForm({ ...renewForm, customAcademicYear: e.target.value })}
+                className="input-field mt-2"
+                required
+              />
+            )}
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Start Date</label>
+              <input
+                type="date"
+                value={renewForm.startDate}
+                onChange={(e) => setRenewForm({ ...renewForm, startDate: e.target.value })}
+                className="input-field"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">Expiration Date</label>
+              <input
+                type="date"
+                value={renewForm.expirationDate}
+                onChange={(e) => setRenewForm({ ...renewForm, expirationDate: e.target.value })}
+                className="input-field"
+                required
+              />
+            </div>
+          </div>
+          {renewError && <p className="text-sm text-red-600">{renewError}</p>}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="secondary" onClick={() => setRenewTarget(null)} disabled={renewSaving}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" icon={ArchiveRestore} loading={renewSaving}>
+              Renew & Restore
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

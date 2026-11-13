@@ -11,7 +11,8 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
-  batchCreateStudents
+  batchCreateStudents,
+  getStudentScheduleLogs
 } from '../services/studentService';
 import { getCompanies } from '../services/companyService';
 import { getStudentAttendanceForStaff, getStudentSummaryForStaff } from '../services/attendanceService';
@@ -75,6 +76,7 @@ const StudentManagement = () => {
   const [deleting, setDeleting] = useState(false);
   const [viewAttendance, setViewAttendance] = useState([]);
   const [viewSummary, setViewSummary] = useState(null);
+  const [viewScheduleLogs, setViewScheduleLogs] = useState([]);
   const [dragOver, setDragOver] = useState(false);
   const [batchResult, setBatchResult] = useState(null);
   const [batchLoading, setBatchLoading] = useState(false);
@@ -141,6 +143,10 @@ const StudentManagement = () => {
     setModalMode('view');
     setViewAttendance([]);
     setViewSummary(null);
+    setViewScheduleLogs([]);
+    getStudentScheduleLogs(student.id)
+      .then((res) => setViewScheduleLogs(res.data || []))
+      .catch(() => setViewScheduleLogs([]));
     // Admin has no attendance access; only fetch for the roles that track it.
     if (user?.role === 'ADMIN') return;
     try {
@@ -829,6 +835,30 @@ const StudentManagement = () => {
               )}
             </div>
             )}
+            {viewScheduleLogs.length > 0 && (
+              <div className="pt-3 border-t border-black/5 dark:border-white/10">
+                <h4 className="font-bold text-sti-gray-dark dark:text-white text-sm mb-2 flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-sti-blue" /> Schedule Change History
+                </h4>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {viewScheduleLogs.map((log) => (
+                    <div key={log.id} className="p-2.5 rounded-xl bg-sti-gray-light/50 dark:bg-white/5 text-xs flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-sti-gray-dark dark:text-white">
+                          {log.newWorkingDays || '—'} • {log.newWorkingHours || '—'}
+                        </p>
+                        <p className="text-[11px] text-sti-gray">
+                          Updated by {log.changedByRole || 'Student'}
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-sti-gray whitespace-nowrap">
+                        {new Date(log.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Modal>
@@ -857,6 +887,30 @@ const StudentManagement = () => {
               <p className="text-sm text-sti-gray mt-1 break-all">{newCredentials.email}</p>
             </div>
             <Button variant="primary" className="w-full" onClick={() => setNewCredentials(null)}>Done</Button>
+            {viewScheduleLogs.length > 0 && (
+              <div className="pt-3 border-t border-black/5 dark:border-white/10">
+                <h4 className="font-bold text-sti-gray-dark dark:text-white text-sm mb-2 flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-sti-blue" /> Schedule Change History
+                </h4>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {viewScheduleLogs.map((log) => (
+                    <div key={log.id} className="p-2.5 rounded-xl bg-sti-gray-light/50 dark:bg-white/5 text-xs flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-sti-gray-dark dark:text-white">
+                          {log.newWorkingDays || '—'} • {log.newWorkingHours || '—'}
+                        </p>
+                        <p className="text-[11px] text-sti-gray">
+                          Updated by {log.changedByRole || 'Student'}
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-sti-gray whitespace-nowrap">
+                        {new Date(log.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Modal>
@@ -884,6 +938,30 @@ const StudentManagement = () => {
             <div className="flex justify-end">
               <Button variant="primary" onClick={()=>setBatchResult(null)}>OK</Button>
             </div>
+            {viewScheduleLogs.length > 0 && (
+              <div className="pt-3 border-t border-black/5 dark:border-white/10">
+                <h4 className="font-bold text-sti-gray-dark dark:text-white text-sm mb-2 flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-sti-blue" /> Schedule Change History
+                </h4>
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                  {viewScheduleLogs.map((log) => (
+                    <div key={log.id} className="p-2.5 rounded-xl bg-sti-gray-light/50 dark:bg-white/5 text-xs flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-sti-gray-dark dark:text-white">
+                          {log.newWorkingDays || '—'} • {log.newWorkingHours || '—'}
+                        </p>
+                        <p className="text-[11px] text-sti-gray">
+                          Updated by {log.changedByRole || 'Student'}
+                        </p>
+                      </div>
+                      <span className="text-[11px] text-sti-gray whitespace-nowrap">
+                        {new Date(log.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Modal>

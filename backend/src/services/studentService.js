@@ -20,6 +20,30 @@ import {
 import { studentScopeWhere } from './accessScope.js';
 import { verifySchoolAccountForCreation } from './graphDirectoryService.js';
 import { assertCourseAcceptedForInternship } from '../modules/ojtHours/service.js';
+import { recordAudit } from './auditLogService.js';
+import { validateScheduleInput } from '../utils/simesValidation.js';
+
+// Find the active coordinator assigned to this (course, section)
+export const resolveCoordinatorIdForStudent = async (course, section) => {
+  const normCourse = normalizeCourseCode(course);
+  const normSection = String(section || '').trim().toUpperCase();
+  if (!normCourse || !normSection) return null;
+  const courseVariants = normCourse === 'ACT' ? ['ACT', 'BSACT', 'BSAC'] : [normCourse];
+  const coordinators = await prisma.user.findMany({
+    where: {
+      role: 'COORDINATOR',
+      isActive: true,
+      isArchived: false,
+      coordinatorCourse: { in: courseVariants }
+    },
+    select: { id: true, coordinatorSections: true }
+  });
+  const match = coordinators.find((c) =>
+    Array.isArray(c.coordinatorSections) &&
+    c.coordinatorSections.some((s) => String(s || '').trim().toUpperCase() === normSection)
+  );
+  return match?.id || null;
+};
 
 
 const badRequest = (message) => {
@@ -115,10 +139,13 @@ const hydrateStudentPlacement = (student) => {
 const validateCompanyForStudent = async (companyId, studentCourse, isNewAssignment = true) => {
   const company = await prisma.company.findUnique({
     where: { id: companyId },
-    select: { id: true, name: true, status: true, isArchived: true, programs: true, availableSlots: true }
+    select: { id: true, name: true, status: true, isArchived: true, expirationDate: true, programs: true, availableSlots: true }
   });
-  if (!company || company.isArchived || company.status === 'INACTIVE') {
-    throw badRequest('Selected partner company is inactive or unavailable.');
+  if (!company || company.isArchived || company.status !== 'ACTIVE') {
+    throw badRequest('Selected partner company is inactive, pending approval, or archived.');
+  }
+  if (company.expirationDate && new Date(company.expirationDate) < new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })).setHours(0, 0, 0, 0)) {
+    throw badRequest('Selected partner company validity period has expired.');
   }
   const normalizedCourse = normalizeCourseCode(studentCourse);
   const companyPrograms = Array.isArray(company.programs) ? company.programs.map(normalizeCourseCode) : [];
@@ -364,6 +391,12 @@ export const createStudent = async (studentData, userData, actor = null) => {
   if (!isValidSection(normalizedSection, course)) {
     throw badRequest(ELMS_SECTION_ERROR);
   }
+  if (actor?.role === 'COORDINATOR' && Array.isArray(actor.coordinatorSections) && actor.coordinatorSections.length > 0) {
+    const allowed = actor.coordinatorSections.map((s) => String(s || '').trim().toUpperCase());
+    if (!allowed.includes(normalizedSection.toUpperCase())) {
+      throw forbidden(`You can only create students in your assigned sections (${actor.coordinatorSections.join(', ')}).`);
+    }
+  }
   // OJT is a final-year subject: only 4th-year sections are accepted for new
   // student records. Updates keep the legacy check so older sections stay
   // editable without a data migration.
@@ -414,6 +447,8 @@ export const createStudent = async (studentData, userData, actor = null) => {
     if (studentData[field] !== undefined) sanitizedCreate[field] = studentData[field];
   }
 
+  const coordinatorId = await resolveCoordinatorIdForStudent(course, normalizedSection);
+
   try {
     // The login and the profile are created together: either both exist or
     // neither does, so a duplicate can never leave an orphan account.
@@ -435,6 +470,7 @@ export const createStudent = async (studentData, userData, actor = null) => {
           studentId: cleanStudentId,
           section: normalizedSection,
           email,
+          coordinatorId,
           ...placementDefaults,
           contactNumber: studentData.contactNumber ? String(studentData.contactNumber).trim() : '',
           requiredHours: requiredHours ?? studentData.requiredHours ?? undefined,
@@ -639,6 +675,17 @@ export const updateStudent = async (studentId, updateData, actor = null) => {
       if (updateData.workingHours === undefined) sanitized.workingHours = null;
     }
 
+    if (sanitized.course !== undefined || sanitized.section !== undefined) {
+      const nextSec = sanitized.section || current?.section;
+      if (actor?.role === 'COORDINATOR' && Array.isArray(actor.coordinatorSections) && actor.coordinatorSections.length > 0) {
+        const allowed = actor.coordinatorSections.map((s) => String(s || '').trim().toUpperCase());
+        if (!allowed.includes(String(nextSec || '').trim().toUpperCase())) {
+          throw forbidden(`You can only manage students in your assigned sections (${actor.coordinatorSections.join(', ')}).`);
+        }
+      }
+      sanitized.coordinatorId = await resolveCoordinatorIdForStudent(targetCourse, nextSec);
+    }
+
     const emailChanged = sanitized.email !== undefined && sanitized.email !== current?.email;
     if (emailChanged) {
       // The sign-in identity lives on User. Changing only the profile would leave
@@ -813,4 +860,75 @@ export const updateStudentHours = async (studentId, completedHours) => {
   } catch (error) {
     throw error;
   }
+};
+
+// Part 6: Student self-service schedule management + accountability log
+export const updateStudentScheduleSelf = async (userId, { workingDays, workingHours, reason } = {}) => {
+  const { days, hours, reason: cleanReason } = validateScheduleInput({ workingDays, workingHours, reason });
+
+  const student = await prisma.student.findUnique({
+    where: { userId },
+    select: { id: true, workingDays: true, workingHours: true, firstName: true, lastName: true, email: true }
+  });
+  if (!student) {
+    const err = new Error('Student profile not found');
+    err.status = 404;
+    throw err;
+  }
+
+  const now = new Date();
+  const [updated] = await prisma.$transaction([
+    prisma.student.update({
+      where: { id: student.id },
+      data: {
+        workingDays: days,
+        workingHours: hours,
+        scheduleUpdatedAt: now
+      },
+      include: {
+        company: true,
+        scheduleLogs: { orderBy: { createdAt: 'desc' }, take: 20 }
+      }
+    }),
+    prisma.scheduleLog.create({
+      data: {
+        studentId: student.id,
+        previousDays: student.workingDays || null,
+        previousHours: student.workingHours || null,
+        newDays: days,
+        newHours: hours,
+        changedById: userId,
+        changedByRole: 'STUDENT',
+        reason: cleanReason,
+        status: 'APPROVED'
+      }
+    })
+  ]);
+
+  await recordAudit({
+    userId,
+    userEmail: student.email,
+    userRole: 'STUDENT',
+    action: 'UPDATE',
+    entity: 'Schedule',
+    entityId: student.id,
+    description: `Updated internship schedule to ${days} (${hours})`,
+    metadata: {
+      previousDays: student.workingDays,
+      previousHours: student.workingHours,
+      newDays: days,
+      newHours: hours,
+      reason: reason || null
+    }
+  });
+
+  return hydrateStudentPlacement(updated);
+};
+
+export const getStudentScheduleLogs = async (studentId) => {
+  return prisma.scheduleLog.findMany({
+    where: { studentId },
+    orderBy: { createdAt: 'desc' },
+    take: 50
+  });
 };

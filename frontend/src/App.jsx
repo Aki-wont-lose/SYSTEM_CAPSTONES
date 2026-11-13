@@ -100,7 +100,7 @@ function App() {
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/accounts" element={<AccountManagement />} />
           <Route path="/admin/students" element={<Navigate to="/admin/accounts?tab=students" replace />} />
-          <Route path="/admin/templates" element={<ProtectedRoute disallowSuperAdmin><Templates /></ProtectedRoute>} />
+          <Route path="/admin/templates" element={<Templates />} />
           <Route path="/admin/submissions" element={<ProtectedRoute disallowSuperAdmin><Submissions /></ProtectedRoute>} />
           <Route path="/admin/requirements" element={<ProtectedRoute disallowSuperAdmin><AdminRequirements /></ProtectedRoute>} />
           <Route path="/admin/grading" element={<ProtectedRoute disallowSuperAdmin><Navigate to="/admin/submissions" replace /></ProtectedRoute>} />
@@ -110,7 +110,7 @@ function App() {
           <Route path="/admin/archive" element={<Archive />} />
           <Route path="/admin/announcements" element={<ProtectedRoute disallowSuperAdmin><AnnouncementManagement /></ProtectedRoute>} />
           <Route path="/admin/messages" element={<Messages />} />
-          <Route path="/admin/ojt-hours" element={<OjtHours />} />
+          <Route path="/admin/ojt-hours" element={<ProtectedRoute disallowSuperAdmin><OjtHours /></ProtectedRoute>} />
           <Route path="/admin/profile" element={<AdminProfile />} />
         </Route>
 

@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { FileCheck2, Upload, CheckCircle2, XCircle, Clock3, X, Download, AlertTriangle, Search, FileText, FileType2, FileImage, FileSpreadsheet, File as FileIcon, Trash2 } from 'lucide-react';
+import { FileCheck2, Upload, CheckCircle2, XCircle, Clock3, X, Download, AlertTriangle, Search, FileText, FileType2, FileImage, FileSpreadsheet, File as FileIcon, Trash2, Eye, Sparkles, Bell } from 'lucide-react';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import WeeklyToDo from '../components/WeeklyToDo';
-import { getMySubmissions, submitRequirementFile, deleteMySubmission } from '../services/requirementService';
+import SubmissionViewModal from '../components/SubmissionViewModal';
+import { getMySubmissions, submitRequirementFile, deleteMySubmission, generateTemplateDocument } from '../services/requirementService';
+import { downloadGeneratedDocument } from '../utils/documentDownload';
 
 const statusConfig = {
   PENDING: { label: 'Pending Review', style: 'bg-yellow-50 text-sti-yellow-dark', Icon: Clock3 },
@@ -30,6 +32,7 @@ const fileToBase64 = (file) =>
   });
 
 const formatDate = (value) => (value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null);
+const formatDateTime = (value) => (value ? new Date(value).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : null);
 
 // Pick a lucide icon that matches the template file extension
 const templateIconFor = (name) => {
@@ -58,6 +61,8 @@ const Requirements = ({ mode = 'all' }) => {
   const [loading, setLoading] = useState(true);
   const [uploadingId, setUploadingId] = useState(null);
   const [removingId, setRemovingId] = useState(null);
+  const [generatingId, setGeneratingId] = useState(null);
+  const [viewingSubmission, setViewingSubmission] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const fileInputRef = useRef(null);
@@ -116,6 +121,21 @@ const Requirements = ({ mode = 'all' }) => {
     a.href = req.templateFile;
     a.download = req.templateFileName || `${req.title}_template.pdf`;
     a.click();
+  };
+
+  const handleGenerateDocument = async (req) => {
+    setError('');
+    setNotice('');
+    setGeneratingId(req.id);
+    try {
+      const res = await generateTemplateDocument(req.id);
+      downloadGeneratedDocument(res.data);
+      setNotice(`Generated personalized document for "${req.title}".`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not generate document');
+    } finally {
+      setGeneratingId(null);
+    }
   };
 
   const handleRemoveSubmission = async (reqId) => {
@@ -184,6 +204,18 @@ const Requirements = ({ mode = 'all' }) => {
       )}
 
       <input ref={fileInputRef} type="file" onChange={handleFileChange} className="hidden" />
+
+      {(isSubmissions || mode === 'all') && items.some((i) => i.isUpcoming) && (
+        <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-200 text-sm px-4 py-3 rounded-xl border border-amber-200 dark:border-amber-800">
+          <Bell className="w-4 h-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-semibold">Upcoming Submission Deadline Reminder</p>
+            <p className="text-xs mt-0.5">
+              Due within 48 hours: {items.filter((i) => i.isUpcoming).map((i) => i.title).join(', ')}
+            </p>
+          </div>
+        </div>
+      )}
 
       {(isSubmissions || mode === 'all') && <WeeklyToDo onChanged={loadData} />}
 
@@ -257,15 +289,26 @@ const Requirements = ({ mode = 'all' }) => {
                       {req.category && <p className="text-xs font-medium text-sti-gray mt-3">{req.category}</p>}
                       {req.description && <p className="text-xs text-sti-gray mt-1 line-clamp-2">{req.description}</p>}
 
-                      <div className="mt-3 pt-3 border-t border-black/5 dark:border-white/10">
+                      <div className="mt-3 pt-3 border-t border-black/5 dark:border-white/10 space-y-2">
                         {req.templateFile ? (
                           <>
-                            <p className="text-[11px] text-sti-gray truncate mb-2">
+                            <p className="text-[11px] text-sti-gray truncate">
                               {req.templateFileName || 'template.pdf'}{sizeLabel ? ` • ${sizeLabel}` : ''}
                             </p>
-                            <Button variant="primary" icon={Download} onClick={() => downloadTemplate(req)} className="w-full justify-center">
-                              Download Template
-                            </Button>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <Button
+                                variant="primary"
+                                icon={Sparkles}
+                                loading={generatingId === req.id}
+                                onClick={() => handleGenerateDocument(req)}
+                                className="flex-1 justify-center"
+                              >
+                                Auto-Fill &amp; Download
+                              </Button>
+                              <Button variant="secondary" icon={Download} onClick={() => downloadTemplate(req)} className="justify-center" title="Download blank template">
+                                Blank
+                              </Button>
+                            </div>
                           </>
                         ) : (
                           <p className="text-[11px] text-sti-gray italic text-center py-2">No file provided — see description for instructions</p>
@@ -306,8 +349,14 @@ const Requirements = ({ mode = 'all' }) => {
                         <tr key={req.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
                           <td className="px-6 py-3.5 align-top">
                             <p className="font-medium text-sti-gray-dark dark:text-white">{req.title}</p>
+                            {req.category && <p className="text-[11px] font-semibold text-sti-blue mt-0.5">{req.category}</p>}
                             {req.description && <p className="text-xs text-sti-gray mt-0.5">{req.description}</p>}
                             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                              {req.assignedDate && (
+                                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                  Assigned {formatDate(req.assignedDate)}
+                                </span>
+                              )}
                               {req.cadence === 'WEEKLY' && (
                                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600">Weekly</span>
                               )}
@@ -317,9 +366,14 @@ const Requirements = ({ mode = 'all' }) => {
                             </div>
                           </td>
                           <td className="px-6 py-3.5 align-top text-xs text-sti-gray-dark dark:text-slate-200">
-                            {dueDate || '-'}
+                            {req.dueDate ? (
+                              <div>
+                                <p className="font-medium">{formatDateTime(req.dueDate)}</p>
+                                {req.dueTime && <p className="text-[11px] text-sti-gray">Due time: {req.dueTime}</p>}
+                              </div>
+                            ) : '-'}
                             {req.derivedStatus === 'MISSING' && (
-                              <p className="text-[11px] text-red-600 font-medium mt-0.5">Counts as missing</p>
+                              <p className="text-[11px] text-red-600 font-semibold mt-0.5">Overdue</p>
                             )}
                             {req.derivedStatus === 'LATE' && (
                               <p className="text-[11px] text-orange-600 font-medium mt-0.5">Submitted late</p>
@@ -367,6 +421,16 @@ const Requirements = ({ mode = 'all' }) => {
                               )}
                               {showSubmissionInfo && (
                                 <>
+                                  {submission && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setViewingSubmission({ ...submission, requirement: req })}
+                                      title="View submitted file"
+                                      className="p-2 rounded-lg hover:bg-sti-blue-50 text-sti-blue transition-colors"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                  )}
                                   <Button
                                     variant={submission?.status === 'APPROVED' ? 'secondary' : 'primary'}
                                     icon={Upload}
@@ -415,6 +479,11 @@ const Requirements = ({ mode = 'all' }) => {
           )}
         </>
       )}
+
+      <SubmissionViewModal
+        submission={viewingSubmission}
+        onClose={() => setViewingSubmission(null)}
+      />
     </div>
   );
 };

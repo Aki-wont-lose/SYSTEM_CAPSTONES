@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Archive, X, Building2, Users, Upload, Filter, GraduationCap, FileSpreadsheet, MapPin, Info, HelpCircle, Phone, Mail, UserCheck } from 'lucide-react';
+import { Plus, Pencil, Archive, X, Building2, Users, Upload, Filter, GraduationCap, FileSpreadsheet, MapPin, Info, HelpCircle, Phone, Mail, UserCheck, CalendarDays, Check, XCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import { CardSkeleton } from '../components/Skeleton';
-import { getCompanies, createCompany, updateCompany, deleteCompany, batchCreateCompanies } from '../services/companyService';
+import { useAuth } from '../hooks/useAuth';
+import { getCompanies, createCompany, updateCompany, deleteCompany, batchCreateCompanies, approveCompany, rejectCompany } from '../services/companyService';
 import { normalizeCourseCode, COURSE_LABELS } from '../constants/programs';
 import { isValidPersonName, PERSON_NAME_ERROR } from '../constants/studentRules';
 import {
@@ -49,6 +50,19 @@ const splitIndustryValue = (savedValue) => {
     : { industryType: OTHER_INDUSTRY_OPTION, industryOther: saved };
 };
 
+const ACADEMIC_YEAR_OPTIONS = ['2026-2027', '2027-2028', '2028-2029', '2029-2030'];
+
+const getRemainingValidityLabel = (expirationDate) => {
+  if (!expirationDate) return null;
+  const now = new Date();
+  const exp = new Date(expirationDate);
+  const diffDays = Math.ceil((exp.getTime() - now.getTime()) / 86400000);
+  if (diffDays < 0) return { label: 'Expired', cls: 'bg-red-50 text-red-600' };
+  if (diffDays === 0) return { label: 'Expires today', cls: 'bg-amber-50 text-amber-700' };
+  if (diffDays <= 30) return { label: `${diffDays} day${diffDays === 1 ? '' : 's'} remaining`, cls: 'bg-amber-50 text-amber-700' };
+  return { label: `${diffDays} days remaining`, cls: 'bg-green-50 text-green-700' };
+};
+
 const emptyForm = {
   name: '',
   region: '',
@@ -65,12 +79,21 @@ const emptyForm = {
   industryOther: '',
   programs: [],
   availableSlots: 0,
+  academicYear: '2026-2027',
+  customAcademicYear: '',
+  startDate: '',
+  expirationDate: '',
   status: 'ACTIVE'
 };
 
 // Manage partner companies, their slots, and accepted programs
 const Companies = () => {
+  const { user } = useAuth();
+  const isSuperAdmin = !!user?.isSuperAdmin;
+  const canMutate = !isSuperAdmin && (user?.role === 'ADMIN' || user?.role === 'COORDINATOR');
+  const canApprove = !isSuperAdmin && user?.role === 'ADMIN';
   const [companies, setCompanies] = useState([]);
+  const [academicYearFilter, setAcademicYearFilter] = useState('');
   const [acceptedCourses, setAcceptedCourses] = useState(ALL_PROGRAMS);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -184,7 +207,10 @@ const Companies = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const res = await getCompanies({ program: programFilter || undefined });
+      const res = await getCompanies({
+        program: programFilter || undefined,
+        academicYear: academicYearFilter || undefined
+      });
       setCompanies(res.data || []);
     } catch (err) {
       console.error(err);
@@ -193,7 +219,7 @@ const Companies = () => {
     }
   };
 
-  useEffect(() => { loadData(); }, [programFilter]);
+  useEffect(() => { loadData(); }, [programFilter, academicYearFilter]);
 
   // Open the modal with an empty form for adding a company
   const openNew = () => {
@@ -222,6 +248,10 @@ const Companies = () => {
       ...splitIndustryValue(company.industryType),
       availableSlots: company.availableSlots || 0,
       programs: (company.programs || []).map((p) => normalizeCourseCode(p)),
+      academicYear: ACADEMIC_YEAR_OPTIONS.includes(company.academicYear) ? company.academicYear : (company.academicYear ? 'CUSTOM' : '2026-2027'),
+      customAcademicYear: company.academicYear && !ACADEMIC_YEAR_OPTIONS.includes(company.academicYear) ? company.academicYear : '',
+      startDate: company.startDate ? new Date(company.startDate).toISOString().slice(0, 10) : '',
+      expirationDate: company.expirationDate ? new Date(company.expirationDate).toISOString().slice(0, 10) : '',
       status: company.status || 'ACTIVE'
     });
     setFormErrors({});
@@ -304,6 +334,19 @@ const Companies = () => {
       errors.availableSlots = 'Available slots cannot be negative.';
     }
 
+    const ayVal = form.academicYear === 'CUSTOM' ? form.customAcademicYear : form.academicYear;
+    if (!String(ayVal || '').trim()) {
+      errors.academicYear = 'Academic Year is required (e.g., 2026-2027).';
+    }
+    if (!form.startDate) {
+      errors.startDate = 'Start Date is required.';
+    }
+    if (!form.expirationDate) {
+      errors.expirationDate = 'Expiration Date is required.';
+    } else if (form.startDate && new Date(form.expirationDate) <= new Date(form.startDate)) {
+      errors.expirationDate = 'Expiration date must be later than start date.';
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -344,6 +387,9 @@ const Companies = () => {
         industryType: cleanIndustry,
         programs: (form.programs || []).map((p) => normalizeCourseCode(p)).filter((p) => acceptedCourses.includes(p)),
         availableSlots: slots,
+        academicYear: (form.academicYear === 'CUSTOM' ? form.customAcademicYear : form.academicYear)?.trim(),
+        startDate: form.startDate || null,
+        expirationDate: form.expirationDate || null,
         latitude: form.latitude === '' ? null : parseFloat(form.latitude),
         longitude: form.longitude === '' ? null : parseFloat(form.longitude)
       };
@@ -393,10 +439,19 @@ const Companies = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">Partner Companies</h1>
-          <p className="text-sm text-sti-gray">Manage OJT host companies, cascading Philippine addresses, and accepted internship courses.</p>
+          <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">
+            {isSuperAdmin ? 'View Partner Companies' : canApprove ? 'Partner Companies Approval' : 'Add Partner Companies'}
+          </h1>
+          <p className="text-sm text-sti-gray">
+            {isSuperAdmin
+              ? 'View registered partner companies, academic years, and validity periods.'
+              : canApprove
+                ? 'Approve partner company registrations, manage academic-year validity, and monitor slots.'
+                : 'Register partner companies with academic year and validity periods.'}
+          </p>
         </div>
-        <div className="flex gap-2 shrink-0 w-full sm:w-auto">
+        {canMutate && (
+          <div className="flex gap-2 shrink-0 w-full sm:w-auto">
           <Button variant="primary" icon={Plus} onClick={openNew} className="flex-1 sm:flex-none justify-center">Add Company</Button>
           <Button
           variant="secondary"
@@ -415,7 +470,8 @@ const Companies = () => {
             <input type="file" accept=".csv,.xlsx,.xls" id="batch-company-csv" className="hidden" onChange={e=>{ handleBatchFile(e.target.files[0]); e.target.value=''; }} />
             <Button variant="secondary" icon={Upload} onClick={()=>document.getElementById('batch-company-csv').click()} className="w-full justify-center">Batch Upload</Button>
           </div>
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="p-3.5 rounded-xl bg-sti-blue-50/70 dark:bg-sti-blue/10 border border-sti-blue/15 flex flex-wrap items-center justify-between gap-2">
@@ -445,14 +501,25 @@ const Companies = () => {
         </Card>
       ) : (
         <>
-          <div className="relative w-full sm:w-56">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
-            <select value={programFilter} onChange={(e) => setProgramFilter(e.target.value)} className="input-field pl-9 text-sm py-2.5">
-              <option value="">All Accepted Courses</option>
-              {acceptedCourses.map((p) => (
-                <option key={p} value={p}>{p}</option>
-              ))}
-            </select>
+          <div className="flex flex-wrap gap-3">
+            <div className="relative w-full sm:w-56">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+              <select value={programFilter} onChange={(e) => setProgramFilter(e.target.value)} className="input-field pl-9 text-sm py-2.5">
+                <option value="">All Accepted Courses</option>
+                {acceptedCourses.map((p) => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div className="relative w-full sm:w-52">
+              <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+              <select value={academicYearFilter} onChange={(e) => setAcademicYearFilter(e.target.value)} className="input-field pl-9 text-sm py-2.5">
+                <option value="">All Academic Years</option>
+                {ACADEMIC_YEAR_OPTIONS.map((ay) => (
+                  <option key={ay} value={ay}>AY {ay}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -473,12 +540,16 @@ const Companies = () => {
                         >
                           <HelpCircle className="w-4 h-4" />
                         </button>
-                        <button onClick={() => openEdit(c)} title="Edit company" className="p-1.5 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleDelete(c.id)} title="Archive company" className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
-                          <Archive className="w-4 h-4" />
-                        </button>
+                        {canMutate && (
+                          <>
+                            <button onClick={() => openEdit(c)} title="Edit company" className="p-1.5 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue">
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleDelete(c.id)} title="Archive company" className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950 text-sti-gray hover:text-red-600">
+                              <Archive className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                     <h3 className="font-bold text-sti-gray-dark dark:text-white">{c.name}</h3>
@@ -500,13 +571,64 @@ const Companies = () => {
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-xs pt-3 border-t border-black/5 dark:border-white/10">
-                    <span className="flex items-center gap-1 text-sti-gray">
-                      <Users className="w-3.5 h-3.5" /> {c._count?.students ?? 0} interns · {c.availableSlots} slots open
-                    </span>
-                    <span className={`font-semibold px-2 py-0.5 rounded-full ${c.status === 'ACTIVE' ? 'bg-sti-blue-50 text-sti-blue' : 'bg-sti-gray-light text-sti-gray'}`}>
-                      {c.status}
-                    </span>
+                  <div className="pt-3 border-t border-black/5 dark:border-white/10 space-y-2">
+                    {(c.academicYear || c.startDate || c.expirationDate) && (
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+                        <span className="inline-flex items-center gap-1 font-semibold text-sti-gray-dark dark:text-slate-200">
+                          <CalendarDays className="w-3.5 h-3.5 text-sti-blue" />
+                          AY {c.academicYear || '—'}
+                          {c.startDate && c.expirationDate && (
+                            <span className="font-normal text-sti-gray">
+                              ({new Date(c.startDate).toLocaleDateString()} – {new Date(c.expirationDate).toLocaleDateString()})
+                            </span>
+                          )}
+                        </span>
+                        {(() => {
+                          const validity = getRemainingValidityLabel(c.expirationDate);
+                          return validity ? (
+                            <span className={`px-2 py-0.5 rounded-full font-semibold ${validity.cls}`}>{validity.label}</span>
+                          ) : null;
+                        })()}
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-sti-gray">
+                        <Users className="w-3.5 h-3.5" /> {c._count?.students ?? 0} interns · {c.availableSlots} slots open
+                      </span>
+                      <span className={`font-semibold px-2 py-0.5 rounded-full ${
+                        c.status === 'ACTIVE'
+                          ? 'bg-sti-blue-50 text-sti-blue'
+                          : c.status === 'PENDING'
+                            ? 'bg-amber-50 text-amber-700'
+                            : c.status === 'REJECTED' || c.status === 'EXPIRED'
+                              ? 'bg-red-50 text-red-600'
+                              : 'bg-sti-gray-light text-sti-gray'
+                      }`}>
+                        {c.status}
+                      </span>
+                    </div>
+                    {canApprove && c.status === 'PENDING' && (
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={async () => { await approveCompany(c.id); loadData(); }}
+                          className="flex-1 inline-flex items-center justify-center gap-1 py-1.5 rounded-lg bg-sti-blue text-white hover:bg-sti-blue-dark text-xs font-semibold"
+                        >
+                          <Check className="w-3.5 h-3.5" /> Approve
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const reason = window.prompt('Reason for rejecting this partner company (optional):') || '';
+                            await rejectCompany(c.id, reason);
+                            loadData();
+                          }}
+                          className="flex-1 inline-flex items-center justify-center gap-1 py-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 text-xs font-semibold"
+                        >
+                          <XCircle className="w-3.5 h-3.5" /> Reject
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </Card>
               );
@@ -828,6 +950,78 @@ const Companies = () => {
                     onChange={(e) => setForm({ ...form, availableSlots: e.target.value })}
                     className="input-field text-sm py-2.5"
                   />
+                </div>
+              </div>
+
+              {/* Academic Year & Validity Period */}
+              <div className="p-3.5 rounded-xl bg-sti-gray-light/60 dark:bg-slate-900/50 border border-black/5 dark:border-white/10 space-y-3">
+                <p className="text-xs font-bold text-sti-gray-dark dark:text-slate-200 flex items-center gap-1.5">
+                  <CalendarDays className="w-4 h-4 text-sti-blue" /> Academic Year &amp; Validity Period
+                </p>
+                <div>
+                  <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
+                    Academic Year <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={form.academicYear}
+                    onChange={(e) => {
+                      setForm({ ...form, academicYear: e.target.value });
+                      setFormErrors((prev) => ({ ...prev, academicYear: undefined }));
+                    }}
+                    className={`input-field text-sm py-2.5 ${formErrors.academicYear ? 'border-red-400' : ''}`}
+                  >
+                    {ACADEMIC_YEAR_OPTIONS.map((ay) => (
+                      <option key={ay} value={ay}>{ay}</option>
+                    ))}
+                    <option value="CUSTOM">Other (Enter Academic Year)</option>
+                  </select>
+                  {form.academicYear === 'CUSTOM' && (
+                    <input
+                      type="text"
+                      placeholder="e.g., 2029-2030"
+                      value={form.customAcademicYear || ''}
+                      onChange={(e) => {
+                        setForm({ ...form, customAcademicYear: e.target.value });
+                        setFormErrors((prev) => ({ ...prev, academicYear: undefined }));
+                      }}
+                      className="input-field text-sm py-2.5 mt-2"
+                    />
+                  )}
+                  {formErrors.academicYear && <p className="text-xs text-red-600 mt-1">{formErrors.academicYear}</p>}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
+                      Start Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={form.startDate || ''}
+                      onChange={(e) => {
+                        setForm({ ...form, startDate: e.target.value });
+                        setFormErrors((prev) => ({ ...prev, startDate: undefined, expirationDate: undefined }));
+                      }}
+                      className={`input-field text-sm py-2.5 ${formErrors.startDate ? 'border-red-400' : ''}`}
+                    />
+                    {formErrors.startDate && <p className="text-xs text-red-600 mt-1">{formErrors.startDate}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
+                      Expiration Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={form.expirationDate || ''}
+                      onChange={(e) => {
+                        setForm({ ...form, expirationDate: e.target.value });
+                        setFormErrors((prev) => ({ ...prev, expirationDate: undefined }));
+                      }}
+                      className={`input-field text-sm py-2.5 ${formErrors.expirationDate ? 'border-red-400' : ''}`}
+                    />
+                    {formErrors.expirationDate && <p className="text-xs text-red-600 mt-1">{formErrors.expirationDate}</p>}
+                  </div>
                 </div>
               </div>
 

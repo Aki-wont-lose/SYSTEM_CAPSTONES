@@ -2,52 +2,90 @@
 import prisma from '../utils/prisma.js';
 import { recordAudit } from './auditLogService.js';
 import { studentScopeWhere, canAccessStudent } from './accessScope.js';
+import { validateLogEntryInput } from '../utils/simesValidation.js';
 
-export const getStudentLogs = async (studentId) => {
+const VALID_LOG_TYPES = ['DAILY_LOG', 'INTEGRATION_PAPER'];
+
+const normalizeLogType = (value) => {
+  const upper = String(value || 'DAILY_LOG').trim().toUpperCase();
+  return VALID_LOG_TYPES.includes(upper) ? upper : 'DAILY_LOG';
+};
+
+export const getStudentLogs = async (studentId, filters = {}) => {
+  const where = { studentId };
+  if (filters.logType) where.logType = normalizeLogType(filters.logType);
   return prisma.logEntry.findMany({
-    where: { studentId },
+    where,
     orderBy: { date: 'desc' }
   });
 };
 
 export const getAllLogs = async (filters = {}, user = null) => {
   const where = {};
-  // No status filter means staff want the full picture, including tasks they
-  // have assigned but the student has not submitted yet.
   if (filters.status) where.status = filters.status;
   if (filters.studentId) where.studentId = filters.studentId;
+  if (filters.logType) where.logType = normalizeLogType(filters.logType);
 
   // Object-level scoping: a coordinator/supervisor must not be able to read every
-  // log in the institution by calling this endpoint with no filters. Filtering is
-  // applied through the `student` relation, so it composes with the filters above.
+  // log in the institution by calling this endpoint with no filters.
   const scoped = user ? { ...where, student: studentScopeWhere(user) } : where;
 
   return prisma.logEntry.findMany({
     where: scoped,
-    include: { student: { select: { firstName: true, lastName: true, studentId: true } } },
+    include: {
+      student: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          studentId: true,
+          course: true,
+          section: true,
+          company: { select: { id: true, name: true } }
+        }
+      }
+    },
     orderBy: { date: 'desc' }
   });
 };
 
-export const createLog = async (studentId, date, taskDescription) => {
-  const trimmedTask = String(taskDescription || '').trim();
-  if (!trimmedTask) {
-    const error = new Error('Task description is required');
-    error.status = 400;
-    throw error;
-  }
-  const logDate = new Date(date);
-  if (Number.isNaN(logDate.getTime())) {
-    const error = new Error('Invalid log date');
-    error.status = 400;
-    throw error;
-  }
-  return prisma.logEntry.create({
-    data: { studentId, date: logDate, taskDescription: trimmedTask, status: 'PENDING' }
+export const createLog = async (studentId, date, taskDescription, options = {}) => {
+  const { logType, trimmedTask, logDate } = validateLogEntryInput({
+    logType: options.logType,
+    date,
+    taskDescription,
+    submissionFile: options.submissionFile,
+    submissionFileName: options.submissionFileName
   });
+
+  const created = await prisma.logEntry.create({
+    data: {
+      studentId,
+      date: logDate,
+      logType,
+      taskDescription: trimmedTask,
+      status: 'PENDING',
+      submissionFile: options.submissionFile ?? null,
+      submissionFileName: options.submissionFileName ?? null
+    }
+  });
+
+  if (logType === 'INTEGRATION_PAPER') {
+    await recordAudit({
+      userId: options.userId || null,
+      userEmail: options.userEmail || null,
+      userRole: 'STUDENT',
+      action: 'SUBMIT',
+      entity: 'LogEntry',
+      entityId: created.id,
+      description: `Submitted Integration Paper (${options.submissionFileName})`,
+      metadata: { logType, fileName: options.submissionFileName }
+    });
+  }
+
+  return created;
 };
 
-// Resolves the student that owns a log entry, 404ing when the log does not exist.
 const loadLogStudentId = async (logId) => {
   const log = await prisma.logEntry.findUnique({
     where: { id: logId },
@@ -61,12 +99,10 @@ const loadLogStudentId = async (logId) => {
   return log.studentId;
 };
 
-// Loads a Student and enforces the caller's scope, throwing 404 when the student
-// does not exist and 403 when it exists but belongs to someone else.
 const assertStudentInScope = async (studentId, user) => {
   const student = await prisma.student.findUnique({
     where: { id: studentId },
-    select: { id: true, course: true, companyId: true, supervisorEmail: true }
+    select: { id: true, course: true, section: true, coordinatorId: true, companyId: true, supervisorEmail: true }
   });
   if (!student) {
     const error = new Error('Student not found');
@@ -81,73 +117,7 @@ const assertStudentInScope = async (studentId, user) => {
   return student;
 };
 
-// Staff assigns a task to a student (creates a log entry on their behalf).
-// The target student must be inside the caller's scope, otherwise a supervisor
-// could create log entries for any student in the institution by id.
-// The entry starts as ASSIGNED so it lives with the student until they submit it.
-export const assignTask = async (studentId, date, taskDescription, assignedBy, user = null, file = {}) => {
-  const trimmedTask = String(taskDescription || '').trim();
-  if (!trimmedTask) {
-    const error = new Error('Task description is required');
-    error.status = 400;
-    throw error;
-  }
-  if (user) await assertStudentInScope(studentId, user);
-  return prisma.logEntry.create({
-    data: {
-      studentId,
-      date: new Date(date),
-      taskDescription: trimmedTask,
-      assignedBy,
-      status: 'ASSIGNED',
-      assignedFile: file.assignedFile ?? null,
-      assignedFileName: file.assignedFileName ?? null
-    }
-  });
-};
-
-// Student submits their deliverable for an assigned task (or re-submits after a revision).
-// Moves the entry into the reviewer's queue as PENDING and stores the student's file.
-export const submitAssignedTask = async (id, studentId, fileName, fileData) => {
-  if (!fileName || !fileData) {
-    const error = new Error('A file is required to submit this task');
-    error.status = 400;
-    throw error;
-  }
-  const log = await prisma.logEntry.findUnique({ where: { id } });
-  if (!log) {
-    const error = new Error('Log entry not found');
-    error.status = 404;
-    throw error;
-  }
-  if (log.studentId !== studentId) {
-    const error = new Error('Not authorized to submit this task');
-    error.status = 403;
-    throw error;
-  }
-  if (!['ASSIGNED', 'REVISION_REQUESTED', 'PENDING'].includes(log.status)) {
-    const error = new Error('This task cannot be submitted in its current state');
-    error.status = 400;
-    throw error;
-  }
-  return prisma.logEntry.update({
-    where: { id },
-    data: {
-      status: 'PENDING',
-      submissionFile: fileData,
-      submissionFileName: fileName,
-      comment: null
-    }
-  });
-};
-
-export const updateLog = async (id, studentId, taskDescription) => {
-  const trimmedTask = String(taskDescription || '').trim();
-  if (!trimmedTask) {
-    const error = new Error('Task description is required');
-    error.status = 400;
-    throw error;
-  }
+export const updateLog = async (id, studentId, taskDescription, options = {}) => {
   const log = await prisma.logEntry.findUnique({ where: { id } });
   if (!log) {
     const error = new Error('Log entry not found');
@@ -164,9 +134,27 @@ export const updateLog = async (id, studentId, taskDescription) => {
     error.status = 400;
     throw error;
   }
+
+  const trimmedTask = String(taskDescription ?? log.taskDescription ?? '').trim();
+  if (!trimmedTask) {
+    const error = new Error('Task description is required');
+    error.status = 400;
+    throw error;
+  }
+
+  const data = { taskDescription: trimmedTask };
+  if (options.submissionFile && options.submissionFileName) {
+    data.submissionFile = options.submissionFile;
+    data.submissionFileName = options.submissionFileName;
+    data.status = 'PENDING';
+    data.comment = null;
+  } else if (log.status === 'REVISION_REQUESTED') {
+    data.status = 'PENDING';
+  }
+
   return prisma.logEntry.update({
     where: { id },
-    data: { taskDescription: trimmedTask }
+    data
   });
 };
 
@@ -176,8 +164,6 @@ export const reviewLog = async (id, status, comment, reviewer = null) => {
     error.status = 400;
     throw error;
   }
-  // The reviewer is authenticated and role-checked, but the log they are approving
-  // may belong to any student. Enforce record scope before mutating it.
   if (reviewer) await assertStudentInScope((await loadLogStudentId(id)), reviewer);
 
   const updated = await prisma.logEntry.update({
@@ -192,8 +178,8 @@ export const reviewLog = async (id, status, comment, reviewer = null) => {
     action: 'REVIEW',
     entity: 'LogEntry',
     entityId: id,
-    description: `${status === 'APPROVED' ? 'Approved' : 'Requested a revision on'} a student log${comment ? ` — ${String(comment).slice(0, 160)}` : ''}`,
-    metadata: { status },
+    description: `${status === 'APPROVED' ? 'Approved' : 'Requested a revision on'} a student ${updated.logType === 'INTEGRATION_PAPER' ? 'Integration Paper' : 'log'}${comment ? ` — ${String(comment).slice(0, 160)}` : ''}`,
+    metadata: { status, logType: updated.logType }
   });
 
   return updated;
@@ -226,7 +212,6 @@ export const deleteLogAsStaff = async (id, actor) => {
     error.status = 404;
     throw error;
   }
-  // Role check alone was not enough: any supervisor could delete any student's log.
   if (actor) await assertStudentInScope(log.studentId, actor);
 
   await recordAudit({
@@ -236,8 +221,8 @@ export const deleteLogAsStaff = async (id, actor) => {
     action: 'DELETE',
     entity: 'LogEntry',
     entityId: id,
-    description: `Deleted a student log entry`,
-    metadata: { studentId: log.studentId, previousStatus: log.status }
+    description: `Deleted a student ${log.logType === 'INTEGRATION_PAPER' ? 'Integration Paper' : 'log'} entry`,
+    metadata: { studentId: log.studentId, previousStatus: log.status, logType: log.logType }
   });
   return prisma.logEntry.delete({ where: { id } });
 };

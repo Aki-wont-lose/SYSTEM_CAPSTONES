@@ -1,8 +1,8 @@
 import api from './api';
 
-// Fetch the signed-in student's logbook entries
-export const getMyLogs = async () => {
-  const response = await api.get('/logs/mine');
+// Fetch the signed-in student's logbook entries (Daily Logs & Integration Paper)
+export const getMyLogs = async (filters = {}) => {
+  const response = await api.get('/logs/mine', { params: filters });
   return response.data;
 };
 
@@ -12,27 +12,15 @@ export const getAllLogs = async (filters = {}) => {
   return response.data;
 };
 
-// Add a logbook entry for a date
-export const addLogEntry = async (date, taskDescription) => {
-  const response = await api.post('/logs', { date, taskDescription });
+// Add a logbook entry or Integration Paper
+export const addLogEntry = async (date, taskDescription, extra = {}) => {
+  const response = await api.post('/logs', { date, taskDescription, ...extra });
   return response.data;
 };
 
-// Assign a task to a student's logbook, optionally with an attachment
-export const assignTaskToStudent = async (studentId, date, taskDescription, assignedFile, assignedFileName) => {
-  const response = await api.post('/logs/assign', { studentId, date, taskDescription, assignedFile, assignedFileName });
-  return response.data;
-};
-
-// Student submits their file for an assigned task
-export const submitAssignedTask = async (id, fileName, fileData) => {
-  const response = await api.post(`/logs/${id}/submit`, { fileName, fileData });
-  return response.data;
-};
-
-// Update a log entry's task description
-export const updateLogEntry = async (id, taskDescription) => {
-  const response = await api.put(`/logs/${id}`, { taskDescription });
+// Update a log entry or re-upload Integration Paper
+export const updateLogEntry = async (id, taskDescription, extra = {}) => {
+  const response = await api.put(`/logs/${id}`, { taskDescription, ...extra });
   return response.data;
 };
 

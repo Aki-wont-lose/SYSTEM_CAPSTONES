@@ -1,6 +1,7 @@
 // src/services/companyService.js
 import prisma from '../utils/prisma.js';
 import { normalizeCourseCode, isValidPersonName, PERSON_NAME_ERROR } from '../utils/studentValidation.js';
+import { validateAcademicYearFormat } from '../utils/simesValidation.js';
 import {
   isValidPhAddressSelection,
   formatPhAddress,
@@ -10,6 +11,67 @@ import {
   getAcceptedInternshipCourses,
   assertCourseAcceptedForInternship
 } from '../modules/ojtHours/service.js';
+import { recordAudit } from './auditLogService.js';
+
+// Manila timezone (+08:00) start-of-today helper for accurate expiration checks
+const getManilaTodayStart = () => {
+  const nowManila = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+  nowManila.setHours(0, 0, 0, 0);
+  return nowManila;
+};
+
+let lastExpirationSweepAt = 0;
+export const archiveExpiredCompanies = async (force = false) => {
+  const nowMs = Date.now();
+  if (!force && nowMs - lastExpirationSweepAt < 60_000) return 0;
+  lastExpirationSweepAt = nowMs;
+
+  const todayManila = getManilaTodayStart();
+  const expiredList = await prisma.company.findMany({
+    where: {
+      isArchived: false,
+      expirationDate: { not: null, lt: todayManila }
+    },
+    select: { id: true, name: true, academicYear: true, expirationDate: true }
+  });
+
+  if (expiredList.length === 0) return 0;
+
+  const now = new Date();
+  await prisma.company.updateMany({
+    where: { id: { in: expiredList.map((c) => c.id) } },
+    data: {
+      status: 'EXPIRED',
+      isArchived: true,
+      archivedAt: now
+    }
+  });
+
+  for (const company of expiredList) {
+    await recordAudit({
+      userId: null,
+      userEmail: 'system@simes.local',
+      userRole: 'SYSTEM',
+      action: 'UPDATE',
+      entity: 'Company',
+      entityId: company.id,
+      description: `Automatically archived expired partner company ${company.name}${company.academicYear ? ` (AY ${company.academicYear})` : ''}`,
+      metadata: {
+        academicYear: company.academicYear,
+        expirationDate: company.expirationDate,
+        archivedAt: now.toISOString(),
+        reason: 'EXPIRED'
+      }
+    });
+  }
+
+  return expiredList.length;
+};
+
+export const normalizeAcademicYear = (value) => {
+  const raw = String(value || '').trim().replace(/[–—]/g, '-').replace(/\s+/g, '');
+  return raw || null;
+};
 
 
 export const VALID_PROGRAMS = ['BSIT', 'BSCS', 'BSCPE', 'ACT', 'BSHM', 'BSTM', 'BSAIS'];
@@ -44,6 +106,10 @@ const COMPANY_FIELDS = [
   'email',
   'industryType',
   'availableSlots',
+  'academicYear',
+  'startDate',
+  'expirationDate',
+  'parentCompanyId',
   'status'
 ];
 
@@ -54,6 +120,15 @@ const normalizeCompanyInput = (data) => {
   }
   if (payload.name !== undefined) {
     payload.name = String(payload.name || '').trim().replace(/\s+/g, ' ');
+  }
+  if (payload.academicYear !== undefined) {
+    payload.academicYear = normalizeAcademicYear(payload.academicYear);
+  }
+  if (payload.startDate !== undefined) {
+    payload.startDate = payload.startDate ? new Date(payload.startDate) : null;
+  }
+  if (payload.expirationDate !== undefined) {
+    payload.expirationDate = payload.expirationDate ? new Date(payload.expirationDate) : null;
   }
   if (payload.industryType !== undefined) {
     payload.industryType = String(payload.industryType || '').trim().replace(/\s+/g, ' ');
@@ -82,7 +157,8 @@ const normalizeCompanyInput = (data) => {
 };
 
 export const getAllCompanies = async (filters = {}) => {
-  const { search, program, status, hasSlots } = typeof filters === 'string' ? { search: filters } : filters;
+  await archiveExpiredCompanies();
+  const { search, program, status, hasSlots, academicYear, activeOnly } = typeof filters === 'string' ? { search: filters } : filters;
   // Archived companies disappear from every listing (admin table and the
   // student's Find Company page) but keep their students and history intact.
   const where = { isArchived: false };
@@ -92,8 +168,10 @@ export const getAllCompanies = async (filters = {}) => {
     or.push({ name: { contains: search, mode: 'insensitive' } });
     or.push({ industryType: { contains: search, mode: 'insensitive' } });
     or.push({ address: { contains: search, mode: 'insensitive' } });
+    or.push({ academicYear: { contains: search, mode: 'insensitive' } });
   }
   if (or.length) where.OR = or;
+  if (academicYear) where.academicYear = normalizeAcademicYear(academicYear);
   const normalizedProgram = normalizeCourseCode(program);
   if (normalizedProgram && VALID_PROGRAMS.includes(normalizedProgram)) {
     const programVariants = normalizedProgram === 'ACT' ? ['ACT', 'BSACT', 'BSAC'] : [normalizedProgram];
@@ -106,7 +184,11 @@ export const getAllCompanies = async (filters = {}) => {
       }
     ];
   }
-  if (status) where.status = status;
+  if (activeOnly) {
+    where.status = 'ACTIVE';
+  } else if (status) {
+    where.status = status;
+  }
   if (hasSlots === 'true') where.availableSlots = { gt: 0 };
 
   const companies = await prisma.company.findMany({
@@ -235,6 +317,29 @@ export const validateCompanyFields = (data, { isCreate = false } = {}) => {
   if (data.availableSlots !== undefined && Number(data.availableSlots) < 0) {
     throw bad('Available slots cannot be negative.');
   }
+
+  if (isCreate) {
+    if (!normalizeAcademicYear(data.academicYear)) {
+      throw bad('Academic Year is required (e.g., 2026-2027).');
+    }
+    validateAcademicYearFormat(data.academicYear);
+    if (!data.startDate || !data.expirationDate) {
+      throw bad('Start Date and Expiration Date are required.');
+    }
+  } else if (data.academicYear !== undefined && String(data.academicYear).trim() !== '') {
+    validateAcademicYearFormat(data.academicYear);
+  }
+
+  if (data.startDate !== undefined && data.expirationDate !== undefined && data.startDate && data.expirationDate) {
+    const start = new Date(data.startDate);
+    const exp = new Date(data.expirationDate);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(exp.getTime())) {
+      throw bad('Invalid start date or expiration date.');
+    }
+    if (exp <= start) {
+      throw bad('Expiration date must be later than start date.');
+    }
+  }
 };
 
 const validateAcceptedCompanyPrograms = async (rawPrograms) => {
@@ -251,21 +356,41 @@ const validateAcceptedCompanyPrograms = async (rawPrograms) => {
   }
 };
 
-export const createCompany = async (data) => {
+export const createCompany = async (data, actor = null) => {
   validateCompanyFields(data, { isCreate: true });
   await validateAcceptedCompanyPrograms(data.programs);
   const normalizedInput = normalizeCompanyInput(data);
   const cleanName = normalizedInput.name;
   const existing = await prisma.company.findFirst({
-    where: { isArchived: false, name: { equals: cleanName, mode: 'insensitive' } },
+    where: {
+      isArchived: false,
+      name: { equals: cleanName, mode: 'insensitive' },
+      academicYear: normalizedInput.academicYear
+    },
     select: { id: true }
   });
   if (existing) {
-    const err = new Error('A partner company with this name already exists');
+    const err = new Error(`A partner company with this name already exists for Academic Year ${normalizedInput.academicYear}`);
     err.status = 400;
     throw err;
   }
+  // Coordinator-added companies start as PENDING for Admin approval; Admin-created are ACTIVE
+  if (actor?.role === 'COORDINATOR') {
+    normalizedInput.status = 'PENDING';
+  } else if (!normalizedInput.status) {
+    normalizedInput.status = 'ACTIVE';
+  }
   const created = await prisma.company.create({ data: normalizedInput });
+  await recordAudit({
+    userId: actor?.userId || null,
+    userEmail: actor?.email || null,
+    userRole: actor?.role || null,
+    action: 'CREATE',
+    entity: 'Company',
+    entityId: created.id,
+    description: `Registered partner company ${created.name} (AY ${created.academicYear}) — ${created.status}`,
+    metadata: { academicYear: created.academicYear, startDate: created.startDate, expirationDate: created.expirationDate, status: created.status }
+  });
   return normalizeCompanyRecord(created);
 };
 
@@ -277,11 +402,16 @@ export const updateCompany = async (id, data) => {
     if (normalizedInput.name !== undefined) {
       const cleanName = normalizedInput.name;
       const existing = await prisma.company.findFirst({
-        where: { isArchived: false, name: { equals: cleanName, mode: 'insensitive' }, NOT: { id } },
+        where: {
+          isArchived: false,
+          name: { equals: cleanName, mode: 'insensitive' },
+          ...(normalizedInput.academicYear ? { academicYear: normalizedInput.academicYear } : {}),
+          NOT: { id }
+        },
         select: { id: true }
       });
       if (existing) {
-        const err = new Error('A partner company with this name already exists');
+        const err = new Error('A partner company with this name already exists for this Academic Year');
         err.status = 400;
         throw err;
       }
@@ -352,8 +482,8 @@ export const assignStudentToCompany = async (studentId, companyId) => {
       select: { email: true, firstName: true, lastName: true, contactNumber: true }
     })
   ]);
-  if (!company || company.isArchived || company.status === 'INACTIVE') {
-    const err = new Error('Company not found or inactive');
+  if (!company || company.isArchived || company.status !== 'ACTIVE') {
+    const err = new Error('Company is not active or is archived');
     err.status = 400;
     throw err;
   }
@@ -399,4 +529,52 @@ export const assignStudentToCompany = async (studentId, companyId) => {
     data: updateData,
     include: { company: true }
   });
+};
+
+export const approveCompany = async (id, actor = null) => {
+  const company = await prisma.company.findUnique({ where: { id } });
+  if (!company || company.isArchived) {
+    const err = new Error('Company not found or archived');
+    err.status = 404;
+    throw err;
+  }
+  const updated = await prisma.company.update({
+    where: { id },
+    data: { status: 'ACTIVE' }
+  });
+  await recordAudit({
+    userId: actor?.userId || null,
+    userEmail: actor?.email || null,
+    userRole: actor?.role || null,
+    action: 'REVIEW',
+    entity: 'Company',
+    entityId: id,
+    description: `Approved partner company ${company.name}${company.academicYear ? ` (AY ${company.academicYear})` : ''}`,
+    metadata: { status: 'ACTIVE' }
+  });
+  return normalizeCompanyRecord(updated);
+};
+
+export const rejectCompany = async (id, reason = '', actor = null) => {
+  const company = await prisma.company.findUnique({ where: { id } });
+  if (!company || company.isArchived) {
+    const err = new Error('Company not found or archived');
+    err.status = 404;
+    throw err;
+  }
+  const updated = await prisma.company.update({
+    where: { id },
+    data: { status: 'REJECTED' }
+  });
+  await recordAudit({
+    userId: actor?.userId || null,
+    userEmail: actor?.email || null,
+    userRole: actor?.role || null,
+    action: 'REVIEW',
+    entity: 'Company',
+    entityId: id,
+    description: `Rejected partner company ${company.name}${reason ? ` — ${reason}` : ''}`,
+    metadata: { status: 'REJECTED', reason: reason || null }
+  });
+  return normalizeCompanyRecord(updated);
 };
