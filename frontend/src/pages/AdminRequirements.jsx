@@ -75,7 +75,7 @@ const templateSizeLabel = (dataUrl) => {
 // Manage requirement templates, student submissions, and automated grading
 const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = false, hideSubmissions = false, hideBatchUpload = false, hideGrading = false, hideChecklist = false }) => {
   const { user } = useAuth();
-  const canManageTemplates = !user?.isSuperAdmin;
+  const canManageTemplates = user?.role === 'ADMIN' || user?.role === 'COORDINATOR';
   const [tab, setTab] = useState(defaultTab);
   const [viewingSubmission, setViewingSubmission] = useState(null);
   const [requirements, setRequirements] = useState([]);
@@ -112,12 +112,15 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
   const loadData = async () => {
     setLoading(true);
     try {
+      const shouldFetchSubmissions = !hideSubmissions && !user?.isSuperAdmin;
       const [reqRes, subRes] = await Promise.all([
         getRequirements(programFilter === 'ALL' ? {} : { program: programFilter }),
-        getAllSubmissions(statusFilter ? { status: statusFilter } : {})
+        shouldFetchSubmissions
+          ? getAllSubmissions(statusFilter ? { status: statusFilter } : {}).catch(() => ({ data: [] }))
+          : Promise.resolve({ data: [] })
       ]);
       setRequirements(reqRes.data);
-      setSubmissions(subRes.data);
+      setSubmissions(subRes.data || []);
     } catch (err) {
       setActionError(err.response?.data?.message || 'Could not load requirements.');
     } finally {
@@ -760,18 +763,20 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                         <td className="px-4 py-3.5 text-sti-gray-dark dark:text-slate-200 whitespace-nowrap align-middle">{row.course} {sectionLabel(row.section, row.course)}</td>
                         {checklistRequirements.map((req) => {
                           const cell = (row.breakdown || []).find((item) => item.requirementId === req.id);
-                          const done = cell?.state === 'COMPLETED';
-                          const pending = cell?.state === 'PENDING';
+                          const hasSubmittedFile = Boolean(cell?.submissionId);
                           const rejected = cell?.state === 'REJECTED';
+                          const done = cell?.state === 'COMPLETED' || (hasSubmittedFile && !rejected);
+                          const pending = cell?.state === 'PENDING' && !hasSubmittedFile;
                           const key = `${row.studentId}:${req.id}`;
+                          const SubFileIcon = cell?.fileName ? templateIconFor(cell.fileName) : FileText;
                           return (
                             <td key={req.id} className="px-3 py-3.5 text-center align-middle">
-                              <div className="flex items-center justify-center">
+                              <div className="inline-flex items-center justify-center gap-1.5">
                                 <button
                                   type="button"
                                   onClick={() => handleToggleCheck(row.studentId, req.id, !done)}
                                   disabled={togglingCheck === key}
-                                  title={done ? 'Mark incomplete' : 'Mark complete'}
+                                  title={done ? 'Submitted / Mark incomplete' : 'Mark complete'}
                                   className={`inline-flex items-center justify-center w-7 h-7 rounded-lg border transition-colors disabled:opacity-50 ${
                                     done
                                       ? 'bg-emerald-500 border-emerald-500 text-white hover:bg-emerald-600'
@@ -784,19 +789,45 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
                                 >
                                   {done ? <Check className="w-4 h-4" /> : rejected ? <X className="w-4 h-4" /> : pending ? <Clock className="w-3.5 h-3.5" /> : <Check className="w-4 h-4" />}
                                 </button>
+                                {hasSubmittedFile && (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      try {
+                                        const res = await getSubmissionById(cell.submissionId);
+                                        setViewingSubmission(res.data);
+                                      } catch {
+                                        const fallback = submissions.find((s) => s.id === cell.submissionId);
+                                        if (fallback) setViewingSubmission(fallback);
+                                      }
+                                    }}
+                                    title={`View submitted file${cell.fileName ? `: ${cell.fileName}` : ''}`}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-sti-blue-50 dark:bg-sti-blue/15 text-sti-blue hover:bg-sti-blue hover:text-white border border-sti-blue/20 text-[11px] font-semibold transition-colors max-w-[110px]"
+                                  >
+                                    <SubFileIcon className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate">{cell.fileName || 'View File'}</span>
+                                  </button>
+                                )}
                               </div>
                             </td>
                           );
                         })}
-                        <td className="px-6 py-3.5 text-center whitespace-nowrap align-middle">
-                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                            row.totalRequirements > 0 && row.completed === row.totalRequirements
-                              ? 'bg-emerald-50 text-emerald-600'
-                              : 'bg-sti-gray-light dark:bg-white/10 text-sti-gray-dark dark:text-slate-200'
-                          }`}>
-                            {row.completed}/{row.totalRequirements}
-                          </span>
-                        </td>
+                        {(() => {
+                          const passedCount = (row.breakdown || []).filter(
+                            (item) => item.state === 'COMPLETED' || (item.submissionId && item.state !== 'REJECTED')
+                          ).length;
+                          return (
+                            <td className="px-6 py-3.5 text-center whitespace-nowrap align-middle">
+                              <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                                row.totalRequirements > 0 && passedCount === row.totalRequirements
+                                  ? 'bg-emerald-50 text-emerald-600'
+                                  : 'bg-sti-gray-light dark:bg-white/10 text-sti-gray-dark dark:text-slate-200'
+                              }`}>
+                                {passedCount}/{row.totalRequirements}
+                              </span>
+                            </td>
+                          );
+                        })()}
                       </tr>
                     ))}
                   </tbody>
@@ -1132,9 +1163,6 @@ const AdminRequirements = ({ defaultTab = 'requirements', hideRequirements = fal
               <div>
                 <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Template File (.docx, .pdf, .html, .txt)</label>
                 <input ref={templateInputRef} type="file" accept=".pdf,.doc,.docx,.html,.txt,.rtf" onChange={handleTemplateChange} className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white hover:file:bg-sti-blue-dark file:text-xs file:font-semibold" />
-                <p className="text-[11px] text-sti-gray mt-1">
-                  Supported placeholders: {'{student_name}'}, {'{student_id}'}, {'{course}'}, {'{section}'}, {'{company_name}'}, {'{supervisor_name}'}, {'{coordinator_name}'}, {'{required_hours}'}, {'{completed_hours}'}.
-                </p>
                 {form.templateFileName && (
                   <div className="mt-2 flex items-center gap-2 text-xs text-sti-blue">
                     <FileCheck2 className="w-4 h-4 shrink-0" />

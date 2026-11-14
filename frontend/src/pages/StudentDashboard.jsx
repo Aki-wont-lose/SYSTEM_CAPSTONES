@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Clock, CheckCircle2, Hourglass, CalendarClock, AlertCircle, BookOpen } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Clock, CheckCircle2, Hourglass, CalendarClock, AlertCircle, BookOpen, CalendarDays, ClipboardList, FileCheck2, ArrowRight } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
 import WelcomeCarousel from '../components/WelcomeCarousel';
@@ -112,16 +113,42 @@ const StudentDashboard = () => {
           {/* Welcome carousel */}
           <WelcomeCarousel />
 
-          {/* Student greeting bar */}
-          <div className="bg-sti-blue rounded-xl px-4 py-2.5 flex items-center justify-between">
-            <div>
-              <p className="text-white font-bold text-sm">
-                Hi{student?.firstName ? `, ${student.firstName}` : ''}! •{' '}
-                {student?.company?.name ? `Interning at ${student.company.name}` : 'Keep tracking your progress.'}
-              </p>
-              <p className="text-white/70 text-xs">
-                {completedHours}h / {requiredHours}h completed • {remainingHours}h remaining
-              </p>
+          {/* Student greeting bar (upgraded with progress & quick actions while preserving original design) */}
+          <div className="bg-sti-blue rounded-xl px-4 py-3.5 space-y-3 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <p className="text-white font-bold text-sm sm:text-base">
+                  Hi{student?.firstName ? `, ${student.firstName}` : ''}! •{' '}
+                  {student?.company?.name ? `Interning at ${student.company.name}` : 'Keep tracking your progress.'}
+                </p>
+                <p className="text-white/80 text-xs mt-0.5">
+                  {completedHours}h / {requiredHours}h completed • {remainingHours}h remaining
+                  {student?.workingDays ? ` • Schedule: ${student.workingDays} (${student.workingHours || '8:00 AM - 5:00 PM'})` : ''}
+                </p>
+              </div>
+              <span className="self-start sm:self-center px-2.5 py-1 rounded-full bg-white/15 text-white text-xs font-bold">
+                {requiredHours > 0 ? Math.min(100, Math.round((completedHours / requiredHours) * 100)) : 0}% Complete
+              </span>
+            </div>
+            <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-sti-yellow h-2 rounded-full transition-all duration-500"
+                style={{ width: `${requiredHours > 0 ? Math.min(100, Math.round((completedHours / requiredHours) * 100)) : 0}%` }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 pt-0.5">
+              <Link to="/my-dtr" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition-colors">
+                <Clock className="w-3.5 h-3.5" /> My DTR <ArrowRight className="w-3 h-3 opacity-75" />
+              </Link>
+              <Link to="/my-logs" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition-colors">
+                <ClipboardList className="w-3.5 h-3.5" /> My Logs <ArrowRight className="w-3 h-3 opacity-75" />
+              </Link>
+              <Link to="/schedule" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition-colors">
+                <CalendarDays className="w-3.5 h-3.5" /> Schedule <ArrowRight className="w-3 h-3 opacity-75" />
+              </Link>
+              <Link to="/submissions" className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-white text-xs font-semibold transition-colors">
+                <FileCheck2 className="w-3.5 h-3.5" /> My Submissions <ArrowRight className="w-3 h-3 opacity-75" />
+              </Link>
             </div>
           </div>
 

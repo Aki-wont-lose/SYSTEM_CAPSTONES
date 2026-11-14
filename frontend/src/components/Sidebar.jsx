@@ -25,7 +25,7 @@ const linksByRole = {
       links: [
         { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { to: '/admin/accounts', label: 'Account Management', icon: Users },
-        { to: '/admin/companies', label: 'View Partner Companies', icon: Building2 },
+        { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
         { to: '/admin/templates', label: 'Templates', icon: FileCheck2 },
         { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
         { to: '/admin/archive', label: 'Archive', icon: Archive },
@@ -58,15 +58,7 @@ const linksByRole = {
       section: 'Main',
       links: [
         { to: '/coordinator/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        {
-          to: '/coordinator/accounts',
-          label: 'Account Management',
-          icon: Users,
-          children: [
-            { to: '/coordinator/accounts?tab=students', label: 'Students' },
-            { to: '/coordinator/accounts?tab=SUPERVISOR', label: 'Supervisor Account Requests' }
-          ]
-        },
+        { to: '/coordinator/accounts', label: 'Account Management', icon: Users },
         { to: '/coordinator/attendance', label: 'Attendance (Monitoring)', icon: Clock },
         { to: '/coordinator/companies', label: 'Add Partner Companies', icon: Building2 },
         { to: '/coordinator/announcements', label: 'Announcements', icon: Megaphone },

@@ -592,7 +592,7 @@ const AccountManagement = () => {
               {canCreateOnActiveTab && (
                 <Button variant="primary" icon={Plus} onClick={openAddModal}>
                   {isCoordinator && activeTab === 'SUPERVISOR'
-                    ? 'Request OJT Supervisor Account'
+                    ? 'Create OJT Supervisor Account'
                     : `Add ${tabLabel.singular}`}
                 </Button>
               )}
@@ -841,7 +841,7 @@ const AccountManagement = () => {
         title={
           modalMode === 'add'
             ? isCoordinator
-              ? 'Request OJT Supervisor Account (Pending Admin Approval)'
+              ? 'Create OJT Supervisor Account'
               : `Add ${roleText(form.role)}`
             : 'Edit Account'
         }
@@ -850,17 +850,11 @@ const AccountManagement = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100">{error}</div>}
 
-          {modalMode === 'add' && isCoordinator && (
-            <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-200">
-              Submitting this form creates an OJT Supervisor account request with <strong>Pending Approval</strong> status. The account will become active after an Administrator reviews and approves it.
-            </div>
-          )}
-
           {modalMode === 'add' ? (
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Account Type</label>
               {isCoordinator ? (
-                <input disabled value="OJT Supervisor (Pending Admin Approval)" className="input-field bg-sti-gray-light/60 dark:bg-slate-700/50 cursor-not-allowed" />
+                <input disabled value="OJT Supervisor" className="input-field bg-sti-gray-light/60 dark:bg-slate-700/50 cursor-not-allowed" />
               ) : (
                 <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, coordinatorCourse: '', companyId: '' })} className="input-field">
                   <option value="COORDINATOR">Coordinator</option>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Users, UserCheck, CheckCircle2, Clock3, GraduationCap } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Users, UserCheck, CheckCircle2, Clock3, GraduationCap, Building2, FileCheck2, ClipboardList, ArrowRight, Sparkles } from 'lucide-react';
 import Card, { StatCard } from '../components/Card';
 import CalendarWidget from '../components/CalendarWidget';
 import WelcomeCarousel from '../components/WelcomeCarousel';
@@ -49,6 +50,41 @@ const AdminDashboard = () => {
   ];
   // Largest program count so bars can be scaled to 100%
   const maxProgram = Math.max(1, ...programRows.map((r) => r.value));
+  const totalInterns = stats?.totalStudents ?? stats?.total ?? 0;
+  const activeInterns = stats?.active ?? 0;
+  const completedInterns = stats?.completed ?? 0;
+  const pendingInterns = stats?.pending ?? 0;
+  const partnerCompanies = stats?.partnerCompanies ?? 0;
+  const placementRate = totalInterns > 0 ? Math.round(((activeInterns + completedInterns) / totalInterns) * 100) : 0;
+  const completionRate = totalInterns > 0 ? Math.round((completedInterns / totalInterns) * 100) : 0;
+
+  const isSuperAdmin = Boolean(user?.isSuperAdmin);
+  const rolePrefix = user?.role === 'COORDINATOR' ? '/coordinator' : user?.role === 'SUPERVISOR' ? '/supervisor' : '/admin';
+  const quickLinks = isSuperAdmin
+    ? [
+        { to: '/admin/accounts', label: 'Account Management', icon: Users },
+        { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
+        { to: '/admin/templates', label: 'Templates', icon: FileCheck2 }
+      ]
+    : user?.role === 'COORDINATOR'
+      ? [
+          { to: '/coordinator/accounts', label: 'Account Management', icon: Users },
+          { to: '/coordinator/companies', label: 'Partner Companies', icon: Building2 },
+          { to: '/coordinator/templates', label: 'Templates', icon: FileCheck2 },
+          { to: '/coordinator/submissions', label: 'Submissions', icon: ClipboardList }
+        ]
+      : user?.role === 'SUPERVISOR'
+        ? [
+            { to: '/supervisor/students', label: 'View Students', icon: Users },
+            { to: '/supervisor/attendance', label: 'Record Attendance', icon: Clock3 },
+            { to: '/supervisor/submissions', label: 'Submissions', icon: ClipboardList }
+          ]
+        : [
+            { to: '/admin/accounts', label: 'Account Management', icon: Users },
+            { to: '/admin/companies', label: 'Partner Companies', icon: Building2 },
+            { to: '/admin/templates', label: 'Templates', icon: FileCheck2 },
+            { to: '/admin/submissions', label: 'Submissions', icon: ClipboardList }
+          ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -57,6 +93,45 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-2 space-y-6">
           <WelcomeCarousel />
+
+          {/* Upgraded Quick Overview & Shortcuts Bar */}
+          <Card className="p-4 sm:p-5 bg-gradient-to-r from-sti-blue/5 via-white to-sti-yellow/10 dark:from-sti-blue/15 dark:via-slate-800 dark:to-slate-800 border border-sti-blue/15">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-sti-blue shrink-0" />
+                  <h3 className="font-bold text-sm sm:text-base text-sti-gray-dark dark:text-white">
+                    Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!
+                  </h3>
+                  {user?.coordinatorCourse && (
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sti-blue text-white">
+                      {user.coordinatorCourse}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-sti-gray mt-1">
+                  {placementRate}% placement rate • {completionRate}% completion rate • {partnerCompanies} active partner {partnerCompanies === 1 ? 'company' : 'companies'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {quickLinks.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-700 text-sti-gray-dark dark:text-slate-100 border border-black/10 dark:border-white/10 hover:border-sti-blue hover:text-sti-blue transition-colors shadow-sm"
+                    >
+                      <Icon className="w-3.5 h-3.5 text-sti-blue" />
+                      {item.label}
+                      <ArrowRight className="w-3 h-3 opacity-60" />
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
+
           {announcements.length === 0 ? (
             <Card><p className="text-sm text-sti-gray text-center py-6">No announcements yet</p></Card>
           ) : announcements.map((a) => (
@@ -105,11 +180,12 @@ const AdminDashboard = () => {
       </div>
 
       {/* Headline status counts */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Enrolled Interns" value={stats?.totalStudents ?? stats?.total ?? 0} icon={Users} accent="blue" />
-        <StatCard label="Ongoing Interns" value={stats?.active ?? 0} icon={UserCheck} accent="green" />
-        <StatCard label="Pending Placement" value={stats?.pending ?? 0} icon={Clock3} accent="red" />
-        <StatCard label="Completed OJT" value={stats?.completed ?? 0} icon={CheckCircle2} accent="yellow" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard label="Total Enrolled Interns" value={totalInterns} icon={Users} accent="blue" />
+        <StatCard label="Ongoing Interns" value={activeInterns} icon={UserCheck} accent="green" />
+        <StatCard label="Pending Placement" value={pendingInterns} icon={Clock3} accent="red" />
+        <StatCard label="Completed OJT" value={completedInterns} icon={CheckCircle2} accent="yellow" />
+        <StatCard label="Partner Companies" value={partnerCompanies} icon={Building2} accent="blue" />
       </div>
 
       <Card className="flex items-center gap-2 text-sm text-sti-gray">

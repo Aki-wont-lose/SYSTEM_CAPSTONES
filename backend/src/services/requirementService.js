@@ -530,7 +530,8 @@ export const getGradingSummary = async (filters = {}, user = null) => {
 
   const submissions = await prisma.submission.findMany({
     where: { studentId: { in: students.map((s) => s.id) } },
-    select: { id: true, studentId: true, requirementId: true, status: true, score: true, isAutoGraded: true }
+    orderBy: { submittedAt: 'asc' },
+    select: { id: true, studentId: true, requirementId: true, status: true, score: true, isAutoGraded: true, fileName: true, submittedAt: true }
   });
 
   const byStudent = new Map();
@@ -564,7 +565,18 @@ export const getGradingSummary = async (filters = {}, user = null) => {
       if (state === 'LATE') late += 1;
       if (submission?.score != null) earnedPoints += submission.score;
       if (submission?.isAutoGraded) autoGradedCount += 1;
-      return { requirementId: req.id, title: req.title, maxScore: req.maxScore || 0, state, score: submission?.score ?? null, dueDate: getEffectiveDueDate(req) };
+      return {
+        requirementId: req.id,
+        title: req.title,
+        maxScore: req.maxScore || 0,
+        state,
+        score: submission?.score ?? null,
+        dueDate: getEffectiveDueDate(req),
+        submissionId: submission?.id || null,
+        fileName: submission?.fileName || null,
+        submissionStatus: submission?.status || null,
+        submittedAt: submission?.submittedAt || null
+      };
     });
 
     return {

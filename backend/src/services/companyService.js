@@ -345,11 +345,13 @@ export const validateCompanyFields = (data, { isCreate = false } = {}) => {
 const validateAcceptedCompanyPrograms = async (rawPrograms) => {
   if (rawPrograms === undefined || rawPrograms === null) return;
   const list = Array.isArray(rawPrograms) ? rawPrograms : String(rawPrograms).split(/[|;,/]+/);
-  const cleaned = list.map((p) => normalizeCourseCode(p)).filter(Boolean);
-  const unaccepted = cleaned.filter((course) => !VALID_PROGRAMS.includes(course));
+  const cleaned = list.map((p) => normalizeCourseCode(p) || String(p || '').trim().toUpperCase()).filter(Boolean);
+  const { acceptedCourses } = await getAcceptedInternshipCourses();
+  const allowed = Array.from(new Set([...VALID_PROGRAMS, ...(acceptedCourses || [])]));
+  const unaccepted = cleaned.filter((course) => !allowed.includes(course));
   if (unaccepted.length > 0) {
     const err = new Error(
-      `Course(s) ${unaccepted.join(', ')} are not recognized STI programs (${VALID_PROGRAMS.join(', ')}).`
+      `Course(s) ${unaccepted.join(', ')} are not recognized STI programs (${allowed.join(', ')}).`
     );
     err.status = 400;
     throw err;

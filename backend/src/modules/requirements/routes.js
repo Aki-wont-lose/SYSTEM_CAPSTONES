@@ -40,10 +40,10 @@ router.get('/grading', verifyRole(['ADMIN', 'COORDINATOR', 'SUPERVISOR']), denyS
 // ADMIN (non-SuperAdmin) + COORDINATOR can tick requirements off manually from the checklist
 router.put('/checklist/:studentId/:requirementId', verifyRole(['ADMIN', 'COORDINATOR']), denySuperAdmin, toggleRequirementCheck);
 
-// ADMIN (non-SuperAdmin) + COORDINATOR can create/update/delete templates & requirements
-router.post('/', verifyRole(['ADMIN', 'COORDINATOR']), denySuperAdmin, addRequirement);
-router.put('/:id', verifyRole(['ADMIN', 'COORDINATOR']), denySuperAdmin, editRequirement);
-router.delete('/:id', verifyRole(['ADMIN', 'COORDINATOR']), denySuperAdmin, removeRequirement);
+// Super Admin, Admin, and Coordinator can create/update/delete templates & requirements
+router.post('/', verifyRole(['ADMIN', 'COORDINATOR']), addRequirement);
+router.put('/:id', verifyRole(['ADMIN', 'COORDINATOR']), editRequirement);
+router.delete('/:id', verifyRole(['ADMIN', 'COORDINATOR']), removeRequirement);
 
 // Student submit/delete; Staff review/delete
 router.post('/:id/submit', verifyRole(['STUDENT']), upload);

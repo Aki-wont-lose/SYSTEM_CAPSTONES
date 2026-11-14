@@ -99,12 +99,15 @@ test('Super Admin is blocked from Admin-only mutations on Archive and OJT Hours 
   }
   const ojtPutAccepted = ojtHoursRouter.stack.find((l) => l.route?.path === '/accepted-courses' && l.route.methods.put);
   assert.ok(ojtPutAccepted);
-  assert.equal(ojtPutAccepted.route.stack.some((s) => s.name === 'denySuperAdmin'), true);
+  assert.equal(ojtPutAccepted.route.stack.some((s) => s.name === 'denySuperAdmin'), false);
 
   const reqLayers = requirementsRouter.stack.filter((layer) => layer.route);
   const reqPost = reqLayers.find((l) => l.route.path === '/' && l.route.methods.post);
   assert.ok(reqPost);
-  assert.equal(reqPost.route.stack.some((s) => s.name === 'denySuperAdmin'), true);
+  assert.equal(reqPost.route.stack.some((s) => s.name === 'denySuperAdmin'), false);
+  const reqSubmissionsAll = reqLayers.find((l) => l.route.path === '/submissions/all' && l.route.methods.get);
+  assert.ok(reqSubmissionsAll);
+  assert.equal(reqSubmissionsAll.route.stack.some((s) => s.name === 'denySuperAdmin'), true);
 });
 
 test('Data validation enforces schedule, requirement deadline, log entry, and academic year rules', () => {

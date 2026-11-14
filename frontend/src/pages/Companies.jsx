@@ -7,6 +7,7 @@ import Modal from '../components/Modal';
 import { CardSkeleton } from '../components/Skeleton';
 import { useAuth } from '../hooks/useAuth';
 import { getCompanies, createCompany, updateCompany, deleteCompany, batchCreateCompanies, approveCompany, rejectCompany } from '../services/companyService';
+import { getAcceptedCourses, updateAcceptedCourses } from '../services/ojtHoursService';
 import { normalizeCourseCode, COURSE_LABELS } from '../constants/programs';
 import { isValidPersonName, PERSON_NAME_ERROR } from '../constants/studentRules';
 import {
@@ -90,11 +91,14 @@ const emptyForm = {
 const Companies = () => {
   const { user } = useAuth();
   const isSuperAdmin = !!user?.isSuperAdmin;
-  const canMutate = !isSuperAdmin && (user?.role === 'ADMIN' || user?.role === 'COORDINATOR');
-  const canApprove = !isSuperAdmin && user?.role === 'ADMIN';
+  const canMutate = user?.role === 'ADMIN' || user?.role === 'COORDINATOR';
+  const canApprove = user?.role === 'ADMIN';
   const [companies, setCompanies] = useState([]);
   const [academicYearFilter, setAcademicYearFilter] = useState('');
   const [acceptedCourses, setAcceptedCourses] = useState(ALL_PROGRAMS);
+  const [newCourseInput, setNewCourseInput] = useState('');
+  const [showAddCourse, setShowAddCourse] = useState(false);
+  const [savingCourses, setSavingCourses] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -220,6 +224,53 @@ const Companies = () => {
   };
 
   useEffect(() => { loadData(); }, [programFilter, academicYearFilter]);
+
+  useEffect(() => {
+    getAcceptedCourses()
+      .then((res) => {
+        const list = res?.data?.acceptedCourses || res?.acceptedCourses;
+        if (Array.isArray(list) && list.length > 0) setAcceptedCourses(list);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSaveAcceptedCourses = async (nextCourses) => {
+    if (!nextCourses || nextCourses.length === 0) return;
+    setSavingCourses(true);
+    const previous = acceptedCourses;
+    setAcceptedCourses(nextCourses);
+    if (programFilter && !nextCourses.includes(programFilter)) {
+      setProgramFilter('');
+    }
+    try {
+      const res = await updateAcceptedCourses(nextCourses);
+      const saved = res?.data?.acceptedCourses || res?.acceptedCourses;
+      if (Array.isArray(saved) && saved.length > 0) setAcceptedCourses(saved);
+    } catch (err) {
+      console.error(err);
+      setAcceptedCourses(previous);
+    } finally {
+      setSavingCourses(false);
+    }
+  };
+
+  const handleRemoveCourse = (courseToRemove) => {
+    if (acceptedCourses.length <= 1) return;
+    handleSaveAcceptedCourses(acceptedCourses.filter((c) => c !== courseToRemove));
+  };
+
+  const handleAddCourse = (rawCourse) => {
+    const code = normalizeCourseCode(rawCourse) || String(rawCourse || '').trim().toUpperCase();
+    if (!code || !/^[A-Z0-9-]{2,12}$/.test(code)) return;
+    if (acceptedCourses.includes(code)) {
+      setNewCourseInput('');
+      setShowAddCourse(false);
+      return;
+    }
+    handleSaveAcceptedCourses([...acceptedCourses, code]);
+    setNewCourseInput('');
+    setShowAddCourse(false);
+  };
 
   // Open the modal with an empty form for adding a company
   const openNew = () => {
@@ -440,11 +491,11 @@ const Companies = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-bold text-sti-gray-dark dark:text-white">
-            {isSuperAdmin ? 'View Partner Companies' : canApprove ? 'Partner Companies Approval' : 'Add Partner Companies'}
+            {isSuperAdmin ? 'Partner Companies' : canApprove ? 'Partner Companies Approval' : 'Add Partner Companies'}
           </h1>
           <p className="text-sm text-sti-gray">
             {isSuperAdmin
-              ? 'View registered partner companies, academic years, and validity periods.'
+              ? 'Manage partner companies, academic-year validity, and internship slots.'
               : canApprove
                 ? 'Approve partner company registrations, manage academic-year validity, and monitor slots.'
                 : 'Register partner companies with academic year and validity periods.'}
@@ -479,17 +530,112 @@ const Companies = () => {
           <GraduationCap className="w-4 h-4 text-sti-blue shrink-0" />
           <span>Courses Accepted for Internship:</span>
         </div>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {acceptedCourses.map((course) => (
             <span
               key={course}
               title={COURSE_LABELS[course] || course}
-              className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white dark:bg-slate-800 text-sti-blue border border-sti-blue/20"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white dark:bg-slate-800 text-sti-blue border border-sti-blue/20"
             >
               {course}
+              {canApprove && acceptedCourses.length > 1 && (
+                <button
+                  type="button"
+                  disabled={savingCourses}
+                  onClick={() => handleRemoveCourse(course)}
+                  title={`Remove ${course}`}
+                  className="ml-0.5 rounded-full hover:bg-red-50 hover:text-red-600 text-sti-gray transition-colors p-0.5 disabled:opacity-40"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </span>
           ))}
+          {canApprove && (
+            showAddCourse ? (
+              <div className="inline-flex items-center gap-1">
+                <input
+                  type="text"
+                  value={newCourseInput}
+                  onChange={(e) => setNewCourseInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCourse(newCourseInput);
+                    } else if (e.key === 'Escape') {
+                      setShowAddCourse(false);
+                      setNewCourseInput('');
+                    }
+                  }}
+                  placeholder="e.g. BSBA"
+                  list="preset-sti-courses"
+                  className="px-2 py-0.5 rounded-lg border border-sti-blue/40 bg-white dark:bg-slate-800 text-xs font-bold text-sti-gray-dark dark:text-white w-24 focus:outline-none"
+                  autoFocus
+                />
+                <datalist id="preset-sti-courses">
+                  {ALL_PROGRAMS.filter((p) => !acceptedCourses.includes(p)).map((p) => (
+                    <option key={p} value={p} />
+                  ))}
+                </datalist>
+                <button
+                  type="button"
+                  disabled={savingCourses || !newCourseInput.trim()}
+                  onClick={() => handleAddCourse(newCourseInput)}
+                  className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-sti-blue text-white hover:bg-sti-blue-dark disabled:opacity-40"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowAddCourse(false); setNewCourseInput(''); }}
+                  className="p-0.5 text-sti-gray hover:text-sti-gray-dark"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                disabled={savingCourses}
+                onClick={() => setShowAddCourse(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sti-blue text-white hover:bg-sti-blue-dark transition-colors disabled:opacity-40"
+                title="Add course accepted for internship"
+              >
+                <Plus className="w-3 h-3" /> Add Course
+              </button>
+            )
+          )}
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full sm:w-56">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+          <select value={programFilter} onChange={(e) => setProgramFilter(e.target.value)} className="input-field pl-9 text-sm py-2.5">
+            <option value="">All Accepted Courses</option>
+            {acceptedCourses.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </div>
+        <div className="relative w-full sm:w-52">
+          <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
+          <select value={academicYearFilter} onChange={(e) => setAcademicYearFilter(e.target.value)} className="input-field pl-9 text-sm py-2.5">
+            <option value="">All Academic Years</option>
+            {ACADEMIC_YEAR_OPTIONS.map((ay) => (
+              <option key={ay} value={ay}>AY {ay}</option>
+            ))}
+          </select>
+        </div>
+        {(programFilter || academicYearFilter) && (
+          <button
+            type="button"
+            onClick={() => { setProgramFilter(''); setAcademicYearFilter(''); }}
+            className="text-xs font-semibold text-sti-blue hover:underline px-2 py-1"
+          >
+            Reset Filters
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -497,31 +643,23 @@ const Companies = () => {
       ) : companies.length === 0 ? (
         <Card className="text-center py-16">
           <Building2 className="w-10 h-10 text-sti-gray mx-auto mb-3" />
-          <p className="text-sti-gray text-sm">No partner companies yet. Add the first one.</p>
+          <p className="text-sti-gray text-sm">
+            {programFilter || academicYearFilter
+              ? 'No partner companies match the selected filters.'
+              : 'No partner companies yet. Add the first one.'}
+          </p>
+          {(programFilter || academicYearFilter) && (
+            <button
+              type="button"
+              onClick={() => { setProgramFilter(''); setAcademicYearFilter(''); }}
+              className="mt-3 px-3.5 py-1.5 rounded-lg bg-sti-blue-50 text-sti-blue text-xs font-semibold hover:bg-sti-blue hover:text-white transition-colors"
+            >
+              Show All Companies
+            </button>
+          )}
         </Card>
       ) : (
         <>
-          <div className="flex flex-wrap gap-3">
-            <div className="relative w-full sm:w-56">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
-              <select value={programFilter} onChange={(e) => setProgramFilter(e.target.value)} className="input-field pl-9 text-sm py-2.5">
-                <option value="">All Accepted Courses</option>
-                {acceptedCourses.map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
-            </div>
-            <div className="relative w-full sm:w-52">
-              <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-sti-gray" />
-              <select value={academicYearFilter} onChange={(e) => setAcademicYearFilter(e.target.value)} className="input-field pl-9 text-sm py-2.5">
-                <option value="">All Academic Years</option>
-                {ACADEMIC_YEAR_OPTIONS.map((ay) => (
-                  <option key={ay} value={ay}>AY {ay}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {companies.map((c) => {
               const normalizedCompanyPrograms = (c.programs || []).map((p) => normalizeCourseCode(p));
@@ -951,13 +1089,6 @@ const Companies = () => {
                     className="input-field text-sm py-2.5"
                   />
                 </div>
-              </div>
-
-              {/* Academic Year & Validity Period */}
-              <div className="p-3.5 rounded-xl bg-sti-gray-light/60 dark:bg-slate-900/50 border border-black/5 dark:border-white/10 space-y-3">
-                <p className="text-xs font-bold text-sti-gray-dark dark:text-slate-200 flex items-center gap-1.5">
-                  <CalendarDays className="w-4 h-4 text-sti-blue" /> Academic Year &amp; Validity Period
-                </p>
                 <div>
                   <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
                     Academic Year <span className="text-red-500">*</span>
@@ -989,39 +1120,37 @@ const Companies = () => {
                   )}
                   {formErrors.academicYear && <p className="text-xs text-red-600 mt-1">{formErrors.academicYear}</p>}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
-                      Start Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={form.startDate || ''}
-                      onChange={(e) => {
-                        setForm({ ...form, startDate: e.target.value });
-                        setFormErrors((prev) => ({ ...prev, startDate: undefined, expirationDate: undefined }));
-                      }}
-                      className={`input-field text-sm py-2.5 ${formErrors.startDate ? 'border-red-400' : ''}`}
-                    />
-                    {formErrors.startDate && <p className="text-xs text-red-600 mt-1">{formErrors.startDate}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
-                      Expiration Date <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      value={form.expirationDate || ''}
-                      onChange={(e) => {
-                        setForm({ ...form, expirationDate: e.target.value });
-                        setFormErrors((prev) => ({ ...prev, expirationDate: undefined }));
-                      }}
-                      className={`input-field text-sm py-2.5 ${formErrors.expirationDate ? 'border-red-400' : ''}`}
-                    />
-                    {formErrors.expirationDate && <p className="text-xs text-red-600 mt-1">{formErrors.expirationDate}</p>}
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
+                    Start Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={form.startDate || ''}
+                    onChange={(e) => {
+                      setForm({ ...form, startDate: e.target.value });
+                      setFormErrors((prev) => ({ ...prev, startDate: undefined, expirationDate: undefined }));
+                    }}
+                    className={`input-field text-sm py-2.5 ${formErrors.startDate ? 'border-red-400' : ''}`}
+                  />
+                  {formErrors.startDate && <p className="text-xs text-red-600 mt-1">{formErrors.startDate}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-sti-gray-dark dark:text-slate-200 mb-1">
+                    Expiration Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={form.expirationDate || ''}
+                    onChange={(e) => {
+                      setForm({ ...form, expirationDate: e.target.value });
+                      setFormErrors((prev) => ({ ...prev, expirationDate: undefined }));
+                    }}
+                    className={`input-field text-sm py-2.5 ${formErrors.expirationDate ? 'border-red-400' : ''}`}
+                  />
+                  {formErrors.expirationDate && <p className="text-xs text-red-600 mt-1">{formErrors.expirationDate}</p>}
                 </div>
               </div>
 

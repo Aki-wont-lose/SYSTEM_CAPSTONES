@@ -99,15 +99,33 @@ export const getOjtHoursByCourse = async (rawCourse) => {
 
 // Retrieve the list of courses officially accepted for internship
 export const getAcceptedInternshipCourses = async () => {
+  try {
+    const latest = await prisma.auditLog.findFirst({
+      where: { entity: ACCEPTED_COURSES_ENTITY },
+      orderBy: { createdAt: 'desc' }
+    });
+    const saved = latest?.metadata?.acceptedCourses;
+    if (Array.isArray(saved) && saved.length > 0) {
+      const mergedAvailable = Array.from(new Set([...SUPPORTED_PROGRAMS, ...saved]));
+      return {
+        acceptedCourses: saved,
+        availableCourses: mergedAvailable,
+        updatedAt: latest.createdAt,
+        updatedBy: latest.userEmail || null
+      };
+    }
+  } catch (_) {
+    // Fallback to default programs if lookup fails
+  }
   return {
     acceptedCourses: [...SUPPORTED_PROGRAMS],
-    availableCourses: SUPPORTED_PROGRAMS,
+    availableCourses: [...SUPPORTED_PROGRAMS],
     updatedAt: null,
     updatedBy: null
   };
 };
 
-// Update the list of courses officially accepted for internship (ADMIN only)
+// Update the list of courses officially accepted for internship (Super Admin & Admin)
 export const updateAcceptedInternshipCourses = async (courses, actor = null) => {
   if (!Array.isArray(courses)) {
     const e = new Error('acceptedCourses must be an array of course codes');
@@ -117,10 +135,10 @@ export const updateAcceptedInternshipCourses = async (courses, actor = null) => 
 
   const normalized = [];
   for (const raw of courses) {
-    const code = normalizeCourseCode(raw);
+    const code = normalizeCourseCode(raw) || String(raw || '').trim().toUpperCase();
     if (!code) continue;
-    if (!SUPPORTED_PROGRAMS.includes(code)) {
-      const e = new Error(`Course "${raw}" is not a recognized STI program. Valid programs: ${SUPPORTED_PROGRAMS.join(', ')}`);
+    if (!/^[A-Z0-9-]{2,12}$/.test(code)) {
+      const e = new Error(`Course "${raw}" must be a valid uppercase program code (2-12 characters, e.g., BSIT, BSBA).`);
       e.status = 400;
       throw e;
     }
@@ -133,19 +151,39 @@ export const updateAcceptedInternshipCourses = async (courses, actor = null) => 
     throw e;
   }
 
+  const now = new Date();
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: actor?.userId || null,
+        userEmail: actor?.email || null,
+        userRole: actor?.role || 'ADMIN',
+        action: 'UPDATE',
+        entity: ACCEPTED_COURSES_ENTITY,
+        description: `Updated courses accepted for internship: ${normalized.join(', ')}`,
+        metadata: { acceptedCourses: normalized }
+      }
+    });
+  } catch (_) {
+    // Best-effort persistence
+  }
+
+  const mergedAvailable = Array.from(new Set([...SUPPORTED_PROGRAMS, ...normalized]));
   return {
     acceptedCourses: normalized,
-    availableCourses: SUPPORTED_PROGRAMS,
-    updatedAt: new Date(),
+    availableCourses: mergedAvailable,
+    updatedAt: now,
     updatedBy: actor?.email || null
   };
 };
 
 export const assertCourseAcceptedForInternship = async (rawCourse) => {
-  const course = normalizeCourseCode(rawCourse);
-  if (!course || !SUPPORTED_PROGRAMS.includes(course)) {
+  const course = normalizeCourseCode(rawCourse) || String(rawCourse || '').trim().toUpperCase();
+  const { acceptedCourses } = await getAcceptedInternshipCourses();
+  const allowed = Array.from(new Set([...SUPPORTED_PROGRAMS, ...acceptedCourses]));
+  if (!course || !allowed.includes(course)) {
     const e = new Error(
-      `Course "${rawCourse || 'Unknown'}" is not eligible for internship. Accepted courses: ${SUPPORTED_PROGRAMS.join(', ')}.`
+      `Course "${rawCourse || 'Unknown'}" is not eligible for internship. Accepted courses: ${acceptedCourses.join(', ')}.`
     );
     e.status = 400;
     throw e;
