@@ -98,10 +98,6 @@ const MyLogs = () => {
       setError('Description is required.');
       return;
     }
-    if (logType === 'INTEGRATION_PAPER' && (!fileInfo.data || !fileInfo.name)) {
-      setError('Please attach your Integration Paper file.');
-      return;
-    }
     const todayStr = new Date().toISOString().slice(0, 10);
     if (!editingLog && date > todayStr) {
       setError('Log date cannot be in the future.');
@@ -311,21 +307,33 @@ const MyLogs = () => {
                   className="input-field resize-none"
                 />
               </div>
-              {logType === 'INTEGRATION_PAPER' && (
-                <div>
-                  <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Integration Paper File *</label>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    onChange={handleFilePick}
-                    className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white hover:file:bg-sti-blue-dark file:text-xs file:font-semibold"
-                  />
-                  {fileInfo.name && (
-                    <p className="mt-1.5 text-xs text-sti-blue font-medium">Selected: {fileInfo.name}</p>
-                  )}
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">
+                  Attachment / File <span className="text-xs font-normal text-sti-gray">(Optional)</span>
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                  onChange={handleFilePick}
+                  className="block w-full text-sm text-sti-gray file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sti-blue file:text-white hover:file:bg-sti-blue-dark file:text-xs file:font-semibold"
+                />
+                {fileInfo.name && (
+                  <div className="mt-2 flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg bg-sti-blue-50/70 dark:bg-sti-blue/15 text-xs">
+                    <span className="text-sti-blue font-medium truncate">Selected: {fileInfo.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFileInfo({ data: null, name: null });
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                      }}
+                      className="text-red-600 hover:underline font-semibold shrink-0"
+                    >
+                      Remove file
+                    </button>
+                  </div>
+                )}
+              </div>
               <Button type="submit" variant="primary" className="w-full" loading={saving}>
                 {editingLog ? 'Save Changes' : logType === 'INTEGRATION_PAPER' ? 'Submit Integration Paper' : 'Add Entry'}
               </Button>

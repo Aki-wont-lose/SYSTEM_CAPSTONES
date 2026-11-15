@@ -298,15 +298,15 @@ const Requirements = ({ mode = 'all' }) => {
                             <div className="flex flex-col sm:flex-row gap-2">
                               <Button
                                 variant="primary"
-                                icon={Sparkles}
+                                icon={Download}
                                 loading={generatingId === req.id}
                                 onClick={() => handleGenerateDocument(req)}
                                 className="flex-1 justify-center"
                               >
-                                Auto-Fill &amp; Download
+                                Download
                               </Button>
-                              <Button variant="secondary" icon={Download} onClick={() => downloadTemplate(req)} className="justify-center" title="Download blank template">
-                                Blank
+                              <Button variant="secondary" icon={FileText} onClick={() => downloadTemplate(req)} className="justify-center" title="Download blank template">
+                                Template
                               </Button>
                             </div>
                           </>

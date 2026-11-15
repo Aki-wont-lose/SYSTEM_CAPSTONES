@@ -114,10 +114,6 @@ export const validateLogEntryInput = ({ logType, date, taskDescription, submissi
     throw makeError('Task description must be 2000 characters or fewer.');
   }
 
-  if (normalizedType === 'INTEGRATION_PAPER' && (!submissionFile || !submissionFileName)) {
-    throw makeError('Please attach your Integration Paper file.');
-  }
-
   const logDate = date ? new Date(date) : new Date();
   if (Number.isNaN(logDate.getTime())) {
     throw makeError('Invalid log date.');

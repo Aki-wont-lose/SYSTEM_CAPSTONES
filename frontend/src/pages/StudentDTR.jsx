@@ -186,9 +186,6 @@ const StudentDTR = () => {
                         <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${reviewState.style}`}>
                           <reviewState.Icon className="w-3.5 h-3.5" /> {reviewState.label}
                         </span>
-                        {record.reviewedByName && (
-                          <p className="text-[11px] text-sti-gray mt-1 whitespace-nowrap">by {record.reviewedByName}</p>
-                        )}
                         {record.reviewStatus === 'REJECTED' && record.reviewRemarks && (
                           <p className="text-[11px] text-red-600 mt-1 max-w-[16rem]">{record.reviewRemarks}</p>
                         )}
