@@ -7,6 +7,12 @@ import logsRouter from '../src/modules/logs/routes.js';
 import archiveRouter from '../src/modules/archive/routes.js';
 import ojtHoursRouter from '../src/modules/ojtHours/routes.js';
 import requirementsRouter from '../src/modules/requirements/routes.js';
+import messagingRouter from '../src/modules/messaging/routes.js';
+import {
+  normalizeMiddleInitial,
+  isValidMiddleInitial,
+  formatStudentFullName
+} from '../src/utils/studentValidation.js';
 import {
   validateScheduleInput,
   validateRequirementInput,
@@ -158,13 +164,16 @@ test('documentGeneratorService smart-fills Endorsement Letter and DTR XML even w
   const sampleXml = `
     <w:document>
       <w:body>
-        <w:p><w:r><w:t>GIAN GABRIEL G. DE </w:t></w:r><w:r><w:t>GRACIA</w:t></w:r></w:p>
-        <w:p><w:r><w:t>Bachelor of Science in </w:t></w:r><w:r><w:t>Information Technology</w:t></w:r></w:p>
+        <w:p><w:r><w:t xml:space="preserve">August </w:t></w:r><w:r><w:t>19</w:t></w:r><w:r><w:t>,</w:t></w:r><w:r><w:t xml:space="preserve"> 2025</w:t></w:r></w:p>
+        <w:p><w:r><w:t xml:space="preserve">MR. </w:t></w:r><w:r><w:t xml:space="preserve">EDUARDO </w:t></w:r><w:r><w:t>AREJA</w:t></w:r></w:p>
+        <w:p><w:r><w:t xml:space="preserve">GIAN GABRIEL G. DE </w:t></w:r><w:r><w:t>GRACIA</w:t></w:r></w:p>
+        <w:p><w:r><w:t xml:space="preserve">Bachelor of Science in </w:t></w:r><w:r><w:t>Information Technology</w:t></w:r></w:p>
         <w:p><w:r><w:t>VastResult Inc.</w:t></w:r></w:p>
         <w:tbl>
           <w:tr>
             <w:tc><w:p><w:r><w:t>Last Name</w:t></w:r></w:p></w:tc>
             <w:tc><w:p><w:r><w:t>First Name</w:t></w:r></w:p></w:tc>
+            <w:tc><w:p><w:r><w:t>MI</w:t></w:r></w:p></w:tc>
             <w:tc><w:p><w:r><w:t>Program</w:t></w:r></w:p></w:tc>
           </w:tr>
         </w:tbl>
@@ -179,15 +188,46 @@ test('documentGeneratorService smart-fills Endorsement Letter and DTR XML even w
     },
     {
       firstName: 'Maria',
+      middleInitial: 'G',
       lastName: 'Santos',
       studentId: '02000123456',
       course: 'BSTM',
       section: 'BSTM 4A',
       ojt_status: 'ONGOING',
       requiredHours: 486,
-      completedHours: 120
+      completedHours: 120,
+      supervisorName: 'Engr. Jose Rizal',
+      company: { name: 'Grand Hotel Manila', address: 'Roxas Blvd, Manila' }
     }
   );
   assert.equal(result.mode, 'GENERATED_FILE');
   assert.equal(result.placeholders.full_program_name, 'Bachelor of Science in Tourism Management');
+  assert.equal(result.placeholders.student_name, 'Maria G. Santos');
+  assert.equal(result.placeholders.student_middle_initial, 'G.');
+
+  const outXml = Buffer.from(result.fileData.split(',')[1], 'base64').toString('utf8');
+  assert.ok(outXml.includes('<w:t>MARIA G. SANTOS</w:t>'));
+  assert.ok(outXml.includes('<w:t>Bachelor of Science in Tourism Management</w:t>'));
+  assert.ok(outXml.includes('<w:t>Grand Hotel Manila</w:t>'));
+  assert.ok(outXml.includes('<w:t>Engr. Jose Rizal</w:t>'));
+  assert.ok(outXml.includes('<w:t>G.</w:t>'));
+});
+
+test('Middle Initial normalization and messaging Edit/Delete routes are registered', () => {
+  assert.equal(normalizeMiddleInitial('g'), 'G.');
+  assert.equal(normalizeMiddleInitial('G.'), 'G.');
+  assert.equal(normalizeMiddleInitial(''), '');
+  assert.equal(isValidMiddleInitial('A.'), true);
+  assert.equal(isValidMiddleInitial('12'), false);
+  assert.equal(
+    formatStudentFullName({ firstName: 'Juan', middleInitial: 'p', lastName: 'Dela Cruz' }),
+    'Juan P. Dela Cruz'
+  );
+
+  const msgRoutes = messagingRouter.stack
+    .filter((layer) => layer.route)
+    .map((layer) => `${Object.keys(layer.route.methods).join(',').toUpperCase()} ${layer.route.path}`);
+
+  assert.equal(msgRoutes.some((r) => r.includes('PUT /:id')), true);
+  assert.equal(msgRoutes.some((r) => r.includes('DELETE /:id')), true);
 });

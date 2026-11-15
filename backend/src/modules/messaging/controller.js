@@ -33,6 +33,14 @@ export const removeConversation = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Conversation deleted' });
 });
 
+// PUT /messaging/:id - edit one of the caller's sent text messages
+export const editMessage = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { content } = req.body;
+  const msg = await svc.updateMessage(req.user.userId, id, content);
+  res.json({ success: true, message: 'Message updated', data: msg });
+});
+
 // DELETE /messaging/:id - delete one of the caller's messages
 export const removeMessage = asyncHandler(async (req, res) => {
   const { id } = req.params;

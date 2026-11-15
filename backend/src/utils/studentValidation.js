@@ -83,6 +83,32 @@ export const isValidPersonName = (value) => {
   return Boolean(cleaned) && PERSON_NAME_RE.test(cleaned);
 };
 
+export const MIDDLE_INITIAL_ERROR =
+  'Middle initial may only contain letters, spaces, hyphens, and periods.';
+
+export const normalizeMiddleInitial = (value) => {
+  const raw = String(value || '').trim().replace(/\s+/g, ' ');
+  if (!raw) return '';
+  if (/^[A-Za-zÀ-ÖØ-öø-ÿ]\.?$/.test(raw)) {
+    return `${raw.replace(/\.$/, '').toUpperCase()}.`;
+  }
+  return raw;
+};
+
+export const isValidMiddleInitial = (value) => {
+  const cleaned = String(value || '').trim();
+  if (!cleaned) return true;
+  return PERSON_NAME_RE.test(cleaned);
+};
+
+export const formatStudentFullName = (student) => {
+  if (!student) return '';
+  const first = String(student.firstName || '').trim();
+  const mi = normalizeMiddleInitial(student.middleInitial);
+  const last = String(student.lastName || '').trim();
+  return [first, mi, last].filter(Boolean).join(' ').trim();
+};
+
 export const CONTACT_NUMBER_ERROR =
   'Please enter a valid Philippine mobile number (e.g., 09171234567 or +639171234567).';
 

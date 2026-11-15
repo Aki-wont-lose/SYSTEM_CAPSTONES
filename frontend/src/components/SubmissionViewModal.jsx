@@ -24,7 +24,7 @@ const SubmissionViewModal = ({ submission, onClose }) => {
   const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext) || fileData.startsWith('data:image/');
 
   const studentName = submission.student
-    ? `${submission.student.firstName || ''} ${submission.student.lastName || ''}`.trim()
+    ? [submission.student.firstName, submission.student.middleInitial, submission.student.lastName].filter(Boolean).join(' ').trim()
     : submission.studentName || 'Student';
 
   const handleDownload = () => {

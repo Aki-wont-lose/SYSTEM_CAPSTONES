@@ -110,6 +110,7 @@ model Student {
   userId             String       @unique
   studentId          String       @unique
   firstName          String
+  middleInitial      String?
   lastName           String
   course             String
   section            String

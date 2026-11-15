@@ -528,7 +528,7 @@ export const getDtrReviewQueue = async (filters = {}, user = null) => {
     where,
     select: {
       ...ATTENDANCE_FIELDS,
-      student: { select: { id: true, studentId: true, firstName: true, lastName: true, course: true, section: true } }
+      student: { select: { id: true, studentId: true, firstName: true, middleInitial: true, lastName: true, course: true, section: true } }
     },
     orderBy: [{ date: 'desc' }],
     take: Math.min(parseInt(safeFilters.limit) || 100, 500)
@@ -540,7 +540,7 @@ export const getDtrReviewQueue = async (filters = {}, user = null) => {
       acc[key] = {
         studentId: record.student.id,
         studentNumber: record.student.studentId,
-        name: `${record.student.firstName} ${record.student.lastName}`,
+        name: [record.student.firstName, record.student.middleInitial, record.student.lastName].filter(Boolean).join(' ').trim(),
         course: record.student.course,
         section: record.student.section,
         submitted: 0,
@@ -621,6 +621,7 @@ export const getAttendanceRecords = async (filters = {}, user = null) => {
           id: true,
           studentId: true,
           firstName: true,
+          middleInitial: true,
           lastName: true,
           course: true,
           section: true,

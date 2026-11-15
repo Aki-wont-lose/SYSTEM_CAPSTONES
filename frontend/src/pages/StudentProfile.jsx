@@ -3,7 +3,7 @@ import { Mail, User, BookOpen, Users, Hash, Camera, Image as ImageIcon, Check } 
 import Card from '../components/Card';
 import { useAuth } from '../hooks/useAuth';
 import { getMyProfile, updateMyProfile } from '../services/studentService';
-import { sectionLabel } from '../constants/studentRules';
+import { sectionLabel, formatStudentFullName } from '../constants/studentRules';
 
 const statusStyles = {
   NOT_STARTED: 'bg-gray-100 text-sti-gray-dark',
@@ -106,7 +106,7 @@ const StudentProfile = () => {
 
   // Build safe initials, tolerating missing first or last name
   const initials = `${(profile.firstName || '?')[0]}${(profile.lastName || '?')[0]}`.toUpperCase();
-  const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(' ') || 'Unnamed Student';
+  const fullName = formatStudentFullName(profile) || 'Unnamed Student';
 
   // Read-only profile - no editing, no generated company/supervisor placeholders (admin assigns via Companies)
   const infoFields = [

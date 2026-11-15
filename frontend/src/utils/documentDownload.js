@@ -34,6 +34,7 @@ export const downloadGeneratedDocument = (result) => {
         <p class="sub">Auto-populated from SIMES Student &amp; Placement Records</p>
         <table>
           <tr><td class="lbl">Student Full Name</td><td><b>${p.student_name || 'N/A'}</b></td></tr>
+          ${p.student_middle_initial ? `<tr><td class="lbl">Middle Initial</td><td>${p.student_middle_initial}</td></tr>` : ''}
           <tr><td class="lbl">Student ID</td><td>${p.student_id || 'N/A'}</td></tr>
           <tr><td class="lbl">Course &amp; Section</td><td>${p.course || 'N/A'} — ${p.section || 'N/A'}</td></tr>
           <tr><td class="lbl">Program</td><td>${p.full_program_name || p.course || 'N/A'}</td></tr>

@@ -290,29 +290,22 @@ const Requirements = ({ mode = 'all' }) => {
                       {req.description && <p className="text-xs text-sti-gray mt-1 line-clamp-2">{req.description}</p>}
 
                       <div className="mt-3 pt-3 border-t border-black/5 dark:border-white/10 space-y-2">
-                        {req.templateFile ? (
-                          <>
-                            <p className="text-[11px] text-sti-gray truncate">
-                              {req.templateFileName || 'template.pdf'}{sizeLabel ? ` • ${sizeLabel}` : ''}
-                            </p>
-                            <div className="flex flex-col sm:flex-row gap-2">
-                              <Button
-                                variant="primary"
-                                icon={Download}
-                                loading={generatingId === req.id}
-                                onClick={() => handleGenerateDocument(req)}
-                                className="flex-1 justify-center"
-                              >
-                                Download
-                              </Button>
-                              <Button variant="secondary" icon={FileText} onClick={() => downloadTemplate(req)} className="justify-center" title="Download blank template">
-                                Template
-                              </Button>
-                            </div>
-                          </>
-                        ) : (
-                          <p className="text-[11px] text-sti-gray italic text-center py-2">No file provided — see description for instructions</p>
-                        )}
+                        <p className="text-[11px] text-sti-gray truncate">
+                          {req.templateFile
+                            ? `${req.templateFileName || 'template.docx'}${sizeLabel ? ` • ${sizeLabel}` : ''}`
+                            : 'Auto-generated OJT document'}
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Button
+                            variant="primary"
+                            icon={Download}
+                            loading={generatingId === req.id}
+                            onClick={() => handleGenerateDocument(req)}
+                            className="flex-1 justify-center"
+                          >
+                            Download
+                          </Button>
+                        </div>
                       </div>
                     </Card>
                   );
@@ -410,11 +403,13 @@ const Requirements = ({ mode = 'all' }) => {
                           </td>
                           <td className="px-6 py-3.5 align-top">
                             <div className="flex items-center justify-end gap-1">
-                              {showTemplateInfo && req.templateFile && (
+                              {showTemplateInfo && (
                                 <button
-                                  onClick={() => downloadTemplate(req)}
-                                  title="Download template"
-                                  className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors"
+                                  type="button"
+                                  disabled={generatingId === req.id}
+                                  onClick={() => handleGenerateDocument(req)}
+                                  title="Download auto-populated template"
+                                  className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors disabled:opacity-50"
                                 >
                                   <Download className="w-4 h-4" />
                                 </button>

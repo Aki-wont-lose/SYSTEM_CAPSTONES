@@ -4,6 +4,8 @@ import {
   isValidStudentEmail,
   isValidStudentId,
   isValidPersonName,
+  isValidMiddleInitial,
+  normalizeMiddleInitial,
   validateStudentEmailMatch,
   isValidContactNumber,
   isValidSection,
@@ -14,6 +16,7 @@ import {
   ELMS_EMAIL_ERROR,
   STUDENT_ID_ERROR,
   PERSON_NAME_ERROR,
+  MIDDLE_INITIAL_ERROR,
   CONTACT_NUMBER_ERROR,
   ELMS_SECTION_ERROR
 } from '../utils/studentValidation.js';
@@ -358,6 +361,10 @@ export const createStudent = async (studentData, userData, actor = null) => {
   if (!isValidPersonName(cleanFirstName) || !isValidPersonName(cleanLastName)) {
     throw badRequest(PERSON_NAME_ERROR);
   }
+  if (!isValidMiddleInitial(studentData.middleInitial)) {
+    throw badRequest(MIDDLE_INITIAL_ERROR);
+  }
+  const cleanMiddleInitial = normalizeMiddleInitial(studentData.middleInitial) || null;
 
   const cleanStudentId = String(studentData.studentId || '').trim();
   if (!isValidStudentId(cleanStudentId)) {
@@ -466,6 +473,9 @@ export const createStudent = async (studentData, userData, actor = null) => {
       return tx.student.create({
         data: {
           ...sanitizedCreate,
+          firstName: cleanFirstName,
+          middleInitial: cleanMiddleInitial,
+          lastName: cleanLastName,
           course,
           studentId: cleanStudentId,
           section: normalizedSection,
@@ -525,6 +535,7 @@ export const createStudent = async (studentData, userData, actor = null) => {
 // cause a Prisma "unknown argument" runtime error.
 export const STAFF_EDITABLE_STUDENT_FIELDS = [
   'firstName',
+  'middleInitial',
   'lastName',
   'studentId',
   'course',
@@ -607,6 +618,12 @@ export const updateStudent = async (studentId, updateData, actor = null) => {
       if (!sanitized.firstName || !isValidPersonName(sanitized.firstName)) {
         throw badRequest(PERSON_NAME_ERROR);
       }
+    }
+    if (sanitized.middleInitial !== undefined) {
+      if (!isValidMiddleInitial(sanitized.middleInitial)) {
+        throw badRequest(MIDDLE_INITIAL_ERROR);
+      }
+      sanitized.middleInitial = normalizeMiddleInitial(sanitized.middleInitial) || null;
     }
     if (sanitized.lastName !== undefined) {
       sanitized.lastName = String(sanitized.lastName || '').trim();

@@ -37,6 +37,7 @@ export const getAllLogs = async (filters = {}, user = null) => {
         select: {
           id: true,
           firstName: true,
+          middleInitial: true,
           lastName: true,
           studentId: true,
           course: true,

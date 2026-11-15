@@ -1,5 +1,6 @@
 // modules/messaging/service.js - open messaging: any user can chat with anyone
 import prisma from '../../utils/prisma.js';
+import { formatStudentFullName } from '../../utils/studentValidation.js';
 
 // Duplicate gmail accounts left over from testing, hidden from the people directory
 const BLOCKED_EMAILS = [
@@ -33,7 +34,7 @@ export const getContactUsers = async (currentUserId) => {
         firstName: true,
         lastName: true,
         isActive: true,
-        student: { select: { firstName: true, lastName: true, studentId: true } }
+        student: { select: { firstName: true, middleInitial: true, lastName: true, studentId: true } }
       },
       orderBy: [{ email: 'asc' }]
     }),
@@ -62,7 +63,7 @@ export const getContactUsers = async (currentUserId) => {
     .map(u => {
       const conversation = conversationByUser.get(u.id);
       const name = u.student
-        ? `${u.student.firstName} ${u.student.lastName}`
+        ? formatStudentFullName(u.student)
         : [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email.split('@')[0].replace('.', ' ');
       // Explicit allow-list: the API never returns role (or any other account
       // attribute) to the messaging UI, so it cannot be displayed or spoofed there.
@@ -147,6 +148,43 @@ export const markAsRead = async (userId, otherUserId) => {
   await prisma.message.updateMany({
     where: { senderId: otherUserId, receiverId: userId, isRead: false },
     data: { isRead: true }
+  });
+};
+
+export const updateMessage = async (userId, messageId, content) => {
+  const trimmed = String(content ?? '').trim();
+  if (!trimmed) {
+    const e = new Error('Message cannot be empty');
+    e.status = 400;
+    throw e;
+  }
+  const msg = await prisma.message.findUnique({ where: { id: messageId } });
+  if (!msg) {
+    const e = new Error('Message not found');
+    e.status = 404;
+    throw e;
+  }
+  if (msg.senderId !== userId) {
+    const e = new Error('Not authorized to edit this message');
+    e.status = 403;
+    throw e;
+  }
+  if (String(msg.content || '').startsWith('data:image') || trimmed.startsWith('data:image')) {
+    const e = new Error('Image messages cannot be edited as text');
+    e.status = 400;
+    throw e;
+  }
+  return prisma.message.update({
+    where: { id: messageId },
+    data: { content: trimmed },
+    select: {
+      id: true,
+      senderId: true,
+      receiverId: true,
+      content: true,
+      isRead: true,
+      createdAt: true
+    }
   });
 };
 

@@ -140,6 +140,7 @@ export const addStudent = asyncHandler(async (req, res) => {
   const {
     studentId,
     firstName,
+    middleInitial,
     lastName,
     course,
     section,
@@ -187,6 +188,7 @@ export const addStudent = asyncHandler(async (req, res) => {
     {
       studentId,
       firstName,
+      middleInitial,
       lastName,
       course,
       section,
@@ -283,7 +285,7 @@ export const batchCreateStudentsHandler = asyncHandler(async (req, res) => {
         results.failed++; results.errors.push(`${s.email || 'unknown'}: missing required fields`); continue;
       }
       await createStudent(
-        { studentId: s.studentId, firstName: s.firstName, lastName: s.lastName, course: s.course, section: s.section, email: s.email, contactNumber: s.contactNumber, companyId: s.companyId || undefined },
+        { studentId: s.studentId, firstName: s.firstName, middleInitial: s.middleInitial, lastName: s.lastName, course: s.course, section: s.section, email: s.email, contactNumber: s.contactNumber, companyId: s.companyId || undefined },
         { email: s.email },
         req.user
       );

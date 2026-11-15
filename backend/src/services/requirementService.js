@@ -234,6 +234,7 @@ export const getAllSubmissions = async (filters = {}, user = null) => {
         select: {
           id: true,
           firstName: true,
+          middleInitial: true,
           lastName: true,
           studentId: true,
           course: true,
@@ -518,7 +519,7 @@ export const getGradingSummary = async (filters = {}, user = null) => {
   const [students, requirements] = await Promise.all([
     prisma.student.findMany({
       where: studentWhere,
-      select: { id: true, studentId: true, firstName: true, lastName: true, course: true, section: true },
+      select: { id: true, studentId: true, firstName: true, middleInitial: true, lastName: true, course: true, section: true },
       orderBy: { lastName: 'asc' }
     }),
     prisma.requirement.findMany({ orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] })
@@ -582,7 +583,7 @@ export const getGradingSummary = async (filters = {}, user = null) => {
     return {
       studentId: student.id,
       studentNumber: student.studentId,
-      name: `${student.firstName} ${student.lastName}`,
+      name: [student.firstName, student.middleInitial, student.lastName].filter(Boolean).join(' ').trim(),
       course: student.course,
       section: student.section,
       totalRequirements: applicable.length,
@@ -714,6 +715,7 @@ export const getSubmissionById = async (submissionId, actor) => {
           id: true,
           userId: true,
           firstName: true,
+          middleInitial: true,
           lastName: true,
           studentId: true,
           course: true,
@@ -767,6 +769,12 @@ export const generateRequirementDocument = async (requirementId, targetStudentId
       include: { company: true }
     });
     if (student) assertStudentAccess(actor, student);
+  } else if (actor) {
+    student = await prisma.student.findFirst({
+      where: scopeWhere(actor, { isArchived: false }),
+      include: { company: true },
+      orderBy: { createdAt: 'desc' }
+    });
   }
 
   if (!student) {

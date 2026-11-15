@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CheckCircle2, Download, ListChecks, CalendarClock } from 'lucide-react';
 import Card from './Card';
-import { getMyWeeklyTasks, completeWeeklyTask } from '../services/requirementService';
+import { getMyWeeklyTasks, completeWeeklyTask, generateTemplateDocument } from '../services/requirementService';
+import { downloadGeneratedDocument } from '../utils/documentDownload';
 
 const formatDate = (value) =>
   value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
@@ -94,16 +95,28 @@ const WeeklyToDo = ({ emptyMessage, onChanged }) => {
                     </span>
                   </div>
                 </div>
-                {task.requirement?.templateFile && (
+                {(task.requirement?.templateFile || task.requirementId || task.requirement?.id) && (
                   <button
-                    onClick={() => {
-                      const a = document.createElement('a');
-                      a.href = task.requirement.templateFile;
-                      a.download = task.requirement.templateFileName || 'template.pdf';
-                      a.click();
+                    onClick={async () => {
+                      const reqId = task.requirementId || task.requirement?.id;
+                      if (reqId) {
+                        try {
+                          const res = await generateTemplateDocument(reqId);
+                          downloadGeneratedDocument(res.data);
+                          return;
+                        } catch {
+                          // Fall back to direct file if generation fails
+                        }
+                      }
+                      if (task.requirement?.templateFile) {
+                        const a = document.createElement('a');
+                        a.href = task.requirement.templateFile;
+                        a.download = task.requirement.templateFileName || 'template.pdf';
+                        a.click();
+                      }
                     }}
                     className="p-2 rounded-lg hover:bg-sti-blue-50 text-sti-blue shrink-0 flex items-center justify-center min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
-                    title="Download template"
+                    title="Download auto-populated template"
                     aria-label="Download template"
                   >
                     <Download className="w-4 h-4" />

@@ -3,7 +3,7 @@
 // Preserves original template files and formatting (DOCX XML, HTML, TXT, RTF, SVG).
 import zlib from 'zlib';
 import prisma from '../utils/prisma.js';
-import { normalizeCourseCode } from '../utils/studentValidation.js';
+import { normalizeCourseCode, normalizeMiddleInitial, formatStudentFullName } from '../utils/studentValidation.js';
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -84,7 +84,8 @@ export const buildStudentPlaceholders = async (student) => {
     }
   }
 
-  const fullName = `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'N/A';
+  const middleInitial = normalizeMiddleInitial(student.middleInitial);
+  const fullName = formatStudentFullName(student) || 'N/A';
   const supervisorName = student.supervisorName || student.company?.contactPerson || 'N/A';
   const companyName = student.company?.name || 'N/A';
   const companyAddress = student.company?.address || 'N/A';
@@ -99,6 +100,9 @@ export const buildStudentPlaceholders = async (student) => {
     student_full_name: fullName,
     full_name: fullName,
     student_first_name: student.firstName || '',
+    student_middle_initial: middleInitial,
+    middle_initial: middleInitial,
+    mi: middleInitial,
     student_last_name: student.lastName || '',
     student_id: student.studentId || 'N/A',
     course: student.course || 'N/A',
@@ -288,26 +292,28 @@ const smartReplaceDocxXml = (xmlStr, placeholders, student) => {
     ? placeholders.coordinator_contact
     : '+639058220825';
 
-  // 1. Endorsement Letter template sample runs replacement
+  // 1. Endorsement Letter template sample runs replacement (supports <w:t> and <w:t xml:space="preserve">)
   out = out
-    .replace(/<w:t>GIAN GABRIEL G\. DE <\/w:t>/g, `<w:t>${escapeXml(upperFullName)}</w:t>`)
-    .replace(/<w:t>GRACIA<\/w:t>/g, '<w:t></w:t>')
-    .replace(/<w:t>Bachelor of Science in <\/w:t>/g, `<w:t>${escapeXml(fullProgram)}</w:t>`)
-    .replace(/<w:t>Information Technology<\/w:t>/g, '<w:t></w:t>')
-    .replace(/<w:t>486<\/w:t>/g, `<w:t>${escapeXml(placeholders.required_hours || '486')}</w:t>`)
-    .replace(/<w:t>VastResult Inc\.<\/w:t>/g, `<w:t>${escapeXml(companyVal)}</w:t>`)
-    .replace(/<w:t>186 Caballero St\. <\/w:t>/g, `<w:t>${escapeXml(addressVal)}</w:t>`)
-    .replace(/<w:t>Mahabang<\/w:t>/g, '<w:t></w:t>')
-    .replace(/<w:t xml:space="preserve"> Parang,<\/w:t>/g, '<w:t></w:t>')
-    .replace(/<w:t> Parang,<\/w:t>/g, '<w:t></w:t>')
-    .replace(/<w:t>Santa Maria, Bulacan 3022<\/w:t>/g, '<w:t></w:t>')
-    .replace(/<w:t>EDUARDO <\/w:t>/g, '<w:t></w:t>')
-    .replace(/<w:t>MR\. <\/w:t>([\s\S]*?)<w:t>AREJA<\/w:t>/g, `<w:t></w:t>$1<w:t>${escapeXml(supervisorVal)}</w:t>`)
-    .replace(/<w:t>August <\/w:t>/g, `<w:t>${escapeXml(placeholders.date_today)}</w:t>`)
-    .replace(/<w:t>19<\/w:t>([\s\S]*?)<w:t>,<\/w:t>([\s\S]*?)<w:t xml:space="preserve"> 2025<\/w:t>/g, '<w:t></w:t>$1<w:t></w:t>$2<w:t></w:t>')
-    .replace(/<w:t>Ms\. Lara Camille V\. Vergara<\/w:t>/g, `<w:t>${escapeXml(coordNameVal)}</w:t>`)
-    .replace(/<w:t>laracamille\.vergara@stamaria\.sti\.edu\.ph<\/w:t>/g, `<w:t>${escapeXml(coordEmailVal)}</w:t>`)
-    .replace(/<w:t>\+639<\/w:t>([\s\S]*?)<w:t>058220825<\/w:t>/g, `<w:t>${escapeXml(coordContactVal)}</w:t>$1<w:t></w:t>`);
+    .replace(/<w:t(?:\s+[^>]*)?>GIAN GABRIEL G\. DE\s*GRACIA\s*<\/w:t>/gi, `<w:t>${escapeXml(upperFullName)}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>GIAN GABRIEL G\. DE\s*<\/w:t>/gi, `<w:t>${escapeXml(upperFullName)}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>GRACIA<\/w:t>/gi, '<w:t></w:t>')
+    .replace(/<w:t(?:\s+[^>]*)?>Bachelor of Science in\s*Information Technology\s*<\/w:t>/gi, `<w:t>${escapeXml(fullProgram)}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>Bachelor of Science in\s*<\/w:t>/gi, `<w:t>${escapeXml(fullProgram)}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>Information Technology<\/w:t>/gi, '<w:t></w:t>')
+    .replace(/<w:t(?:\s+[^>]*)?>486<\/w:t>/g, `<w:t>${escapeXml(placeholders.required_hours || '486')}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>VastResult Inc\.<\/w:t>/gi, `<w:t>${escapeXml(companyVal)}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>186 Caballero St\.\s*<\/w:t>/gi, `<w:t>${escapeXml(addressVal)}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>Mahabang<\/w:t>/gi, '<w:t></w:t>')
+    .replace(/<w:t(?:\s+[^>]*)?>\s*Parang,<\/w:t>/gi, '<w:t></w:t>')
+    .replace(/<w:t(?:\s+[^>]*)?>Santa Maria, Bulacan 3022<\/w:t>/gi, '<w:t></w:t>')
+    .replace(/<w:t(?:\s+[^>]*)?>EDUARDO\s*<\/w:t>/gi, '<w:t></w:t>')
+    .replace(/<w:t(?:\s+[^>]*)?>MR\.\s*<\/w:t>([\s\S]*?)<w:t(?:\s+[^>]*)?>AREJA<\/w:t>/gi, `<w:t></w:t>$1<w:t>${escapeXml(supervisorVal)}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>IT Manager<\/w:t>/gi, `<w:t>OJT Supervisor</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>August\s*<\/w:t>/gi, `<w:t>${escapeXml(placeholders.date_today)}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>19<\/w:t>([\s\S]*?)<w:t(?:\s+[^>]*)?>,<\/w:t>([\s\S]*?)<w:t(?:\s+[^>]*)?>\s*2025<\/w:t>/g, '<w:t></w:t>$1<w:t></w:t>$2<w:t></w:t>')
+    .replace(/<w:t(?:\s+[^>]*)?>Ms\. Lara Camille V\. Vergara<\/w:t>/gi, `<w:t>${escapeXml(coordNameVal)}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>laracamille\.vergara@stamaria\.sti\.edu\.ph<\/w:t>/gi, `<w:t>${escapeXml(coordEmailVal)}</w:t>`)
+    .replace(/<w:t(?:\s+[^>]*)?>\+639<\/w:t>([\s\S]*?)<w:t(?:\s+[^>]*)?>058220825<\/w:t>/g, `<w:t>${escapeXml(coordContactVal)}</w:t>$1<w:t></w:t>`);
 
   // 2. DTR (Daily Time Record) table cell auto-filling
   const scheduleStr = `${placeholders.working_days || 'Mon-Fri'} (${placeholders.working_hours || '8AM-5PM'})`;
@@ -321,14 +327,23 @@ const smartReplaceDocxXml = (xmlStr, placeholders, student) => {
   const dtrCellMap = {
     'Last Name': student?.lastName || placeholders.student_last_name || '',
     'First Name': student?.firstName || placeholders.student_first_name || '',
+    'M.I.': placeholders.student_middle_initial || '',
+    'M.I': placeholders.student_middle_initial || '',
+    'MI': placeholders.student_middle_initial || '',
+    'Middle Initial': placeholders.student_middle_initial || '',
+    'Middle Name': placeholders.student_middle_initial || '',
     'STI Campus': 'STI College Santa Maria',
     'Program': placeholders.course !== 'N/A' ? placeholders.course : '',
     'Year Level': placeholders.year_level || '4th Year',
     'Section': placeholders.section !== 'N/A' ? placeholders.section : '',
     'Host Company': placeholders.company_name !== 'N/A' ? placeholders.company_name : 'Not Yet Assigned',
+    'Department Assigned to': placeholders.course !== 'N/A' ? `${placeholders.course} Department` : 'OJT Department',
     'OJT Supervisor': placeholders.supervisor_name !== 'N/A' ? placeholders.supervisor_name : 'Not Yet Assigned',
+    'Designation': placeholders.supervisor_name !== 'N/A' ? 'OJT Supervisor' : '',
     'Schedule': scheduleStr,
-    'OJT Period': ojtPeriodStr
+    'OJT Period': ojtPeriodStr,
+    'Reviewed by:': placeholders.supervisor_name !== 'N/A' ? placeholders.supervisor_name : '',
+    'Date': placeholders.date_today || ''
   };
 
   out = out.replace(/<w:tc\b[^>]*>[\s\S]*?<\/w:tc>/g, (tcBlock) => {
@@ -398,7 +413,8 @@ export const generateDocumentFromTemplate = async (requirement, student) => {
   // 1b. XLSX: replace placeholders and sample student rows inside xl/sharedStrings.xml
   if (ext === 'xlsx' || mimeType.includes('spreadsheetml')) {
     const entries = parseZipEntries(rawBuffer);
-    const formattedLastFirst = `${(student.lastName || '').toUpperCase()}, ${(student.firstName || '').toUpperCase()}`
+    const firstAndMi = [student.firstName, placeholders.student_middle_initial].filter(Boolean).join(' ').trim();
+    const formattedLastFirst = `${(student.lastName || '').toUpperCase()}, ${firstAndMi.toUpperCase()}`
       .replace(/^,\s*/, '')
       .trim() || placeholders.student_name.toUpperCase();
     const updatedEntries = entries.map((entry) => {
@@ -426,7 +442,10 @@ export const generateDocumentFromTemplate = async (requirement, student) => {
   // 2. Text-based templates (HTML, TXT, RTF, SVG, XML, CSV)
   if (['html', 'htm', 'txt', 'rtf', 'svg', 'xml', 'csv'].includes(ext) || mimeType.startsWith('text/')) {
     const textStr = rawBuffer.toString('utf8');
-    const replaced = replacePlaceholdersText(textStr, placeholders, ext === 'svg' || ext === 'xml');
+    const replaced =
+      ext === 'xml' && textStr.includes('<w:')
+        ? smartReplaceDocxXml(textStr, placeholders, student)
+        : replacePlaceholdersText(textStr, placeholders, ext === 'svg' || ext === 'xml');
     const outBuf = Buffer.from(replaced, 'utf8');
     return {
       mode: 'GENERATED_FILE',

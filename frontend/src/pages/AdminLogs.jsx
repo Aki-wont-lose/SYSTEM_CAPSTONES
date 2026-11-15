@@ -141,7 +141,7 @@ const AdminLogs = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <span className="text-sm font-semibold text-sti-gray-dark dark:text-white">
-                        {log.student?.lastName}, {log.student?.firstName}
+                        {log.student?.lastName}, {[log.student?.firstName, log.student?.middleInitial].filter(Boolean).join(' ')}
                       </span>
                       <span className="text-xs text-sti-gray">#{log.student?.studentId}</span>
                       {log.student?.course && (

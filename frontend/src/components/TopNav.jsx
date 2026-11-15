@@ -82,7 +82,7 @@ const TopNav = ({ onMenuClick, title = 'Dashboard' }) => {
   const displayName = user?.isSuperAdmin
     ? 'Super Admin'
     : user?.student
-    ? `${user.student.firstName} ${user.student.lastName}`
+    ? [user.student.firstName, user.student.middleInitial, user.student.lastName].filter(Boolean).join(' ').trim()
     : (user?.firstName || user?.lastName)
     ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
     : user?.email?.split('@')[0] || 'User';

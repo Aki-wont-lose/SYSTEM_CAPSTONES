@@ -118,6 +118,7 @@ Table Student {
   userId            varchar   [unique, ref: - User.id]
   studentId         varchar   [unique]
   firstName         varchar
+  middleInitial     varchar
   lastName          varchar
   course            varchar   [note: 'BSIT, BSCS, BSCPE, ACT, BSHM, BSTM, BSAIS']
   section           varchar

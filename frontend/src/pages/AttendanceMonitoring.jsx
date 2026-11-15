@@ -161,7 +161,7 @@ const AttendanceMonitoring = () => {
   }, [queueStatus, queueCourse]);
 
   const filtered = students.filter(s =>
-    `${s.firstName} ${s.lastName}`.toLowerCase().includes(search.toLowerCase()) ||
+    [s.firstName, s.middleInitial, s.lastName].filter(Boolean).join(' ').toLowerCase().includes(search.toLowerCase()) ||
     s.studentId.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -382,7 +382,7 @@ const AttendanceMonitoring = () => {
                 <option value="">Select student</option>
                 {students.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.lastName}, {s.firstName} ({s.studentId})
+                    {s.lastName}, {[s.firstName, s.middleInitial].filter(Boolean).join(' ')} ({s.studentId})
                   </option>
                 ))}
               </select>
@@ -658,7 +658,7 @@ const AttendanceMonitoring = () => {
               const left = Math.max(0, (s.requiredHours || 0) - (s.completedHours || 0));
               return (
                 <button key={s.id} onClick={()=>handleSelect(s)} className={`w-full text-left px-4 py-3 border-b border-black/5 dark:border-white/10 hover:bg-sti-gray-light dark:hover:bg-white/5 transition-colors ${selected?.id===s.id?'bg-sti-blue-50 dark:bg-white/10':''}`}>
-                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{s.firstName} {s.lastName}</p>
+                  <p className="text-sm font-semibold text-sti-gray-dark dark:text-white truncate">{[s.firstName, s.middleInitial, s.lastName].filter(Boolean).join(' ')}</p>
                   <p className="text-xs text-sti-gray">{s.studentId} • {s.completedHours}/{s.requiredHours}h • {left}h left</p>
                 </button>
               );
@@ -678,7 +678,7 @@ const AttendanceMonitoring = () => {
           ) : (
             <>
               <div className="p-4 border-b border-black/5 dark:border-white/10">
-                <h3 className="font-bold text-sti-gray-dark dark:text-white">{selected.firstName} {selected.lastName} <span className="text-xs text-sti-gray">({selected.studentId})</span></h3>
+                <h3 className="font-bold text-sti-gray-dark dark:text-white">{[selected.firstName, selected.middleInitial, selected.lastName].filter(Boolean).join(' ')} <span className="text-xs text-sti-gray">({selected.studentId})</span></h3>
                 {summary && (
                   <p className="text-xs text-sti-blue mt-1">
                     {summary.totalHours}h accumulated • {summary.requiredHours}h required • {summary.remainingHours}h remaining

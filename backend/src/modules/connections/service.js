@@ -13,12 +13,12 @@ const USER_SELECT = {
   lastName: true,
   role: true,
   isActive: true,
-  student: { select: { firstName: true, lastName: true, studentId: true, course: true, profilePicture: true } }
+  student: { select: { firstName: true, middleInitial: true, lastName: true, studentId: true, course: true, profilePicture: true } }
 };
 
 const displayName = (user) =>
   user.student
-    ? `${user.student.firstName} ${user.student.lastName}`
+    ? [user.student.firstName, user.student.middleInitial, user.student.lastName].filter(Boolean).join(' ').trim()
     : [user.firstName, user.lastName].filter(Boolean).join(' ') || String(user.email || '').split('@')[0].replace(/\./g, ' ');
 
 // Direction-agnostic lookup so a request in either direction counts

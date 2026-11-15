@@ -24,6 +24,9 @@ import {
   deriveYearLevel,
   formatYearLevel,
   isValidPersonName,
+  isValidMiddleInitial,
+  normalizeMiddleInitial,
+  formatStudentFullName,
   isValidStudentId,
   isValidStudentEmail,
   validateStudentEmailMatch,
@@ -31,6 +34,7 @@ import {
   isValidSection,
   generateOjtSections,
   PERSON_NAME_ERROR,
+  MIDDLE_INITIAL_ERROR,
   STUDENT_ID_ERROR,
   CONTACT_NUMBER_ERROR,
   ELMS_EMAIL_ERROR
@@ -46,7 +50,7 @@ const statusStyles = {
 
 const emptyForm = {
   role: 'STUDENT',
-  studentId: '', firstName: '', lastName: '', course: '', section: '',
+  studentId: '', firstName: '', middleInitial: '', lastName: '', course: '', section: '',
   email: '', contactNumber: '', companyId: '',
   supervisorName: '', supervisorEmail: '', supervisorContact: '',
   workingDays: '', workingHours: '', ojt_status: 'NOT_STARTED'
@@ -126,6 +130,7 @@ const StudentManagement = () => {
     setForm({
       ...emptyForm,
       ...student,
+      middleInitial: student.middleInitial || '',
       course: normCourse,
       section: normalizedSec,
       contactNumber: student.contactNumber === 'Not set' ? '' : (student.contactNumber || ''),
@@ -169,6 +174,10 @@ const StudentManagement = () => {
     setError('');
     if (!isValidPersonName(form.firstName) || !isValidPersonName(form.lastName)) {
       setError(PERSON_NAME_ERROR);
+      return;
+    }
+    if (!isValidMiddleInitial(form.middleInitial)) {
+      setError(MIDDLE_INITIAL_ERROR);
       return;
     }
     if (!isValidStudentId(form.studentId)) {
@@ -215,13 +224,14 @@ const StudentManagement = () => {
     }
     setSaving(true);
     try {
+      const normalizedMI = normalizeMiddleInitial(form.middleInitial);
       if (modalMode === 'add') {
         const { companyId, ...rest } = form;
-        await createStudent({ ...rest, companyId: companyId || undefined });
+        await createStudent({ ...rest, middleInitial: normalizedMI, companyId: companyId || undefined });
         setNewCredentials({ email: form.email });
       } else if (modalMode === 'edit') {
         const { id, userId, user, attendance, company, createdAt, updatedAt, ...updateData } = form;
-        await updateStudent(selectedStudent.id, { ...updateData, companyId: updateData.companyId || null });
+        await updateStudent(selectedStudent.id, { ...updateData, middleInitial: normalizedMI, companyId: updateData.companyId || null });
       }
       closeModal();
       loadStudents();
@@ -239,12 +249,12 @@ const StudentManagement = () => {
   const sortedStudents = [...students].sort((a, b) => {
     const pick = (s) => {
       switch (sort.key) {
-        case 'name': return `${a.firstName} ${a.lastName}`.toLowerCase();
-        case 'course': return `${a.course} ${a.section}`.toLowerCase();
-        case 'company': return (a.company?.name || '').toLowerCase();
-        case 'hours': return (a.completedHours || 0);
-        case 'status': return a.ojt_status;
-        default: return new Date(a.createdAt || 0).getTime();
+        case 'name': return formatStudentFullName(s).toLowerCase();
+        case 'course': return `${s.course} ${s.section}`.toLowerCase();
+        case 'company': return (s.company?.name || '').toLowerCase();
+        case 'hours': return (s.completedHours || 0);
+        case 'status': return s.ojt_status;
+        default: return new Date(s.createdAt || 0).getTime();
       }
     };
     const av = pick(a);
@@ -303,13 +313,14 @@ const StudentManagement = () => {
     const sample = [{
       studentId: '352467',
       firstName: 'Juan',
+      middleInitial: 'D.',
       lastName: 'Cruz',
       email: 'cruz.352467@stamaria.sti.edu.ph',
       course: 'BSIT',
       section: 'BSIT 4-101',
       contactNumber: '09171234567'
     }];
-    const worksheet = XLSX.utils.json_to_sheet(sample, { header: ['studentId', 'firstName', 'lastName', 'email', 'course', 'section', 'contactNumber'] });
+    const worksheet = XLSX.utils.json_to_sheet(sample, { header: ['studentId', 'firstName', 'middleInitial', 'lastName', 'email', 'course', 'section', 'contactNumber'] });
     const programsSheet = XLSX.utils.json_to_sheet(PROGRAM_OPTIONS.map((program) => ({ course: program.value })), { header: ['course'] });
     const sectionsSheet = XLSX.utils.json_to_sheet(generateOjtSections().map((section) => ({ section })), { header: ['section'] });
     const workbook = XLSX.utils.book_new();
@@ -354,6 +365,7 @@ const StudentManagement = () => {
           return {
             studentId: normalizeExcelStudentId(obj['studentid'] || obj['id'] || obj['studentno'] || ''),
             firstName: obj['firstname'] || '',
+            middleInitial: obj['middleinitial'] || obj['mi'] || obj['middlename'] || '',
             lastName: obj['lastname'] || '',
             course: normalizeCourseCode(obj['course'] || obj['program'] || ''),
             section: obj['section'] || '',
@@ -378,6 +390,7 @@ const StudentManagement = () => {
           return {
             studentId: normalizeExcelStudentId(obj['studentid'] || obj['id'] || obj['studentno'] || ''),
             firstName: obj['firstname'] || '',
+            middleInitial: obj['middleinitial'] || obj['mi'] || obj['middlename'] || '',
             lastName: obj['lastname'] || '',
             course: normalizeCourseCode(obj['course'] || obj['program'] || ''),
             section: obj['section'] || '',
@@ -508,7 +521,7 @@ const StudentManagement = () => {
                 {paginatedStudents.map((s) => (
                   <tr key={s.id} className="border-b border-black/5 dark:border-white/10 last:border-0 hover:bg-sti-gray-light/50 dark:hover:bg-white/5 transition-colors">
                     <td className="px-6 py-3.5">
-                      <p className="font-medium text-sti-gray-dark dark:text-white">{s.firstName} {s.lastName}</p>
+                      <p className="font-medium text-sti-gray-dark dark:text-white">{formatStudentFullName(s)}</p>
                       <p className="text-xs text-sti-gray">{s.studentId} • {s.email}</p>
                     </td>
                     <td className="px-6 py-3.5 text-sti-gray-dark dark:text-slate-200">{s.course}<br /><span className="text-xs text-sti-gray">{sectionLabel(s.section, s.course)}</span></td>
@@ -575,13 +588,25 @@ const StudentManagement = () => {
             </div>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">First Name</label>
-              <input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input-field" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name</label>
-              <input required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
+            <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-5 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">First Name</label>
+                <input required value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} className="input-field" />
+              </div>
+              <div className="sm:col-span-1">
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">M.I. <span className="text-xs font-normal text-sti-gray">(Optional)</span></label>
+                <input
+                  maxLength={10}
+                  placeholder="e.g., D."
+                  value={form.middleInitial || ''}
+                  onChange={(e) => setForm({ ...form, middleInitial: e.target.value })}
+                  className="input-field"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Last Name</label>
+                <input required value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} className="input-field" />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Student ID</label>
@@ -782,7 +807,7 @@ const StudentManagement = () => {
                 </div>
               )}
               <div>
-                <p className="font-bold text-sti-gray-dark dark:text-white">{selectedStudent.firstName} {selectedStudent.lastName}</p>
+                <p className="font-bold text-sti-gray-dark dark:text-white">{formatStudentFullName(selectedStudent)}</p>
                 <p className="text-sm text-sti-gray">{selectedStudent.studentId} • {selectedStudent.email}</p>
                 {user?.role !== 'ADMIN' && viewSummary && <p className="text-xs text-sti-blue font-medium mt-1">{viewSummary.totalHours}h rendered • {viewSummary.remainingHours}h left • {viewSummary.presentDays} days present</p>}
               </div>
@@ -866,7 +891,7 @@ const StudentManagement = () => {
       {/* Archive confirmation */}
       <Modal isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Archive Student" maxWidth="max-w-sm">
         <p className="text-sm text-sti-gray-dark dark:text-slate-200">
-          Move <strong>{deleteTarget?.firstName} {deleteTarget?.lastName}</strong> to the Archive?
+          Move <strong>{formatStudentFullName(deleteTarget)}</strong> to the Archive?
           Their account is blocked from signing in, but attendance, logs, and submissions are kept.
           You can restore them from the Archive page.
         </p>
@@ -932,7 +957,7 @@ const StudentManagement = () => {
             {batchResult.failed > 0 && (
               <div className="bg-blue-50 dark:bg-blue-950/50 p-3 rounded-xl">
                 <p className="text-xs font-semibold text-sti-blue">Tip: Required columns</p>
-                <p className="text-xs text-sti-gray mt-1">Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">studentId</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code>. Accepts variants like "Student ID", "First Name" with spaces/underscores. Every imported account signs in with its school Microsoft account, so each email must be a real Microsoft address. Empty rows are ignored.</p>
+                <p className="text-xs text-sti-gray mt-1">Headers must include <code className="bg-white dark:bg-slate-800 px-1 rounded">studentId</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">firstName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">lastName</code>, <code className="bg-white dark:bg-slate-800 px-1 rounded">email</code> (optional <code className="bg-white dark:bg-slate-800 px-1 rounded">middleInitial</code> or <code className="bg-white dark:bg-slate-800 px-1 rounded">MI</code>). Accepts variants like "Student ID", "First Name" with spaces/underscores. Every imported account signs in with its school Microsoft account, so each email must be a real Microsoft address. Empty rows are ignored.</p>
               </div>
             )}
             <div className="flex justify-end">

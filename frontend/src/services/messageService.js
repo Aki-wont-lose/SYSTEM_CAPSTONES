@@ -19,6 +19,11 @@ export const sendMessage = async (receiverId, content) => {
   const res = await api.post('/messages', { receiverId, content });
   return res.data;
 };
+// Update a sent text message
+export const updateMessage = async (messageId, content) => {
+  const res = await api.put(`/messages/${messageId}`, { content });
+  return res.data;
+};
 // Delete a single message
 export const deleteMessage = async (messageId) => {
   const res = await api.delete(`/messages/${messageId}`);

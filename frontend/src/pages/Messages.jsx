@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Inbox, Send, Search, Trash2, Pencil, Paperclip, ArrowLeft, Mail, Users, CheckCheck, X, Reply,
-  AlertCircle, RefreshCw,
+  AlertCircle, RefreshCw, Check,
 } from 'lucide-react';
 import Modal from '../components/Modal';
-import { getContacts, getConversation, sendMessage, deleteMessage, deleteConversation } from '../services/messageService';
+import { getContacts, getConversation, sendMessage, updateMessage, deleteMessage, deleteConversation } from '../services/messageService';
 import { useAuth } from '../hooks/useAuth';
 
 // Outlook-like palette for the round sender avatars. The colour is derived from
@@ -90,6 +90,10 @@ const Messages = () => {
   const [composeBody, setComposeBody] = useState('');
   const [composing, setComposing] = useState(false);
 
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editingText, setEditingText] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const scrollRef = useRef(null);
   const loadedThreadRef = useRef(null);
   const messageCountRef = useRef(0);
@@ -166,10 +170,17 @@ const Messages = () => {
       const shouldFollow = isNewThread || (grew && isNearBottom());
 
       setMessages((current) => {
-        const lastSame = current[current.length - 1]?.id === incoming[incoming.length - 1]?.id;
-        // Same thread, same newest message: keep the existing array so the pane
+        const unchanged =
+          current.length === incoming.length &&
+          current.every(
+            (msg, idx) =>
+              msg.id === incoming[idx]?.id &&
+              msg.content === incoming[idx]?.content &&
+              msg.isRead === incoming[idx]?.isRead
+          );
+        // Same thread, same messages: keep the existing array so the pane
         // does not re-render (and flicker) on every poll.
-        if (current.length === incoming.length && lastSame) return current;
+        if (unchanged) return current;
         return incoming;
       });
       setContacts((current) => current.map((c) => (c.id === contactId ? { ...c, unreadCount: 0 } : c)));
@@ -431,12 +442,47 @@ const Messages = () => {
     }
   };
 
+  const startEditMessage = (message) => {
+    setEditingMessageId(message.id);
+    setEditingText(message.content || '');
+  };
+
+  const cancelEditMessage = () => {
+    setEditingMessageId(null);
+    setEditingText('');
+  };
+
+  const handleSaveEditMessage = async (messageId) => {
+    const trimmed = String(editingText || '').trim();
+    if (!trimmed || savingEdit) return;
+    setSavingEdit(true);
+    try {
+      const res = await updateMessage(messageId, trimmed);
+      setMessages((current) =>
+        current.map((m) => (m.id === messageId ? { ...m, content: res.data?.content || trimmed } : m))
+      );
+      setEditingMessageId(null);
+      setEditingText('');
+      await refreshAfterSend(selectedId);
+      showToast('Message updated');
+    } catch (error) {
+      showToast(error.response?.data?.message || 'Failed to edit message');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleDeleteMessage = async (messageId) => {
     if (!window.confirm('Delete this message?')) return;
     try {
       await deleteMessage(messageId);
+      if (editingMessageId === messageId) {
+        setEditingMessageId(null);
+        setEditingText('');
+      }
       setMessages((current) => current.filter((m) => m.id !== messageId));
       await refreshAfterSend(selectedId);
+      showToast('Message deleted');
     } catch (error) {
       showToast('Failed to delete message');
     }
@@ -748,17 +794,68 @@ const Messages = () => {
                           {mine ? 'You' : selected.displayName || selected.email}
                         </span>
                         <time className="shrink-0 text-[11px] text-sti-gray">{formatMessageDate(message.createdAt)}</time>
+                        {mine && !image && (
+                          <button
+                            type="button"
+                            onClick={() => startEditMessage(message)}
+                            className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-sti-gray hover:bg-black/5 hover:text-sti-blue dark:hover:bg-white/10"
+                            title="Edit message"
+                            aria-label="Edit message"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            <span>Edit</span>
+                          </button>
+                        )}
                         <button
+                          type="button"
                           onClick={() => handleDeleteMessage(message.id)}
-                          className="hidden shrink-0 rounded p-1 text-sti-gray hover:text-red-600 group-hover:block"
+                          className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium text-sti-gray hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
                           title="Delete message"
                           aria-label="Delete message"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
+                          <span>Delete</span>
                         </button>
                       </header>
                       {image ? (
                         <img src={message.content} alt="Attachment" className="max-w-[260px] rounded-lg border border-black/5" />
+                      ) : editingMessageId === message.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editingText}
+                            onChange={(event) => setEditingText(event.target.value)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' && !event.shiftKey) {
+                                event.preventDefault();
+                                handleSaveEditMessage(message.id);
+                              } else if (event.key === 'Escape') {
+                                event.preventDefault();
+                                cancelEditMessage();
+                              }
+                            }}
+                            rows={2}
+                            autoFocus
+                            className="input-field w-full resize-y py-1.5 text-sm"
+                          />
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={cancelEditMessage}
+                              disabled={savingEdit}
+                              className="inline-flex items-center gap-1 rounded-lg border border-black/10 bg-white px-2.5 py-1 text-xs font-medium text-sti-gray-dark hover:bg-sti-gray-light dark:border-white/15 dark:bg-slate-800 dark:text-white"
+                            >
+                              <X className="h-3.5 w-3.5" /> Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditMessage(message.id)}
+                              disabled={savingEdit || !editingText.trim()}
+                              className="inline-flex items-center gap-1 rounded-lg bg-sti-blue px-2.5 py-1 text-xs font-semibold text-white hover:bg-sti-blue-dark disabled:opacity-50"
+                            >
+                              <Check className="h-3.5 w-3.5" /> {savingEdit ? 'Saving...' : 'Save'}
+                            </button>
+                          </div>
+                        </div>
                       ) : (
                         <p className="whitespace-pre-wrap break-words text-sm text-sti-gray-dark dark:text-white/90">{message.content}</p>
                       )}

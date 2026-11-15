@@ -26,7 +26,7 @@ const formatDate = (value) =>
     ? new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : '—';
 
-const studentName = (student) => `${student.firstName} ${student.lastName}`.trim() || student.email || 'Student';
+const studentName = (student) => [student.firstName, student.middleInitial, student.lastName].filter(Boolean).join(' ').trim() || student.email || 'Student';
 const coordinatorName = (member) => [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email;
 
 const ArchivePage = () => {
