@@ -4,6 +4,7 @@
 import zlib from 'zlib';
 import prisma from '../utils/prisma.js';
 import { normalizeCourseCode, normalizeMiddleInitial, formatStudentFullName } from '../utils/studentValidation.js';
+import { extractDocText, parseDocBlocks, buildMinimalDocxEntries } from '../utils/docOle2Parser.js';
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -138,8 +139,12 @@ export const buildStudentPlaceholders = async (student) => {
 
 const replacePlaceholdersText = (text, map, xmlSafe = false) => {
   let out = String(text || '');
-  // Handle Word XML split runs inside `{...}` or `{{...}}` by stripping inline XML tags inside braces
+  // Handle Word XML split runs inside `{{...}}` or `{...}` by stripping inline XML tags inside braces
   if (xmlSafe) {
+    out = out.replace(/\{\{(\s*(?:<[^>]+>\s*)*[a-zA-Z0-9_]+(?:\s*<[^>]+>\s*)*)\}\}/g, (match, inner) => {
+      const cleanKey = inner.replace(/<[^>]+>/g, '').trim();
+      return `{{${cleanKey}}}`;
+    });
     out = out.replace(/\{(\s*(?:<[^>]+>\s*)*[a-zA-Z0-9_]+(?:\s*<[^>]+>\s*)*)\}/g, (match, inner) => {
       const cleanKey = inner.replace(/<[^>]+>/g, '').trim();
       return `{${cleanKey}}`;
@@ -315,18 +320,46 @@ const smartReplaceDocxXml = (xmlStr, placeholders, student) => {
     .replace(/<w:t(?:\s+[^>]*)?>laracamille\.vergara@stamaria\.sti\.edu\.ph<\/w:t>/gi, `<w:t>${escapeXml(coordEmailVal)}</w:t>`)
     .replace(/<w:t(?:\s+[^>]*)?>\+639<\/w:t>([\s\S]*?)<w:t(?:\s+[^>]*)?>058220825<\/w:t>/g, `<w:t>${escapeXml(coordContactVal)}</w:t>$1<w:t></w:t>`);
 
-  // 1b. Proposal Letter & STI angle-bracket placeholders (&lt;...&gt; in Word XML)
-  out = out
-    .replace(/&lt;Date&gt;/gi, escapeXml(placeholders.date_today))
-    .replace(/&lt;TITLE&gt;([\s\S]*?)&lt;NAME\s*<\/w:t>([\s\S]*?)<w:t(?:\s+[^>]*)?>OF CONTACT&gt;/gi, `${escapeXml(supervisorVal)}</w:t>$2<w:t>`)
-    .replace(/&lt;Title&gt;([\s\S]*?)&lt;([\s\S]*?)FAMILY NAME OF CONTACT([\s\S]*?)&gt;/gi, escapeXml(supervisorVal))
-    .replace(/&lt;Name of Company&gt;/gi, escapeXml(companyVal))
-    .replace(/&lt;Address&gt;/gi, escapeXml(addressVal || 'Host Company Address'))
-    .replace(/&lt;([\s\S]*?)NAME OF\s*<\/w:t>([\s\S]*?)<w:t(?:\s+[^>]*)?>PROGRAM HEAD([\s\S]*?)&gt;/gi, `${escapeXml(coordNameVal)}</w:t>$2<w:t>`)
-    .replace(/&lt;Official email address&gt;/gi, escapeXml(coordEmailVal))
-    .replace(/&lt;Designation&gt;/gi, 'OJT Coordinator / Program Head');
+  // 1b. Proposal Letter, Endorsement, Application Letter, Consent Forms, MOA, Integration Paper & STI angle-bracket placeholders
+  // Collapse split Word XML runs inside `&lt;...&gt;` (within the same paragraph) so tags match reliably
+  out = out.replace(/&lt;((?:(?!&gt;|<\/w:p>|<\/w:tc>).){1,160})&gt;/g, (match, inner) => {
+    const cleaned = inner.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+    return `&lt;${cleaned}&gt;`;
+  });
 
-  // 2. DTR (Daily Time Record) table cell auto-filling
+  const campusName = 'Santa Maria';
+  const schoolName = 'College Santa Maria';
+  const schoolAddress = 'Km. 38 Pulong Buhangin, Santa Maria, Bulacan';
+  const reqHoursVal = escapeXml(placeholders.required_hours || '486');
+
+  out = out
+    .replace(/&lt;\s*Date(?:\s+Submitted)?\s*&gt;/gi, escapeXml(placeholders.date_today))
+    .replace(/&lt;\s*TITLE\s*&gt;\s*&lt;\s*NAME OF CONTACT\s*&gt;/gi, escapeXml(supervisorVal))
+    .replace(/&lt;\s*Title\s*&gt;\s*&lt;\s*FAMILY NAME OF CONTACT\s*&gt;/gi, escapeXml(supervisorVal))
+    .replace(/&lt;\s*Name of Host Training Establishment Representative\s*&gt;/gi, escapeXml(supervisorVal))
+    .replace(/Dear\s+Mr\.\/Ms\.\s*&lt;\s*Name of Host Training Establishment\s*&gt;/gi, `Dear Mr./Ms. ${escapeXml(supervisorVal)}`)
+    .replace(/&lt;\s*Name of (?:Company|Host Company|Host Training Establishment)\s*&gt;/gi, escapeXml(companyVal))
+    .replace(/&lt;\s*HOST TRAINING ESTABLISHMENT NAME\s*&gt;/gi, escapeXml(companyVal))
+    .replace(/&lt;\s*Address(?:\s+of\s+HOST TRAINING ESTABLISHMENT)?\s*&gt;/gi, escapeXml(addressVal || 'Host Company Address'))
+    .replace(/&lt;\s*Name of (?:Student|Student Trainee)\s*&gt;/gi, escapeXml(placeholders.student_name))
+    .replace(/&lt;\s*Name of Program\s*&gt;/gi, escapeXml(fullProgram))
+    .replace(/&lt;\s*no\.\s*of\s*training\s*hours\s*&gt;/gi, reqHoursVal)
+    .replace(/&lt;\s*Name of Campus\s*&gt;/gi, campusName)
+    .replace(/&lt;\s*SCHOOL NAME\s*&gt;/gi, schoolName)
+    .replace(/&lt;\s*School Address\s*&gt;/gi, schoolAddress)
+    .replace(/&lt;\s*Name of (?:OJT Coordinator|Program Head)\s*&gt;/gi, escapeXml(coordNameVal))
+    .replace(/&lt;\s*(?:Official )?email address\s*&gt;/gi, escapeXml(coordEmailVal))
+    .replace(/&lt;\s*contact number\s*&gt;/gi, escapeXml(coordContactVal))
+    .replace(/&lt;\s*Designation\s*&gt;/gi, 'OJT Supervisor')
+    .replace(/&lt;\s*(?:name of representative|Name of signatory)\s*&gt;/gi, escapeXml(supervisorVal))
+    .replace(/&lt;\s*Signature(?:\s+of\s+(?:signatory|witness))?\s*&gt;/gi, '')
+    // Consent form & MOA "I, _____" blanks
+    .replace(/(I,\s*)_{5,}(\s*,\s*of legal age)/gi, `$1${escapeXml(placeholders.student_name)}$2`)
+    .replace(/(the parent\/legal guardian of\s*)_{5,}/gi, `$1${escapeXml(placeholders.student_name)}`)
+    // Standalone "Date" paragraph (e.g., top of Student Application Letter)
+    .replace(/(<w:p\b[^>]*>(?:\s*<w:pPr>[\s\S]*?<\/w:pPr>)?\s*<w:r\b[^>]*>(?:\s*<w:rPr>[\s\S]*?<\/w:rPr>)?\s*<w:t(?:\s+[^>]*)?>)\s*Date\s*(<\/w:t>\s*<\/w:r>\s*<\/w:p>)/g, `$1${escapeXml(placeholders.date_today)}$2`);
+
+  // 2. DTR, Weekly Journal, Performance Appraisal & Training Plan table cell auto-filling
   const scheduleStr = `${placeholders.working_days || 'Mon-Fri'} (${placeholders.working_hours || '8AM-5PM'})`;
   const ojtPeriodStr =
     placeholders.start_date !== 'N/A' && placeholders.end_date !== 'N/A'
@@ -336,29 +369,36 @@ const smartReplaceDocxXml = (xmlStr, placeholders, student) => {
         : `${placeholders.completed_hours}/${placeholders.required_hours} hrs`;
 
   const dtrCellMap = {
-    'Last Name': student?.lastName || placeholders.student_last_name || '',
-    'First Name': student?.firstName || placeholders.student_first_name || '',
-    'M.I.': placeholders.student_middle_initial || '',
-    'M.I': placeholders.student_middle_initial || '',
-    'MI': placeholders.student_middle_initial || '',
-    'Middle Initial': placeholders.student_middle_initial || '',
-    'Middle Name': placeholders.student_middle_initial || '',
-    'STI Campus': 'STI College Santa Maria',
-    'Program': placeholders.course !== 'N/A' ? placeholders.course : '',
-    'Year Level': placeholders.year_level || '4th Year',
-    'Section': placeholders.section !== 'N/A' ? placeholders.section : '',
-    'Host Company': placeholders.company_name !== 'N/A' ? placeholders.company_name : 'Not Yet Assigned',
-    'Department Assigned to': placeholders.course !== 'N/A' ? `${placeholders.course} Department` : 'OJT Department',
-    'OJT Supervisor': placeholders.supervisor_name !== 'N/A' ? placeholders.supervisor_name : 'Not Yet Assigned',
-    'Designation': placeholders.supervisor_name !== 'N/A' ? 'OJT Supervisor' : '',
-    'Schedule': scheduleStr,
-    'OJT Period': ojtPeriodStr,
-    'Reviewed by:': placeholders.supervisor_name !== 'N/A' ? placeholders.supervisor_name : '',
-    'Date': placeholders.date_today || ''
+    'last name': student?.lastName || placeholders.student_last_name || '',
+    'first name': student?.firstName || placeholders.student_first_name || '',
+    'm.i.': placeholders.student_middle_initial || '',
+    'm.i': placeholders.student_middle_initial || '',
+    'mi': placeholders.student_middle_initial || '',
+    'middle initial': placeholders.student_middle_initial || '',
+    'middle name': placeholders.student_middle_initial || '',
+    'sti campus': 'STI College Santa Maria',
+    'program': placeholders.course !== 'N/A' ? placeholders.course : '',
+    'year level': placeholders.year_level || '4th Year',
+    'section': placeholders.section !== 'N/A' ? placeholders.section : '',
+    'host company': placeholders.company_name !== 'N/A' ? placeholders.company_name : 'Not Yet Assigned',
+    'host training establishment': placeholders.company_name !== 'N/A' ? placeholders.company_name : 'Not Yet Assigned',
+    'department assigned to': placeholders.course !== 'N/A' ? `${placeholders.course} Department` : 'OJT Department',
+    'ojt supervisor': placeholders.supervisor_name !== 'N/A' ? placeholders.supervisor_name : 'Not Yet Assigned',
+    'name of ojt supervisor': placeholders.supervisor_name !== 'N/A' ? placeholders.supervisor_name : 'Not Yet Assigned',
+    'designation': placeholders.supervisor_name !== 'N/A' ? 'OJT Supervisor' : '',
+    'schedule': scheduleStr,
+    'schedule (date):': scheduleStr,
+    'ojt period': ojtPeriodStr,
+    'evaluation period': ojtPeriodStr,
+    'total no. of hours': placeholders.required_hours || '486',
+    'number of working hours': placeholders.required_hours || '486',
+    'number of working hours:': placeholders.required_hours || '486',
+    'reviewed by:': placeholders.supervisor_name !== 'N/A' ? placeholders.supervisor_name : '',
+    'date': placeholders.date_today || ''
   };
 
   out = out.replace(/<w:tc\b[^>]*>[\s\S]*?<\/w:tc>/g, (tcBlock) => {
-    const plainText = tcBlock.replace(/<[^>]+>/g, '').trim();
+    const plainText = tcBlock.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
     if (!Object.prototype.hasOwnProperty.call(dtrCellMap, plainText)) {
       return tcBlock;
     }
@@ -416,6 +456,66 @@ export const generateDocumentFromTemplate = async (requirement, student) => {
       fileName: generatedFileName,
       mimeType,
       fileData: `data:${mimeType};base64,${outBuf.toString('base64')}`,
+      placeholders,
+      requirementTitle: requirement.title
+    };
+  }
+
+  // 1a. Legacy binary .doc (OLE2 Word 97-2003): extract text/tables, convert to DOCX XML, and smart-fill
+  if (ext === 'doc' || mimeType === 'application/msword') {
+    try {
+      const rawText = extractDocText(rawBuffer);
+      if (rawText) {
+        const blocks = parseDocBlocks(rawText);
+        const bodyParts = blocks.map((block) => {
+          if (block.type === 'paragraph') {
+            return `<w:p><w:r><w:t xml:space="preserve">${escapeXml(block.text)}</w:t></w:r></w:p>`;
+          }
+          const rowsXml = block.rows
+            .map((row) => {
+              const cellsXml = row
+                .map((cellText) => {
+                  const lines = String(cellText || '').split('\n');
+                  const cellPs = lines
+                    .map((line) => `<w:p><w:r><w:t xml:space="preserve">${escapeXml(line)}</w:t></w:r></w:p>`)
+                    .join('');
+                  return `<w:tc><w:tcPr><w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/><w:left w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/><w:right w:val="single" w:sz="4" w:space="0" w:color="CBD5E1"/></w:tcBorders></w:tcPr>${cellPs}</w:tc>`;
+                })
+                .join('');
+              return `<w:tr>${cellsXml}</w:tr>`;
+            })
+            .join('');
+          return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/></w:tblPr>${rowsXml}</w:tbl>`;
+        });
+
+        const rawDocXml =
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+          '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+          `<w:body>${bodyParts.join('')}<w:sectPr/></w:body>` +
+          '</w:document>';
+        const filledXml = smartReplaceDocxXml(rawDocXml, placeholders, student);
+        const docxEntries = buildMinimalDocxEntries(filledXml);
+        const outBuf = buildZipBuffer(docxEntries);
+        const docxMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        const docxFileName = `${baseTitle}_${safeStudentSlug}.docx`;
+
+        return {
+          mode: 'GENERATED_FILE',
+          fileName: docxFileName,
+          mimeType: docxMime,
+          fileData: `data:${docxMime};base64,${outBuf.toString('base64')}`,
+          placeholders,
+          requirementTitle: requirement.title
+        };
+      }
+    } catch {
+      // Fall back to METADATA_ONLY summary if OLE2 parsing fails
+    }
+    return {
+      mode: 'METADATA_ONLY',
+      fileName: generatedFileName,
+      mimeType: 'application/json',
+      fileData: null,
       placeholders,
       requirementTitle: requirement.title
     };

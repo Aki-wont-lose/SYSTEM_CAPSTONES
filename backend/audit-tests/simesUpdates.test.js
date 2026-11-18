@@ -263,3 +263,52 @@ test('Super Admin is view-only on Students and Coordinators and can only create 
     (err) => err.status === 403 && /only create Administrator/i.test(err.message)
   );
 });
+
+test('documentGeneratorService smart-fills Application Letter, Consent Form, and Weekly Journal XML placeholders', async () => {
+  const sampleXml = `
+    <w:document>
+      <w:body>
+        <w:p><w:r><w:t>Date</w:t></w:r></w:p>
+        <w:p><w:r><w:t>&lt;Name of Host Training Establishment Representative&gt;</w:t></w:r></w:p>
+        <w:p><w:r><w:t>Dear Mr./Ms. &lt;Name of Host Training Establishment&gt;</w:t></w:r></w:p>
+        <w:p><w:r><w:t>I, a student of STI &lt;name of campus&gt;, am required to undergo &lt;no. of training hours&gt; hours for my &lt;Name of Program&gt; program.</w:t></w:r></w:p>
+        <w:p><w:r><w:t>I, ____________________________________________________, of legal age</w:t></w:r></w:p>
+        <w:p><w:r><w:t>&lt;Name of Student Trainee&gt;</w:t></w:r></w:p>
+        <w:tbl>
+          <w:tr>
+            <w:tc><w:p><w:r><w:t>Host Training Establishment</w:t></w:r></w:p></w:tc>
+            <w:tc><w:p><w:r><w:t>Number of Working Hours:</w:t></w:r></w:p></w:tc>
+          </w:tr>
+        </w:tbl>
+      </w:body>
+    </w:document>
+  `;
+
+  const result = await generateDocumentFromTemplate(
+    {
+      title: 'Student Application Letter',
+      templateFileName: 'app_letter.xml',
+      templateFile: `data:text/xml;base64,${Buffer.from(sampleXml, 'utf8').toString('base64')}`
+    },
+    {
+      firstName: 'Ana',
+      middleInitial: 'B',
+      lastName: 'Reyes',
+      studentId: '02000999888',
+      course: 'BSIT',
+      section: 'BSIT 4A',
+      requiredHours: 486,
+      completedHours: 80,
+      supervisorName: 'Engr. Mark Tan',
+      company: { name: 'Tech Solutions Inc.', address: 'Bulacan' }
+    }
+  );
+
+  const outXml = Buffer.from(result.fileData.split(',')[1], 'base64').toString('utf8');
+  assert.ok(outXml.includes('Dear Mr./Ms. Engr. Mark Tan'));
+  assert.ok(outXml.includes('STI Santa Maria'));
+  assert.ok(outXml.includes('486 hours'));
+  assert.ok(outXml.includes('Bachelor of Science in Information Technology'));
+  assert.ok(outXml.includes('I, Ana B. Reyes, of legal age'));
+  assert.ok(outXml.includes('Tech Solutions Inc.'));
+});
