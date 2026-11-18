@@ -512,17 +512,17 @@ const AccountManagement = () => {
 
   // Whether the current user can create an account on the current tab:
   // - Coordinator can create OJT Supervisor account requests on SUPERVISOR tab
-  // - Admin can create Coordinator accounts on COORDINATOR tab
-  // - Super Admin can create Admin accounts on ADMIN tab and Coordinator accounts on COORDINATOR tab
+  // - Admin (non-Super Admin) can create Coordinator accounts on COORDINATOR tab
+  // - Super Admin can ONLY create Admin accounts on ADMIN tab (Coordinator & Student tabs are view-only)
   // - Super Admin and Admin do NOT directly create Supervisor accounts (Coordinator requests -> Admin approves)
   const canCreateOnActiveTab =
     (isCoordinator && activeTab === 'SUPERVISOR') ||
-    (isAdmin && activeTab === 'COORDINATOR') ||
+    (isAdmin && !isSuperAdmin && activeTab === 'COORDINATOR') ||
     (isSuperAdmin && activeTab === 'ADMIN');
 
   const canBatchOnActiveTab =
     (isCoordinator && activeTab === 'SUPERVISOR') ||
-    (isAdmin && activeTab === 'COORDINATOR');
+    (isAdmin && !isSuperAdmin && activeTab === 'COORDINATOR');
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -786,7 +786,7 @@ const AccountManagement = () => {
                                   Approve Request
                                 </button>
                               )}
-                              {isAdmin && !member.isSuperAdmin && member.email !== user?.email && (
+                              {isAdmin && !member.isSuperAdmin && member.email !== user?.email && !(isSuperAdmin && member.role === 'COORDINATOR') && (
                                 <>
                                   {member.role !== 'SUPERVISOR' && (
                                     <button onClick={() => handleToggleActive(member)} title={member.isActive ? 'Disable account' : 'Enable account'} className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
@@ -802,6 +802,11 @@ const AccountManagement = () => {
                                     </button>
                                   )}
                                 </>
+                              )}
+                              {isSuperAdmin && member.role === 'COORDINATOR' && (
+                                <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-sti-gray-light text-sti-gray dark:bg-white/10" title="Coordinator accounts are view-only for Super Admin">
+                                  View only
+                                </span>
                               )}
                               {(member.isSuperAdmin || member.email === user?.email) && (
                                 <span className="text-[10px] font-semibold px-2 py-1 rounded-full bg-sti-gray-light text-sti-gray dark:bg-white/10" title="This account cannot be modified here">
@@ -855,33 +860,37 @@ const AccountManagement = () => {
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Account Type</label>
               {isCoordinator ? (
                 <input disabled value="OJT Supervisor" className="input-field bg-sti-gray-light/60 dark:bg-slate-700/50 cursor-not-allowed" />
+              ) : isSuperAdmin ? (
+                <input disabled value="Admin" className="input-field bg-sti-gray-light/60 dark:bg-slate-700/50 cursor-not-allowed" />
               ) : (
                 <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value, coordinatorCourse: '', companyId: '' })} className="input-field">
                   <option value="COORDINATOR">Coordinator</option>
-                  {isSuperAdmin && <option value="ADMIN">Admin</option>}
                 </select>
               )}
             </div>
           ) : (
             <div>
               <label className="block text-sm font-medium text-sti-gray-dark dark:text-slate-200 mb-1.5">Account Type</label>
-              <select
-                value={form.role}
-                onChange={(e) => {
-                  const nextRole = e.target.value;
-                  setForm({
-                    ...form,
-                    role: nextRole,
-                    coordinatorCourse: nextRole === 'COORDINATOR' ? form.coordinatorCourse : '',
-                    companyId: nextRole === 'SUPERVISOR' ? form.companyId : ''
-                  });
-                }}
-                className="input-field"
-              >
-                <option value="SUPERVISOR">OJT Supervisor</option>
-                <option value="COORDINATOR">Coordinator</option>
-                {isSuperAdmin && <option value="ADMIN">Admin</option>}
-              </select>
+              {isSuperAdmin ? (
+                <input disabled value={roleText(form.role)} className="input-field bg-sti-gray-light/60 dark:bg-slate-700/50 cursor-not-allowed" />
+              ) : (
+                <select
+                  value={form.role}
+                  onChange={(e) => {
+                    const nextRole = e.target.value;
+                    setForm({
+                      ...form,
+                      role: nextRole,
+                      coordinatorCourse: nextRole === 'COORDINATOR' ? form.coordinatorCourse : '',
+                      companyId: nextRole === 'SUPERVISOR' ? form.companyId : ''
+                    });
+                  }}
+                  className="input-field"
+                >
+                  <option value="SUPERVISOR">OJT Supervisor</option>
+                  <option value="COORDINATOR">Coordinator</option>
+                </select>
+              )}
             </div>
           )}
 

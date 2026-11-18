@@ -315,6 +315,17 @@ const smartReplaceDocxXml = (xmlStr, placeholders, student) => {
     .replace(/<w:t(?:\s+[^>]*)?>laracamille\.vergara@stamaria\.sti\.edu\.ph<\/w:t>/gi, `<w:t>${escapeXml(coordEmailVal)}</w:t>`)
     .replace(/<w:t(?:\s+[^>]*)?>\+639<\/w:t>([\s\S]*?)<w:t(?:\s+[^>]*)?>058220825<\/w:t>/g, `<w:t>${escapeXml(coordContactVal)}</w:t>$1<w:t></w:t>`);
 
+  // 1b. Proposal Letter & STI angle-bracket placeholders (&lt;...&gt; in Word XML)
+  out = out
+    .replace(/&lt;Date&gt;/gi, escapeXml(placeholders.date_today))
+    .replace(/&lt;TITLE&gt;([\s\S]*?)&lt;NAME\s*<\/w:t>([\s\S]*?)<w:t(?:\s+[^>]*)?>OF CONTACT&gt;/gi, `${escapeXml(supervisorVal)}</w:t>$2<w:t>`)
+    .replace(/&lt;Title&gt;([\s\S]*?)&lt;([\s\S]*?)FAMILY NAME OF CONTACT([\s\S]*?)&gt;/gi, escapeXml(supervisorVal))
+    .replace(/&lt;Name of Company&gt;/gi, escapeXml(companyVal))
+    .replace(/&lt;Address&gt;/gi, escapeXml(addressVal || 'Host Company Address'))
+    .replace(/&lt;([\s\S]*?)NAME OF\s*<\/w:t>([\s\S]*?)<w:t(?:\s+[^>]*)?>PROGRAM HEAD([\s\S]*?)&gt;/gi, `${escapeXml(coordNameVal)}</w:t>$2<w:t>`)
+    .replace(/&lt;Official email address&gt;/gi, escapeXml(coordEmailVal))
+    .replace(/&lt;Designation&gt;/gi, 'OJT Coordinator / Program Head');
+
   // 2. DTR (Daily Time Record) table cell auto-filling
   const scheduleStr = `${placeholders.working_days || 'Mon-Fri'} (${placeholders.working_hours || '8AM-5PM'})`;
   const ojtPeriodStr =

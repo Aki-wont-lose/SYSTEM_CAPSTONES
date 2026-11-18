@@ -244,10 +244,12 @@ export const createStaffAccount = async ({
 }) => {
   const normalizedRole = String(role || '').toUpperCase();
 
-  // Requirement 1: Super Admin must not be able to directly create company / OJT Supervisor accounts.
-  if (normalizedRole === 'SUPERVISOR' && requesterIsSuperAdmin) {
+  // Super Admin can only create ADMIN accounts; Coordinator and Supervisor accounts cannot be created by Super Admin.
+  if (requesterIsSuperAdmin && normalizedRole !== 'ADMIN') {
     const error = new Error(
-      'Super Admin is restricted from directly creating OJT Supervisor / company accounts. Supervisor account requests must be submitted by an OJT Coordinator.'
+      normalizedRole === 'SUPERVISOR'
+        ? 'Super Admin is restricted from directly creating OJT Supervisor / company accounts. Supervisor account requests must be submitted by an OJT Coordinator.'
+        : 'Super Admin can only create Administrator accounts. Coordinator accounts are view-only for the Super Admin.'
     );
     error.status = 403;
     throw error;
@@ -272,7 +274,7 @@ export const createStaffAccount = async ({
     throw error;
   }
   if (!STAFF_ROLES.includes(normalizedRole) && !(requesterIsSuperAdmin && normalizedRole === 'ADMIN')) {
-    const error = new Error(requesterIsSuperAdmin ? 'Role must be ADMIN or COORDINATOR' : 'Role must be COORDINATOR or SUPERVISOR');
+    const error = new Error(requesterIsSuperAdmin ? 'Super Admin can only create ADMIN accounts' : 'Role must be COORDINATOR or SUPERVISOR');
     error.status = 400;
     throw error;
   }
@@ -689,6 +691,12 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
     error.status = 403;
     throw error;
   }
+  // Coordinator accounts are view-only for the super-admin.
+  if (existing.role === 'COORDINATOR' && requesterIsSuperAdmin) {
+    const error = new Error('Coordinator accounts are view-only for the Super Admin');
+    error.status = 403;
+    throw error;
+  }
 
   const data = {};
 
@@ -742,6 +750,11 @@ export const updateStaffAccount = async (userId, updateData, { requesterIsSuperA
     // Promoting an account to ADMIN is a super-admin-only action.
     if (normalizedRole === 'ADMIN' && !requesterIsSuperAdmin) {
       const error = new Error('Only the super-admin can grant the administrator role');
+      error.status = 403;
+      throw error;
+    }
+    if (requesterIsSuperAdmin && normalizedRole !== 'ADMIN') {
+      const error = new Error('Super Admin can only manage Administrator accounts');
       error.status = 403;
       throw error;
     }
@@ -925,6 +938,11 @@ export const resetAccountPassword = async (userId, { requesterIsSuperAdmin = fal
     error.status = 403;
     throw error;
   }
+  if (existing.role === 'COORDINATOR' && requesterIsSuperAdmin) {
+    const error = new Error('Coordinator accounts are view-only for the Super Admin');
+    error.status = 403;
+    throw error;
+  }
 
   const temporaryPassword = generateTemporaryPassword();
   const hashedPassword = await hashPassword(temporaryPassword);
@@ -980,6 +998,11 @@ export const deleteStaffAccount = async (userId, { requesterIsSuperAdmin = false
       error.status = 400;
       throw error;
     }
+  }
+  if (existing.role === 'COORDINATOR' && requesterIsSuperAdmin) {
+    const error = new Error('Coordinator accounts are view-only for the Super Admin');
+    error.status = 403;
+    throw error;
   }
 
   // Soft-archive instead of hard delete so audit trails and history stay intact

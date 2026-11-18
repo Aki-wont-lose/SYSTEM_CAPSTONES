@@ -8,6 +8,8 @@ import archiveRouter from '../src/modules/archive/routes.js';
 import ojtHoursRouter from '../src/modules/ojtHours/routes.js';
 import requirementsRouter from '../src/modules/requirements/routes.js';
 import messagingRouter from '../src/modules/messaging/routes.js';
+import studentsRouter from '../src/modules/students/routes.js';
+import { createStaffAccount } from '../src/modules/accounts/service.js';
 import {
   normalizeMiddleInitial,
   isValidMiddleInitial,
@@ -230,4 +232,34 @@ test('Middle Initial normalization and messaging Edit/Delete routes are register
 
   assert.equal(msgRoutes.some((r) => r.includes('PUT /:id')), true);
   assert.equal(msgRoutes.some((r) => r.includes('DELETE /:id')), true);
+});
+
+test('Super Admin is view-only on Students and Coordinators and can only create Admins', async () => {
+  const studentLayers = studentsRouter.stack.filter((layer) => layer.route);
+  const studentGet = studentLayers.find((l) => l.route.path === '/' && l.route.methods.get);
+  const studentPost = studentLayers.find((l) => l.route.path === '/' && l.route.methods.post);
+  const studentBatch = studentLayers.find((l) => l.route.path === '/batch' && l.route.methods.post);
+  const studentPut = studentLayers.find((l) => l.route.path === '/:id' && l.route.methods.put);
+  const studentDelete = studentLayers.find((l) => l.route.path === '/:id' && l.route.methods.delete);
+
+  assert.ok(studentGet);
+  assert.equal(studentGet.route.stack.some((s) => s.name === 'denySuperAdmin'), false);
+  for (const mutationRoute of [studentPost, studentBatch, studentPut, studentDelete]) {
+    assert.ok(mutationRoute);
+    assert.equal(mutationRoute.route.stack.some((s) => s.name === 'denySuperAdmin'), true);
+  }
+
+  await assert.rejects(
+    () =>
+      createStaffAccount({
+        email: 'coord.test@stamaria.sti.edu.ph',
+        firstName: 'Coord',
+        lastName: 'Test',
+        role: 'COORDINATOR',
+        coordinatorCourse: 'BSIT',
+        requesterIsSuperAdmin: true,
+        requesterRole: 'ADMIN'
+      }),
+    (err) => err.status === 403 && /only create Administrator/i.test(err.message)
+  );
 });

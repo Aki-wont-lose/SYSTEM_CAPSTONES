@@ -61,6 +61,8 @@ const PAGE_SIZES = [10, 50, 100, 'ALL'];
 const StudentManagement = () => {
   const { user } = useAuth();
   const role = user?.role;
+  const isSuperAdmin = Boolean(user?.isSuperAdmin);
+  const canManageStudents = (role === 'ADMIN' && !isSuperAdmin) || role === 'COORDINATOR';
   const [students, setStudents] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -455,12 +457,12 @@ const StudentManagement = () => {
           </select>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
-          {(role === 'ADMIN' || role === 'COORDINATOR') && (
+          {canManageStudents && (
             <Button variant="primary" icon={Plus} onClick={() => openAddModal('STUDENT')}>
               Add Student
             </Button>
           )}
-          {(role === 'ADMIN' || role === 'COORDINATOR') && (
+          {canManageStudents && (
             <>
               <Button
                 variant="secondary"
@@ -540,7 +542,7 @@ const StudentManagement = () => {
                         <button onClick={() => openViewModal(s)} title="View student details" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
                           <Eye className="w-4 h-4" />
                         </button>
-                        {(role === 'ADMIN' || role === 'COORDINATOR') && (
+                        {canManageStudents && (
                           <>
                             <button onClick={() => openEditModal(s)} title="Edit student" className="p-2 rounded-lg hover:bg-sti-gray-light dark:hover:bg-white/10 text-sti-gray hover:text-sti-blue transition-colors">
                               <Pencil className="w-4 h-4" />
